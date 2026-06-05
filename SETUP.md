@@ -13,10 +13,15 @@
 > Note: the DB-backed tests are destructive (they reset the `episodes` table). Don't run them against a database holding data you care about.
 
 ## 2. Deploy the Modal transcription function
-1. `pip install modal && modal token new`
+Only the Modal *client* runs locally (the transcription itself runs in Modal's cloud), so your local Python version doesn't matter. Install the CLI in an isolated environment — on macOS, avoid `pip install` against the system Python (it's externally-managed). Use one of:
+- **uv** (recommended): `brew install uv && uv tool install modal`
+- **pipx**: `brew install pipx && pipx install modal`
+
+Then:
+1. `modal token new` (opens a browser to authenticate)
 2. `modal deploy modal/transcribe.py`
 3. Put the printed web endpoint URL in `MODAL_TRANSCRIBE_URL`.
-4. Set `MODAL_WEBHOOK_SECRET` to a random string (the same value in the app env and used to authenticate the callback).
+4. Set `MODAL_WEBHOOK_SECRET` to a random string, e.g. `openssl rand -hex 32`. Use the **same** value in the app env and in Modal's call — the callback fails closed (rejects all requests) if it is unset.
 
 ## 3. Deploy the app on Railway
 1. In your Railway project (with the Postgres service), add a service from this GitHub repo.
