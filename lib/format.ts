@@ -7,6 +7,12 @@ export function formatTimestamp(sec: number): string {
   return h > 0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`
 }
 
+export function parseTimestamp(value: string): number {
+  const parts = value.trim().split(":").map(Number)
+  if (parts.length === 0 || parts.some((n) => Number.isNaN(n))) return 0
+  return parts.reduce((acc, n) => acc * 60 + n, 0)
+}
+
 export function formatDate(iso?: string | null): string {
   if (!iso) return ""
   return new Date(iso).toLocaleDateString()

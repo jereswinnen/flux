@@ -1,5 +1,5 @@
 import { expect, test } from "vitest"
-import { formatRelativeDate, formatTimestamp } from "@/lib/format"
+import { formatRelativeDate, formatTimestamp, parseTimestamp } from "@/lib/format"
 
 const now = new Date("2026-06-05T12:00:00Z")
 
@@ -13,4 +13,12 @@ test("formatRelativeDate buckets recent dates", () => {
 
 test("formatTimestamp still works (unchanged)", () => {
   expect(formatTimestamp(75)).toBe("1:15")
+})
+
+test("parseTimestamp is the inverse of formatTimestamp", () => {
+  expect(parseTimestamp("1:15")).toBe(75)
+  expect(parseTimestamp("0:05")).toBe(5)
+  expect(parseTimestamp("1:02:03")).toBe(3723)
+  expect(parseTimestamp(" 12:30 ")).toBe(750)
+  expect(parseTimestamp("bad")).toBe(0)
 })

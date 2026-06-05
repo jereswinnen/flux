@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { AudioPlayer, type AudioMarker, type AudioPlayerHandle } from "@/components/audio-player"
 import { EpisodeChat } from "@/components/episode-chat"
 import { formatRelativeDate, formatTimestamp } from "@/lib/format"
 
@@ -29,6 +30,7 @@ export type EpisodeViewProps = {
     errorMessage: string | null
     publishedAt: string | null
     durationSec: number | null
+    audioUrl: string | null
   }
   transcript: { fullText: string; segments: Segment[] } | null
   insights: Insights
@@ -43,6 +45,12 @@ function statusVariant(status: string): "default" | "secondary" | "destructive" 
 export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps) {
   const router = useRouter()
   const inFlight = !["ready", "failed"].includes(episode.status)
+  const playerRef = useRef<AudioPlayerHandle>(null)
+  const seek = (sec: number) => playerRef.current?.seek(sec)
+  const quoteMarkers: AudioMarker[] = (insights?.quotes ?? []).map((q) => ({
+    sec: q.approxTimestampSec,
+    label: q.text,
+  }))
 
   useEffect(() => {
     if (!inFlight) return
@@ -80,6 +88,10 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
           {episode.status}
         </Badge>
       </header>
+
+      {episode.audioUrl && (
+        <AudioPlayer ref={playerRef} src={episode.audioUrl} markers={quoteMarkers} />
+      )}
 
       {episode.status === "failed" ? (
         <div className="space-y-3 p-4 md:p-6">
@@ -138,9 +150,13 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
                       {insights.quotes.map((q, i) => (
                         <blockquote key={i} className="border-l-2 pl-3 font-serif text-lg italic leading-relaxed">
                           &ldquo;{q.text}&rdquo;{" "}
-                          <span className="font-sans text-sm text-muted-foreground not-italic">
+                          <button
+                            type="button"
+                            onClick={() => seek(q.approxTimestampSec)}
+                            className="font-sans text-sm text-muted-foreground not-italic hover:text-foreground hover:underline"
+                          >
                             [{formatTimestamp(q.approxTimestampSec)}]
-                          </span>
+                          </button>
                         </blockquote>
                       ))}
                     </div>
@@ -164,9 +180,13 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
                     <div className="space-y-2 font-serif text-lg leading-relaxed">
                       {transcript.segments.map((s, i) => (
                         <p key={s.start ?? i}>
-                          <span className="mr-2 font-sans text-sm tabular-nums text-muted-foreground">
+                          <button
+                            type="button"
+                            onClick={() => seek(s.start)}
+                            className="mr-2 font-sans text-sm tabular-nums text-muted-foreground hover:text-foreground hover:underline"
+                          >
                             {formatTimestamp(s.start)}
-                          </span>
+                          </button>
                           {s.text}
                         </p>
                       ))}
@@ -180,7 +200,7 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
           <aside className="lg:col-span-1">
             <Card className="space-y-3 p-4 lg:sticky lg:top-6">
               <h2 className="text-sm font-medium text-muted-foreground">Ask this episode</h2>
-              <EpisodeChat episodeId={episode.id} />
+              <EpisodeChat episodeId={episode.id} onSeek={seek} />
             </Card>
           </aside>
         </div>

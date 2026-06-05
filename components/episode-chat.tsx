@@ -1,11 +1,42 @@
 "use client"
 
-import { useState } from "react"
+import { type ReactNode, useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { parseTimestamp } from "@/lib/format"
 
-export function EpisodeChat({ episodeId }: { episodeId: string }) {
+// Render the streamed answer, turning [m:ss] / [h:mm:ss] citations into seek buttons.
+function renderAnswer(text: string, onSeek?: (sec: number) => void): ReactNode[] {
+  const re = /\[(\d{1,2}:\d{2}(?::\d{2})?)\]/g
+  const out: ReactNode[] = []
+  let last = 0
+  let key = 0
+  let m: RegExpExecArray | null
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) out.push(text.slice(last, m.index))
+    const ts = m[1]
+    out.push(
+      onSeek ? (
+        <button
+          key={key++}
+          type="button"
+          onClick={() => onSeek(parseTimestamp(ts))}
+          className="font-sans text-primary hover:underline"
+        >
+          [{ts}]
+        </button>
+      ) : (
+        `[${ts}]`
+      ),
+    )
+    last = m.index + m[0].length
+  }
+  if (last < text.length) out.push(text.slice(last))
+  return out
+}
+
+export function EpisodeChat({ episodeId, onSeek }: { episodeId: string; onSeek?: (sec: number) => void }) {
   const [question, setQuestion] = useState("")
   const [answer, setAnswer] = useState("")
   const [busy, setBusy] = useState(false)
@@ -47,7 +78,9 @@ export function EpisodeChat({ episodeId }: { episodeId: string }) {
         />
         <Button onClick={ask} disabled={busy || !question}>Ask</Button>
       </div>
-      {answer && <p className="whitespace-pre-wrap text-sm leading-relaxed">{answer}</p>}
+      {answer && (
+        <p className="whitespace-pre-wrap text-sm leading-relaxed">{renderAnswer(answer, onSeek)}</p>
+      )}
     </div>
   )
 }
