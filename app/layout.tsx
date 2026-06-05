@@ -9,6 +9,8 @@ import { AddCommand } from "@/components/add-command"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { PlayerProvider } from "@/components/player-context"
+import { GlobalPlayer } from "@/components/global-player"
 
 const dmSans = DM_Sans({subsets:['latin'],variable:'--font-sans'})
 const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" })
@@ -23,13 +25,18 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <ThemeProvider>
           <CommandProvider>
-            <TooltipProvider>
-              <SidebarProvider>
-                <AppSidebar />
-                <SidebarInset>{children}</SidebarInset>
-              </SidebarProvider>
-            </TooltipProvider>
-            <AddCommand />
+            <PlayerProvider>
+              <TooltipProvider>
+                <SidebarProvider>
+                  <AppSidebar />
+                  <SidebarInset>
+                    {children}
+                    <GlobalPlayer />
+                  </SidebarInset>
+                </SidebarProvider>
+              </TooltipProvider>
+              <AddCommand />
+            </PlayerProvider>
           </CommandProvider>
         </ThemeProvider>
         <Toaster />

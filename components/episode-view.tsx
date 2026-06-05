@@ -1,14 +1,15 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { Play } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AudioPlayer, type AudioMarker, type AudioPlayerHandle } from "@/components/audio-player"
 import { EpisodeChat } from "@/components/episode-chat"
+import { usePlayer, type AudioMarker, type Track } from "@/components/player-context"
 import { formatRelativeDate, formatTimestamp } from "@/lib/format"
 
 type Segment = { start: number; end: number; text: string }
@@ -45,12 +46,23 @@ function statusVariant(status: string): "default" | "secondary" | "destructive" 
 export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps) {
   const router = useRouter()
   const inFlight = !["ready", "failed"].includes(episode.status)
-  const playerRef = useRef<AudioPlayerHandle>(null)
-  const seek = (sec: number) => playerRef.current?.seek(sec)
+  const player = usePlayer()
   const quoteMarkers: AudioMarker[] = (insights?.quotes ?? []).map((q) => ({
     sec: q.approxTimestampSec,
     label: q.text,
   }))
+  const track: Track | null = episode.audioUrl
+    ? {
+        episodeId: episode.id,
+        audioUrl: episode.audioUrl,
+        title: episode.title,
+        artworkUrl: episode.artworkUrl,
+        markers: quoteMarkers,
+      }
+    : null
+  const seek = (sec: number) => {
+    if (track) player.cue(track, sec)
+  }
 
   useEffect(() => {
     if (!inFlight) return
@@ -84,14 +96,19 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
             ))}
           </div>
         </div>
+        {track && (
+          <Button
+            size="sm"
+            onClick={() => player.play(track)}
+            className="shrink-0 gap-2"
+          >
+            <Play className="size-4" /> Play
+          </Button>
+        )}
         <Badge variant={statusVariant(episode.status)} className={inFlight ? "animate-pulse" : ""}>
           {episode.status}
         </Badge>
       </header>
-
-      {episode.audioUrl && (
-        <AudioPlayer ref={playerRef} src={episode.audioUrl} markers={quoteMarkers} />
-      )}
 
       {episode.status === "failed" ? (
         <div className="space-y-3 p-4 md:p-6">
