@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     .join("\n\n")
 
   const result = streamText({
-    model: openai("gpt-4o"),
+    model: openai("gpt-5.4-mini-2026-03-17"),
     system:
       "Answer the user's question using ONLY the provided transcript excerpts. " +
       "Cite the [timestamp] of excerpts you rely on. If the answer isn't in the excerpts, say so.",

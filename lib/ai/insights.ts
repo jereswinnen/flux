@@ -21,7 +21,7 @@ export async function generateInsights(
   opts: { model?: LanguageModel } = {},
 ): Promise<Insights> {
   const { object } = await generateObject({
-    model: opts.model ?? openai("gpt-4o"),
+    model: opts.model ?? openai("gpt-5.4-mini-2026-03-17"),
     schema: insightsSchema,
     prompt:
       "You are analyzing a podcast transcript. Produce structured insights.\n\n" +
