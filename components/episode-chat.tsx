@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 
 export function EpisodeChat({ episodeId }: { episodeId: string }) {
@@ -34,8 +33,7 @@ export function EpisodeChat({ episodeId }: { episodeId: string }) {
   }
 
   return (
-    <Card className="space-y-2 p-4">
-      <h2 className="font-medium">Ask this episode</h2>
+    <div className="space-y-3">
       <div className="flex gap-2">
         <Input
           value={question}
@@ -45,7 +43,7 @@ export function EpisodeChat({ episodeId }: { episodeId: string }) {
         />
         <Button onClick={ask} disabled={busy || !question}>Ask</Button>
       </div>
-      {answer && <p className="text-sm whitespace-pre-wrap">{answer}</p>}
-    </Card>
+      {answer && <p className="whitespace-pre-wrap text-sm leading-relaxed">{answer}</p>}
+    </div>
   )
 }

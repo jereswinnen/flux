@@ -3,7 +3,8 @@ import { eq } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { episodeRepo } from "@/lib/db/episodes"
 import { insights as insightsTable, transcripts as transcriptsTable } from "@/lib/db/schema"
-import { EpisodeDetail } from "@/components/episode-detail"
+import { AppHeader } from "@/components/app-header"
+import { EpisodeView } from "@/components/episode-view"
 
 export const dynamic = "force-dynamic"
 
@@ -16,26 +17,21 @@ export default async function EpisodePage({ params }: { params: Promise<{ id: st
   const [insight] = await db.select().from(insightsTable).where(eq(insightsTable.episodeId, id)).limit(1)
 
   return (
-    <EpisodeDetail
-      episode={{
-        id: episode.id,
-        title: episode.title,
-        podcastName: episode.podcastName,
-        status: episode.status,
-        errorMessage: episode.errorMessage,
-      }}
-      transcript={transcript ? { fullText: transcript.fullText, segments: transcript.segments ?? [] } : null}
-      insights={
-        insight
-          ? {
-              summary: insight.summary,
-              takeaways: insight.takeaways,
-              topics: insight.topics,
-              quotes: insight.quotes,
-              entities: insight.entities,
-            }
-          : null
-      }
-    />
+    <>
+      <AppHeader breadcrumbs={[{ label: "Library", href: "/" }, { label: episode.title }]} />
+      <EpisodeView
+        episode={{
+          id: episode.id,
+          title: episode.title,
+          podcastName: episode.podcastName,
+          artworkUrl: episode.artworkUrl,
+          status: episode.status,
+          errorMessage: episode.errorMessage,
+          publishedAt: episode.publishedAt ? episode.publishedAt.toISOString() : null,
+        }}
+        transcript={transcript ? { fullText: transcript.fullText, segments: transcript.segments ?? [] } : null}
+        insights={insight ?? null}
+      />
+    </>
   )
 }
