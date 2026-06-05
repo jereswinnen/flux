@@ -136,6 +136,8 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
               <TabsList>
                 <TabsTrigger value="insights">Insights</TabsTrigger>
                 <TabsTrigger value="transcript">Transcript</TabsTrigger>
+                {/* Chat is a tab on mobile; it lives in the side rail on desktop. */}
+                <TabsTrigger value="chat" className="lg:hidden">Chat</TabsTrigger>
               </TabsList>
 
               <TabsContent value="insights" className="pt-3">
@@ -211,10 +213,16 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
                   </ScrollArea>
                 </Card>
               </TabsContent>
+
+              <TabsContent value="chat" className="pt-3 lg:hidden">
+                <Card className="p-5">
+                  <EpisodeChat episodeId={episode.id} onSeek={seek} />
+                </Card>
+              </TabsContent>
             </Tabs>
           </div>
 
-          <aside className="lg:col-span-1">
+          <aside className="hidden lg:col-span-1 lg:block">
             <Card className="space-y-3 p-4 lg:sticky lg:top-6">
               <h2 className="text-sm font-medium text-muted-foreground">Ask this episode</h2>
               <EpisodeChat episodeId={episode.id} onSeek={seek} />
