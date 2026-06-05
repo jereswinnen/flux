@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { type KeyboardEvent, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Link2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
@@ -44,12 +44,13 @@ export function AddCommand() {
   const [context, setContext] = useState<{ name?: string; artworkUrl?: string; feedUrl?: string }>({})
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [active, setActive] = useState("")
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
   const searchSeq = useRef(0)
 
   useEffect(() => {
     if (!open) {
-      setQuery(""); setMode("search"); setShows([]); setEpisodes([]); setFeedEpisodes([]); setContext({})
+      setQuery(""); setMode("search"); setShows([]); setEpisodes([]); setFeedEpisodes([]); setContext({}); setActive("")
     }
   }, [open])
 
@@ -77,7 +78,7 @@ export function AddCommand() {
   }, [query, mode])
 
   async function loadShowEpisodes(feedUrl: string, ctx: { name?: string; artworkUrl?: string }) {
-    setLoading(true); setMode("episodes"); setQuery(""); setContext({ ...ctx, feedUrl })
+    setLoading(true); setMode("episodes"); setQuery(""); setActive(""); setContext({ ...ctx, feedUrl })
     try {
       const data = await fetch(`/api/itunes/episodes?feedUrl=${encodeURIComponent(feedUrl)}`).then((r) => r.json())
       setContext({ name: ctx.name ?? data.showName, artworkUrl: ctx.artworkUrl ?? data.artworkUrl, feedUrl })
@@ -112,15 +113,40 @@ export function AddCommand() {
 
   const urlQuery = isUrl(query.trim()) ? query.trim() : null
 
+  function goBack() {
+    setMode("search")
+    setFeedEpisodes([])
+    setActive("")
+  }
+
+  // Arrow-key drill navigation: → opens the highlighted show, ← goes back.
+  // Caret guards keep normal text editing in the input intact.
+  function handleKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    const el = e.target as HTMLInputElement
+    const isInput = el?.tagName === "INPUT"
+    const atEnd = isInput && el.selectionStart === el.value.length && el.selectionStart === el.selectionEnd
+    const atStart = isInput && el.selectionStart === 0 && el.selectionEnd === 0
+    if (mode === "search" && e.key === "ArrowRight" && atEnd) {
+      const show = shows.find((s) => `show-${s.collectionId}` === active)
+      if (show?.feedUrl) {
+        e.preventDefault()
+        loadShowEpisodes(show.feedUrl, { name: show.name, artworkUrl: show.artworkUrl })
+      }
+    } else if (mode === "episodes" && e.key === "ArrowLeft" && atStart) {
+      e.preventDefault()
+      goBack()
+    }
+  }
+
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
-      <Command shouldFilter={mode === "episodes"}>
+    <CommandDialog open={open} onOpenChange={setOpen} className="sm:max-w-2xl">
+      <Command shouldFilter={mode === "episodes"} onValueChange={setActive} onKeyDown={handleKeyDown}>
       <CommandInput
         placeholder={mode === "episodes" ? "Filter episodes…" : "Search podcasts, episodes, or paste a URL…"}
         value={query}
         onValueChange={setQuery}
       />
-      <CommandList>
+      <CommandList className="max-h-[440px]">
         {loading && (
           <div className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" /> Loading…
@@ -209,7 +235,7 @@ export function AddCommand() {
         {mode === "episodes" && (
           <>
             <CommandGroup>
-              <CommandItem value="__back" onSelect={() => { setMode("search"); setFeedEpisodes([]) }}>
+              <CommandItem value="__back" onSelect={goBack}>
                 <ArrowLeft className="size-4" /> Back to search
               </CommandItem>
             </CommandGroup>
@@ -245,6 +271,15 @@ export function AddCommand() {
           </>
         )}
       </CommandList>
+      <div className="flex items-center gap-3 border-t px-3 py-2 text-[11px] text-muted-foreground">
+        <span className="flex items-center gap-1"><kbd className="rounded bg-muted px-1 py-0.5">↑↓</kbd> navigate</span>
+        {mode === "search" ? (
+          <span className="flex items-center gap-1"><kbd className="rounded bg-muted px-1 py-0.5">→</kbd> open show</span>
+        ) : (
+          <span className="flex items-center gap-1"><kbd className="rounded bg-muted px-1 py-0.5">←</kbd> back</span>
+        )}
+        <span className="ml-auto flex items-center gap-1"><kbd className="rounded bg-muted px-1 py-0.5">↵</kbd> add</span>
+      </div>
       </Command>
     </CommandDialog>
   )
