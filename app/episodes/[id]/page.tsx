@@ -28,6 +28,7 @@ export default async function EpisodePage({ params }: { params: Promise<{ id: st
           status: episode.status,
           errorMessage: episode.errorMessage,
           publishedAt: episode.publishedAt ? episode.publishedAt.toISOString() : null,
+          durationSec: episode.durationSec,
         }}
         transcript={transcript ? { fullText: transcript.fullText, segments: transcript.segments ?? [] } : null}
         insights={insight ?? null}
