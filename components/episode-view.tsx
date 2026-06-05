@@ -112,12 +112,12 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
               <TabsContent value="insights" className="pt-3">
                 <Card className="space-y-5 p-5">
                   {insights?.summary && (
-                    <p className="font-serif text-base leading-relaxed">{insights.summary}</p>
+                    <p className="font-serif text-lg leading-relaxed">{insights.summary}</p>
                   )}
                   {insights?.takeaways?.length ? (
                     <div>
                       <h3 className="mb-2 text-sm font-medium text-muted-foreground">Takeaways</h3>
-                      <ul className="list-disc space-y-1.5 pl-5 font-serif text-base leading-relaxed">
+                      <ul className="list-disc space-y-1.5 pl-5 font-serif text-lg leading-relaxed">
                         {insights.takeaways.map((t, i) => (
                           <li key={i}>{t}</li>
                         ))}
@@ -136,7 +136,7 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
                   {insights?.quotes?.length ? (
                     <div className="space-y-3">
                       {insights.quotes.map((q, i) => (
-                        <blockquote key={i} className="border-l-2 pl-3 font-serif text-base italic leading-relaxed">
+                        <blockquote key={i} className="border-l-2 pl-3 font-serif text-lg italic leading-relaxed">
                           &ldquo;{q.text}&rdquo;{" "}
                           <span className="font-sans text-sm text-muted-foreground not-italic">
                             [{formatTimestamp(q.approxTimestampSec)}]
@@ -161,7 +161,7 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
               <TabsContent value="transcript" className="pt-3">
                 <Card className="p-5">
                   <ScrollArea className="h-[60vh] pr-3">
-                    <div className="space-y-2 font-serif text-base leading-relaxed">
+                    <div className="space-y-2 font-serif text-lg leading-relaxed">
                       {transcript.segments.map((s, i) => (
                         <p key={s.start ?? i}>
                           <span className="mr-2 font-sans text-sm tabular-nums text-muted-foreground">
