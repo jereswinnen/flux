@@ -2,8 +2,12 @@ import modal
 
 app = modal.App("podcast-kb-transcribe")
 
+# faster-whisper (CTranslate2) loads CUDA libs (libcublas, libcudnn) at runtime,
+# so the image must be built on an NVIDIA CUDA + cuDNN base — debian_slim lacks them.
 image = (
-    modal.Image.debian_slim()
+    modal.Image.from_registry(
+        "nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04", add_python="3.11"
+    )
     .apt_install("ffmpeg")
     .pip_install("faster-whisper==1.0.3", "requests==2.32.3", "fastapi[standard]")
 )
