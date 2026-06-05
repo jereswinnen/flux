@@ -1,0 +1,41 @@
+import { config } from "dotenv"
+config({ path: ".env.local" })
+
+import { drizzle } from "drizzle-orm/postgres-js"
+import { migrate } from "drizzle-orm/postgres-js/migrator"
+import postgres from "postgres"
+import { afterAll, beforeAll, beforeEach, expect, test } from "vitest"
+import * as schema from "@/lib/db/schema"
+import { makeEpisodeRepo } from "@/lib/db/episodes"
+import { searchChunks } from "@/lib/db/search"
+
+const client = postgres(process.env.TEST_DATABASE_URL!, { max: 1 })
+const db = drizzle(client, { schema })
+const repo = makeEpisodeRepo(db)
+
+beforeAll(async () => {
+  await migrate(db, { migrationsFolder: "./lib/db/migrations" })
+})
+beforeEach(async () => {
+  await db.delete(schema.episodes)
+})
+afterAll(async () => {
+  await client.end()
+})
+
+function vec(fill: number) {
+  return Array(1536).fill(fill)
+}
+
+test("returns the nearest chunk by cosine similarity", async () => {
+  const ep = await repo.create({ title: "E", audioUrl: "https://a/1.mp3" })
+  await db.insert(schema.chunks).values([
+    { episodeId: ep.id, content: "near", startSec: 0, endSec: 5, embedding: vec(0.1) },
+    { episodeId: ep.id, content: "far", startSec: 5, endSec: 10, embedding: vec(-0.1) },
+  ])
+
+  const results = await searchChunks(db, vec(0.1), { limit: 1 })
+  expect(results[0].content).toBe("near")
+  expect(results[0].episodeTitle).toBe("E")
+  expect(typeof results[0].similarity).toBe("number")
+}, 30_000)
