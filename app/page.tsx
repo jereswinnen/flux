@@ -1,22 +1,25 @@
-import Link from "next/link"
-import { AddEpisode } from "@/components/add-episode"
-import { Button } from "@/components/ui/button"
+import { episodeRepo } from "@/lib/db/episodes"
+import { AppHeader } from "@/components/app-header"
+import { Library } from "@/components/library"
+import type { LibEpisode } from "@/components/episode-card"
 
-export default function Page() {
+export const dynamic = "force-dynamic"
+
+export default async function Page() {
+  const rows = await episodeRepo.list()
+  const episodes: LibEpisode[] = rows.map((e) => ({
+    id: e.id,
+    title: e.title,
+    podcastName: e.podcastName,
+    artworkUrl: e.artworkUrl,
+    status: e.status,
+    publishedAt: e.publishedAt ? e.publishedAt.toISOString() : null,
+    createdAt: e.createdAt.toISOString(),
+  }))
   return (
-    <div className="mx-auto flex min-h-svh max-w-3xl flex-col gap-6 p-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Podcast Knowledge Base</h1>
-        <div className="flex gap-2">
-          <Button asChild variant="outline">
-            <Link href="/search">Search</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/episodes">Archive</Link>
-          </Button>
-        </div>
-      </header>
-      <AddEpisode />
-    </div>
+    <>
+      <AppHeader breadcrumbs={[{ label: "Library" }]} />
+      <Library initialEpisodes={episodes} />
+    </>
   )
 }
