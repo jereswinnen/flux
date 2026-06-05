@@ -42,7 +42,8 @@ def transcribe(audio_url: str, episode_id: str, callback_url: str, secret: str):
     except Exception as e:
         payload = {"episode_id": episode_id, "secret": secret, "error": str(e)}
 
-    requests.post(callback_url, json=payload, timeout=60)
+    resp = requests.post(callback_url, json=payload, timeout=60)
+    resp.raise_for_status()
 
 
 @app.function(image=image)

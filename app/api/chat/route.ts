@@ -3,6 +3,7 @@ import { streamText } from "ai"
 import { embedQuery } from "@/lib/ai/embeddings"
 import { db } from "@/lib/db"
 import { searchChunks } from "@/lib/db/search"
+import { formatTimestamp } from "@/lib/format"
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null)
@@ -27,10 +28,4 @@ export async function POST(request: Request) {
   })
 
   return result.toTextStreamResponse()
-}
-
-function formatTimestamp(sec: number): string {
-  const m = Math.floor(sec / 60)
-  const s = Math.floor(sec % 60)
-  return `${m}:${s.toString().padStart(2, "0")}`
 }
