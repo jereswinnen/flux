@@ -1,6 +1,7 @@
 "use client"
 
 import { type ReactNode, useState } from "react"
+import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -36,7 +37,8 @@ function renderAnswer(text: string, onSeek?: (sec: number) => void): ReactNode[]
   return out
 }
 
-export function EpisodeChat({ episodeId, onSeek }: { episodeId: string; onSeek?: (sec: number) => void }) {
+// Single source of truth for an episode's chat. Call once, render in many places.
+export function useEpisodeChat(episodeId: string) {
   const [question, setQuestion] = useState("")
   const [answer, setAnswer] = useState("")
   const [busy, setBusy] = useState(false)
@@ -67,6 +69,20 @@ export function EpisodeChat({ episodeId, onSeek }: { episodeId: string; onSeek?:
     }
   }
 
+  return { question, setQuestion, answer, busy, ask }
+}
+
+export type EpisodeChatState = ReturnType<typeof useEpisodeChat>
+
+// Presentational chat panel — stateless, driven by a shared useEpisodeChat() instance.
+export function ChatPanel({
+  chat,
+  onSeek,
+}: {
+  chat: EpisodeChatState
+  onSeek?: (sec: number) => void
+}) {
+  const { question, setQuestion, answer, busy, ask } = chat
   return (
     <div className="space-y-3">
       <div className="flex gap-2">
@@ -76,7 +92,9 @@ export function EpisodeChat({ episodeId, onSeek }: { episodeId: string; onSeek?:
           placeholder="What did they say about…?"
           onKeyDown={(e) => e.key === "Enter" && !busy && question && ask()}
         />
-        <Button onClick={ask} disabled={busy || !question}>Ask</Button>
+        <Button onClick={ask} disabled={busy || !question}>
+          {busy ? <Loader2 className="size-4 animate-spin" /> : "Ask"}
+        </Button>
       </div>
       {answer && (
         <p className="whitespace-pre-wrap text-sm leading-relaxed">{renderAnswer(answer, onSeek)}</p>

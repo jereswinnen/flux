@@ -38,9 +38,11 @@ export function EpisodeCard({ episode }: { episode: LibEpisode }) {
         <div className="space-y-1 p-3">
           <div className="flex items-start justify-between gap-2">
             <span className="line-clamp-2 text-sm font-medium">{episode.title}</span>
-            <Badge variant={statusVariant(episode.status)} className={inFlight ? "animate-pulse" : ""}>
-              {episode.status}
-            </Badge>
+            {episode.status !== "ready" && (
+              <Badge variant={statusVariant(episode.status)} className={inFlight ? "animate-pulse" : ""}>
+                {episode.status}
+              </Badge>
+            )}
           </div>
           <div className="truncate text-xs text-muted-foreground">
             {episode.podcastName} {episode.publishedAt ? `· ${formatRelativeDate(episode.publishedAt)}` : ""}

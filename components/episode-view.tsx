@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { EpisodeChat } from "@/components/episode-chat"
+import { ChatPanel, useEpisodeChat } from "@/components/episode-chat"
 import { usePlayer, type AudioMarker, type Track } from "@/components/player-context"
 import { formatRelativeDate, formatTimestamp } from "@/lib/format"
 
@@ -63,6 +63,7 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
   const seek = (sec: number) => {
     if (track) player.cue(track, sec)
   }
+  const chat = useEpisodeChat(episode.id)
 
   useEffect(() => {
     if (!inFlight) return
@@ -105,9 +106,11 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
             <Play className="size-4" /> Play
           </Button>
         )}
-        <Badge variant={statusVariant(episode.status)} className={inFlight ? "animate-pulse" : ""}>
-          {episode.status}
-        </Badge>
+        {episode.status !== "ready" && (
+          <Badge variant={statusVariant(episode.status)} className={inFlight ? "animate-pulse" : ""}>
+            {episode.status}
+          </Badge>
+        )}
       </header>
 
       {episode.status === "failed" ? (
@@ -216,7 +219,7 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
 
               <TabsContent value="chat" className="pt-3 lg:hidden">
                 <Card className="p-5">
-                  <EpisodeChat episodeId={episode.id} onSeek={seek} />
+                  <ChatPanel chat={chat} onSeek={seek} />
                 </Card>
               </TabsContent>
             </Tabs>
@@ -225,7 +228,7 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
           <aside className="hidden lg:col-span-1 lg:block">
             <Card className="space-y-3 p-4 lg:sticky lg:top-6">
               <h2 className="text-sm font-medium text-muted-foreground">Ask this episode</h2>
-              <EpisodeChat episodeId={episode.id} onSeek={seek} />
+              <ChatPanel chat={chat} onSeek={seek} />
             </Card>
           </aside>
         </div>
