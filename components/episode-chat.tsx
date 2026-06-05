@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
@@ -18,6 +19,7 @@ export function EpisodeChat({ episodeId }: { episodeId: string }) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ question, episodeId }),
       })
+      if (!res.ok) throw new Error("Chat request failed")
       const reader = res.body?.getReader()
       const decoder = new TextDecoder()
       if (reader) {
@@ -27,6 +29,8 @@ export function EpisodeChat({ episodeId }: { episodeId: string }) {
           setAnswer((prev) => prev + decoder.decode(value))
         }
       }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Chat failed")
     } finally {
       setBusy(false)
     }

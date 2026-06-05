@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft, Link2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import {
+  Command,
   CommandDialog,
   CommandEmpty,
   CommandGroup,
@@ -44,6 +45,7 @@ export function AddCommand() {
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const searchSeq = useRef(0)
 
   useEffect(() => {
     if (!open) {
@@ -57,23 +59,25 @@ export function AddCommand() {
     const q = query.trim()
     if (q.length < 2 || isUrl(q)) { setShows([]); setEpisodes([]); return }
     debounce.current = setTimeout(async () => {
+      const seq = ++searchSeq.current
       setLoading(true)
       try {
         const [showRes, epRes] = await Promise.all([
           fetch(`/api/itunes/search?type=podcast&q=${encodeURIComponent(q)}`).then((r) => r.json()),
           fetch(`/api/itunes/search?type=episode&q=${encodeURIComponent(q)}`).then((r) => r.json()),
         ])
+        if (seq !== searchSeq.current) return
         setShows((showRes.results ?? []).slice(0, 6))
         setEpisodes((epRes.results ?? []).filter((e: EpisodeResult) => e.audioUrl).slice(0, 6))
       } finally {
-        setLoading(false)
+        if (seq === searchSeq.current) setLoading(false)
       }
     }, 350)
     return () => { if (debounce.current) clearTimeout(debounce.current) }
   }, [query, mode])
 
   async function loadShowEpisodes(feedUrl: string, ctx: { name?: string; artworkUrl?: string }) {
-    setLoading(true); setMode("episodes"); setContext({ ...ctx, feedUrl })
+    setLoading(true); setMode("episodes"); setQuery(""); setContext({ ...ctx, feedUrl })
     try {
       const data = await fetch(`/api/itunes/episodes?feedUrl=${encodeURIComponent(feedUrl)}`).then((r) => r.json())
       setContext({ name: ctx.name ?? data.showName, artworkUrl: ctx.artworkUrl ?? data.artworkUrl, feedUrl })
@@ -109,7 +113,8 @@ export function AddCommand() {
   const urlQuery = isUrl(query.trim()) ? query.trim() : null
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen} shouldFilter={false}>
+    <CommandDialog open={open} onOpenChange={setOpen}>
+      <Command shouldFilter={mode === "episodes"}>
       <CommandInput
         placeholder={mode === "episodes" ? "Filter episodes…" : "Search podcasts, episodes, or paste a URL…"}
         value={query}
@@ -195,6 +200,9 @@ export function AddCommand() {
                 ))}
               </CommandGroup>
             )}
+            {!loading && query.trim().length >= 2 && !urlQuery && shows.length === 0 && episodes.length === 0 && (
+              <CommandEmpty>No results for &ldquo;{query.trim()}&rdquo;.</CommandEmpty>
+            )}
           </>
         )}
 
@@ -237,6 +245,7 @@ export function AddCommand() {
           </>
         )}
       </CommandList>
+      </Command>
     </CommandDialog>
   )
 }

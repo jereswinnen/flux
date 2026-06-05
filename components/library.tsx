@@ -22,21 +22,23 @@ export function Library({ initialEpisodes }: { initialEpisodes: LibEpisode[] }) 
   const [hits, setHits] = useState<Hit[] | null>(null)
   const [searching, setSearching] = useState(false)
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const searchSeq = useRef(0)
 
+  const anyInFlight = episodes.some((e) => !["ready", "failed"].includes(e.status))
   useEffect(() => {
-    const anyInFlight = episodes.some((e) => !["ready", "failed"].includes(e.status))
     if (!anyInFlight) return
     const t = setInterval(() => {
       fetch("/api/episodes").then((r) => r.json()).then((d) => setEpisodes(d.episodes ?? [])).catch(() => {})
     }, 6000)
     return () => clearInterval(t)
-  }, [episodes])
+  }, [anyInFlight])
 
   useEffect(() => {
     if (debounce.current) clearTimeout(debounce.current)
     const q = query.trim()
     if (q.length < 2) { setHits(null); return }
     debounce.current = setTimeout(async () => {
+      const seq = ++searchSeq.current
       setSearching(true)
       try {
         const d = await fetch("/api/search", {
@@ -44,9 +46,10 @@ export function Library({ initialEpisodes }: { initialEpisodes: LibEpisode[] }) 
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ query: q, limit: 12 }),
         }).then((r) => r.json())
+        if (seq !== searchSeq.current) return
         setHits(d.hits ?? [])
       } finally {
-        setSearching(false)
+        if (seq === searchSeq.current) setSearching(false)
       }
     }, 400)
     return () => { if (debounce.current) clearTimeout(debounce.current) }
