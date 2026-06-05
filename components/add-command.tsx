@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft, Link2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import {
-  Command,
   CommandDialog,
   CommandEmpty,
   CommandGroup,
@@ -113,8 +112,7 @@ export function AddCommand() {
   const urlQuery = isUrl(query.trim()) ? query.trim() : null
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
-      <Command shouldFilter={mode === "episodes"}>
+    <CommandDialog open={open} onOpenChange={setOpen} shouldFilter={mode === "episodes"}>
       <CommandInput
         placeholder={mode === "episodes" ? "Filter episodes…" : "Search podcasts, episodes, or paste a URL…"}
         value={query}
@@ -245,7 +243,6 @@ export function AddCommand() {
           </>
         )}
       </CommandList>
-      </Command>
     </CommandDialog>
   )
 }
