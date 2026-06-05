@@ -1,4 +1,4 @@
-import { Geist_Mono, Figtree } from "next/font/google"
+import { Geist_Mono, Figtree, DM_Sans } from "next/font/google"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -10,7 +10,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 
-const figtree = Figtree({ subsets: ["latin"], variable: "--font-sans" })
+const dmSans = DM_Sans({subsets:['latin'],variable:'--font-sans'})
 const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" })
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -18,7 +18,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", figtree.variable)}
+      className={cn("antialiased", fontMono.variable, "font-sans", dmSans.variable)}
     >
       <body>
         <ThemeProvider>
