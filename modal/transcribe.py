@@ -1,0 +1,64 @@
+import modal
+
+app = modal.App("podcast-kb-transcribe")
+
+image = (
+    modal.Image.debian_slim()
+    .apt_install("ffmpeg")
+    .pip_install("faster-whisper==1.0.3", "requests==2.32.3", "fastapi[standard]")
+)
+
+
+@app.function(image=image, gpu="A10G", timeout=1800)
+def transcribe(audio_url: str, episode_id: str, callback_url: str, secret: str):
+    import tempfile
+    import requests
+    from faster_whisper import WhisperModel
+
+    try:
+        # Download audio
+        with tempfile.NamedTemporaryFile(suffix=".audio", delete=False) as f:
+            with requests.get(audio_url, stream=True, timeout=300) as r:
+                r.raise_for_status()
+                for chunk in r.iter_content(chunk_size=1 << 20):
+                    f.write(chunk)
+            audio_path = f.name
+
+        model = WhisperModel("large-v3", device="cuda", compute_type="float16")
+        segments_iter, _info = model.transcribe(audio_path, vad_filter=True)
+
+        segments = []
+        full_text_parts = []
+        for s in segments_iter:
+            segments.append({"start": s.start, "end": s.end, "text": s.text.strip()})
+            full_text_parts.append(s.text.strip())
+
+        payload = {
+            "episode_id": episode_id,
+            "secret": secret,
+            "transcript": " ".join(full_text_parts),
+            "segments": segments,
+        }
+    except Exception as e:
+        payload = {"episode_id": episode_id, "secret": secret, "error": str(e)}
+
+    requests.post(callback_url, json=payload, timeout=60)
+
+
+@app.function(image=image)
+@modal.fastapi_endpoint(method="POST")
+def web(body: dict):
+    from fastapi import Response
+
+    # Validate the shared secret before doing any work.
+    if not body.get("secret"):
+        return Response(content='{"error":"missing secret"}', status_code=401, media_type="application/json")
+
+    # Spawn the long-running job and return immediately.
+    transcribe.spawn(
+        audio_url=body["audio_url"],
+        episode_id=body["episode_id"],
+        callback_url=body["callback_url"],
+        secret=body["secret"],
+    )
+    return {"status": "accepted"}
