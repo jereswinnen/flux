@@ -4,7 +4,7 @@ import { searchShows, searchEpisodes } from "@/lib/itunes/client"
 afterEach(() => vi.restoreAllMocks())
 
 test("searchShows hits the podcast entity and maps results", async () => {
-  const fetchMock = vi.fn(async () =>
+  const fetchMock = vi.fn(async (_url: string) =>
     new Response(
       JSON.stringify({
         results: [
@@ -23,7 +23,7 @@ test("searchShows hits the podcast entity and maps results", async () => {
 })
 
 test("searchEpisodes hits the podcastEpisode entity", async () => {
-  const fetchMock = vi.fn(async () =>
+  const fetchMock = vi.fn(async (_url: string) =>
     new Response(JSON.stringify({ results: [] })),
   )
   vi.stubGlobal("fetch", fetchMock)
