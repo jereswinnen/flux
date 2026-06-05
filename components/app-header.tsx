@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Command } from "lucide-react"
 import {
   Breadcrumb,
@@ -32,7 +33,9 @@ export function AppHeader({ breadcrumbs }: { breadcrumbs: Crumb[] }) {
                   {last || !c.href ? (
                     <BreadcrumbPage className="max-w-[40ch] truncate">{c.label}</BreadcrumbPage>
                   ) : (
-                    <BreadcrumbLink href={c.href}>{c.label}</BreadcrumbLink>
+                    <BreadcrumbLink asChild>
+                      <Link href={c.href}>{c.label}</Link>
+                    </BreadcrumbLink>
                   )}
                 </BreadcrumbItem>
                 {!last && <BreadcrumbSeparator />}
