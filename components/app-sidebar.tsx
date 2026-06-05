@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { AudioLines, Library, Plus } from "lucide-react"
+import { AudioLines, Library, Loader2, Plus } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -19,7 +19,7 @@ import {
 import { useCommand } from "@/components/command-context"
 import { ThemeToggle } from "@/components/theme-toggle"
 
-type RecentEpisode = { id: string; title: string; artworkUrl: string | null }
+type RecentEpisode = { id: string; title: string; artworkUrl: string | null; status: string }
 
 export function AppSidebar() {
   const pathname = usePathname()
@@ -34,6 +34,19 @@ export function AppSidebar() {
       .catch(() => {})
     return () => { active = false }
   }, [pathname])
+
+  // While anything is processing, poll so the spinner clears once it's ready.
+  const anyInFlight = recent.some((e) => !["ready", "failed"].includes(e.status))
+  useEffect(() => {
+    if (!anyInFlight) return
+    const t = setInterval(() => {
+      fetch("/api/episodes")
+        .then((r) => r.json())
+        .then((d) => setRecent((d.episodes ?? []).slice(0, 6)))
+        .catch(() => {})
+    }, 5000)
+    return () => clearInterval(t)
+  }, [anyInFlight])
 
   return (
     <Sidebar collapsible="icon">
@@ -79,7 +92,9 @@ export function AppSidebar() {
                 <SidebarMenuItem key={e.id}>
                   <SidebarMenuButton asChild isActive={pathname === `/episodes/${e.id}`} tooltip={e.title}>
                     <Link href={`/episodes/${e.id}`}>
-                      {e.artworkUrl ? (
+                      {!["ready", "failed"].includes(e.status) ? (
+                        <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                      ) : e.artworkUrl ? (
                         <img src={e.artworkUrl} alt="" className="size-4 rounded-sm object-cover" />
                       ) : (
                         <div className="size-4 rounded-sm bg-muted" />

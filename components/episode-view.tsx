@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { EpisodeChat } from "@/components/episode-chat"
 import { formatRelativeDate, formatTimestamp } from "@/lib/format"
 
@@ -99,67 +100,81 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
           Processing… this page updates automatically.
         </div>
       ) : (
-        // Split: insights + transcript (left), chat sidebar (right)
+        // Split: tabbed insights/transcript (left), chat sidebar (right)
         <div className="grid flex-1 gap-6 p-4 md:p-6 lg:grid-cols-3">
-          <div className="space-y-6 lg:col-span-2">
-            {insights && (
-              <Card className="space-y-4 p-4">
-                <h2 className="text-sm font-medium text-muted-foreground">Insights</h2>
-                {insights.summary && <p className="text-sm leading-relaxed">{insights.summary}</p>}
-                {insights.takeaways?.length ? (
-                  <div>
-                    <h3 className="mb-1 text-sm font-medium">Takeaways</h3>
-                    <ul className="list-disc space-y-1 pl-5 text-sm">
-                      {insights.takeaways.map((t, i) => (
-                        <li key={i}>{t}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-                {insights.topics?.length ? (
-                  <div className="flex flex-wrap gap-1">
-                    {insights.topics.map((t, i) => (
-                      <Badge key={i} variant="secondary">
-                        {t}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : null}
-                {insights.quotes?.length ? (
-                  <div className="space-y-2">
-                    {insights.quotes.map((q, i) => (
-                      <blockquote key={i} className="border-l-2 pl-3 text-sm italic">
-                        &ldquo;{q.text}&rdquo;{" "}
-                        <span className="text-muted-foreground">[{formatTimestamp(q.approxTimestampSec)}]</span>
-                      </blockquote>
-                    ))}
-                  </div>
-                ) : null}
-                {insights.entities?.length ? (
-                  <div className="flex flex-wrap gap-1">
-                    {insights.entities.map((e, i) => (
-                      <Badge key={i} variant="outline">
-                        {e.name}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : null}
-              </Card>
-            )}
+          <div className="lg:col-span-2">
+            <Tabs defaultValue="insights">
+              <TabsList>
+                <TabsTrigger value="insights">Insights</TabsTrigger>
+                <TabsTrigger value="transcript">Transcript</TabsTrigger>
+              </TabsList>
 
-            <Card className="space-y-2 p-4">
-              <h2 className="text-sm font-medium text-muted-foreground">Transcript</h2>
-              <ScrollArea className="h-[55vh] pr-3">
-                <div className="space-y-1 text-sm leading-relaxed">
-                  {transcript.segments.map((s, i) => (
-                    <p key={s.start ?? i}>
-                      <span className="mr-2 tabular-nums text-muted-foreground">{formatTimestamp(s.start)}</span>
-                      {s.text}
-                    </p>
-                  ))}
-                </div>
-              </ScrollArea>
-            </Card>
+              <TabsContent value="insights" className="pt-3">
+                <Card className="space-y-5 p-5">
+                  {insights?.summary && (
+                    <p className="font-serif text-base leading-relaxed">{insights.summary}</p>
+                  )}
+                  {insights?.takeaways?.length ? (
+                    <div>
+                      <h3 className="mb-2 text-sm font-medium text-muted-foreground">Takeaways</h3>
+                      <ul className="list-disc space-y-1.5 pl-5 font-serif text-base leading-relaxed">
+                        {insights.takeaways.map((t, i) => (
+                          <li key={i}>{t}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {insights?.topics?.length ? (
+                    <div className="flex flex-wrap gap-1">
+                      {insights.topics.map((t, i) => (
+                        <Badge key={i} variant="secondary">
+                          {t}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
+                  {insights?.quotes?.length ? (
+                    <div className="space-y-3">
+                      {insights.quotes.map((q, i) => (
+                        <blockquote key={i} className="border-l-2 pl-3 font-serif text-base italic leading-relaxed">
+                          &ldquo;{q.text}&rdquo;{" "}
+                          <span className="font-sans text-sm text-muted-foreground not-italic">
+                            [{formatTimestamp(q.approxTimestampSec)}]
+                          </span>
+                        </blockquote>
+                      ))}
+                    </div>
+                  ) : null}
+                  {insights?.entities?.length ? (
+                    <div className="flex flex-wrap gap-1">
+                      {insights.entities.map((e, i) => (
+                        <Badge key={i} variant="outline">
+                          {e.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
+                  {!insights && <p className="text-sm text-muted-foreground">No insights yet.</p>}
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="transcript" className="pt-3">
+                <Card className="p-5">
+                  <ScrollArea className="h-[60vh] pr-3">
+                    <div className="space-y-2 font-serif text-base leading-relaxed">
+                      {transcript.segments.map((s, i) => (
+                        <p key={s.start ?? i}>
+                          <span className="mr-2 font-sans text-sm tabular-nums text-muted-foreground">
+                            {formatTimestamp(s.start)}
+                          </span>
+                          {s.text}
+                        </p>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </div>
 
           <aside className="lg:col-span-1">
