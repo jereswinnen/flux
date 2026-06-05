@@ -17,7 +17,7 @@
   - Dynamic params are async: `{ params }: { params: Promise<{ id: string }> }` then `const { id } = await params`.
 - Path alias `@/*` → repo root. shadcn aliases: `@/components/ui`, `@/lib`, `@/hooks`.
 - Package manager is **pnpm**. Add deps with `pnpm add`, run scripts with `pnpm <script>`.
-- Tests run with **Vitest** (`pnpm test`). Pure-logic tests need no DB. DB/route tests use a local pgvector container (Task 1).
+- Tests run with **Vitest** (`pnpm test`). Pure-logic tests need no DB. DB/route tests run against the Railway Postgres in `.env.local` (`DATABASE_URL` for dev, `TEST_DATABASE_URL` = a separate database on the same Railway instance).
 - Commit after every task. Use `feat:`/`test:`/`chore:` prefixes.
 
 ---
@@ -27,7 +27,6 @@
 **Files:**
 - Modify: `package.json` (deps + scripts)
 - Create: `vitest.config.ts`
-- Create: `docker-compose.yml` (local pgvector for dev + tests)
 - Create: `.env.example`
 - Create: `.env.local` (gitignored; for local dev)
 - Create: `test/setup.ts`
@@ -47,8 +46,7 @@ Add to the `"scripts"` block:
 "test": "vitest run",
 "test:watch": "vitest",
 "db:generate": "drizzle-kit generate",
-"db:migrate": "tsx lib/db/migrate.ts",
-"db:up": "docker compose up -d"
+"db:migrate": "tsx lib/db/migrate.ts"
 ```
 
 Also install `tsx` for running TS scripts:
@@ -57,32 +55,13 @@ Also install `tsx` for running TS scripts:
 pnpm add -D tsx
 ```
 
-- [ ] **Step 3: Create `docker-compose.yml`** (pgvector image, used for local dev and tests)
-
-```yaml
-services:
-  db:
-    image: pgvector/pgvector:pg16
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: podcast_kb
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-volumes:
-  pgdata:
-```
-
-- [ ] **Step 4: Create `.env.example`**
+- [ ] **Step 3: Create `.env.example`**
 
 ```bash
-# Postgres (Railway in prod; local docker for dev/test)
-DATABASE_URL="postgres://postgres:postgres@localhost:5432/podcast_kb"
-# Separate DB/schema for tests (can be the same server, different db)
-TEST_DATABASE_URL="postgres://postgres:postgres@localhost:5432/podcast_kb_test"
+# Postgres on Railway. DATABASE_URL is the app DB; TEST_DATABASE_URL is a
+# separate database on the same Railway instance, used only by tests.
+DATABASE_URL="postgres://USER:PASS@HOST:PORT/railway"
+TEST_DATABASE_URL="postgres://USER:PASS@HOST:PORT/podcast_kb_test"
 
 # OpenAI
 OPENAI_API_KEY=""
@@ -96,7 +75,7 @@ MODAL_WEBHOOK_SECRET=""
 APP_URL="http://localhost:3000"
 ```
 
-- [ ] **Step 5: Create `.env.local`** by copying `.env.example` (fill `DATABASE_URL`/`TEST_DATABASE_URL` for local docker; leave others blank for now). Confirm `.env*.local` is gitignored (Next scaffolds this; verify with `git check-ignore .env.local`).
+- [ ] **Step 4: Create `.env.local`** by copying `.env.example`. The user supplies the Railway `DATABASE_URL`. Derive `TEST_DATABASE_URL` from it by swapping the database name to `podcast_kb_test`, then create that database: `psql "$DATABASE_URL" -c "CREATE DATABASE podcast_kb_test;"`. Leave OpenAI/Modal blank for now. Confirm `.env*.local` is gitignored (verify with `git check-ignore .env.local`).
 
 - [ ] **Step 6: Create `vitest.config.ts`**
 
@@ -144,7 +123,7 @@ Expected: 1 passed.
 
 ```bash
 git add -A
-git commit -m "chore: add deps, vitest, and local pgvector compose"
+git commit -m "chore: add deps and vitest setup"
 ```
 
 ---
@@ -269,8 +248,7 @@ export default defineConfig({
 
 - [ ] **Step 4: Generate the migration**
 
-Run: `pnpm db:up && sleep 3 && pnpm dotenv -e .env.local -- pnpm db:generate`
-(If `dotenv` CLI isn't available, prefix manually: `DATABASE_URL=... pnpm db:generate`.)
+Run with the Railway URL in scope: `DATABASE_URL="$(grep '^DATABASE_URL' .env.local | cut -d= -f2- | tr -d '\"')" pnpm db:generate`
 Expected: a SQL file appears in `lib/db/migrations/`.
 
 - [ ] **Step 5: Add the pgvector extension to the generated migration**
@@ -2855,16 +2833,15 @@ git commit -m "feat: add global semantic search page"
 # Setup
 
 ## Prerequisites
-- Node + pnpm, Docker (for local DB), a Modal account, an OpenAI API key, a Railway account.
+- Node + pnpm, a Railway account (Postgres), a Modal account, an OpenAI API key.
 
 ## 1. Local development
 1. `pnpm install`
-2. `pnpm db:up` (starts local pgvector on :5432)
-3. Copy `.env.example` → `.env.local` and fill values.
-4. Create the test DB: `psql "$DATABASE_URL" -c "CREATE DATABASE podcast_kb_test;"`
-5. `pnpm db:migrate`
-6. `pnpm test` (should pass)
-7. `pnpm dev`
+2. Copy `.env.example` → `.env.local`. Set `DATABASE_URL` to your Railway Postgres connection string. Set `TEST_DATABASE_URL` to the same string with the database name changed to `podcast_kb_test`.
+3. Create the test DB: `psql "$DATABASE_URL" -c "CREATE DATABASE podcast_kb_test;"`
+4. `pnpm db:migrate`
+5. `pnpm test` (should pass)
+6. `pnpm dev`
 
 ## 2. Deploy the Modal function
 1. `pip install modal && modal token new`
