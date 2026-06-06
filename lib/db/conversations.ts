@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull } from "drizzle-orm"
+import { and, asc, desc, eq, gte, isNull } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { conversations, messages, type ChatSource, type MessageRole } from "./schema"
 import * as schema from "./schema"
@@ -67,6 +67,21 @@ export function makeConversationRepo(db: DB) {
 
     async remove(id: string) {
       await db.delete(conversations).where(eq(conversations.id, id))
+    },
+
+    async rename(id: string, title: string) {
+      await db
+        .update(conversations)
+        .set({ title: title.trim().slice(0, 100) || "New chat", updatedAt: new Date() })
+        .where(eq(conversations.id, id))
+    },
+
+    async truncateFrom(conversationId: string, messageId: string) {
+      const [target] = await db.select().from(messages).where(eq(messages.id, messageId)).limit(1)
+      if (!target) return
+      await db
+        .delete(messages)
+        .where(and(eq(messages.conversationId, conversationId), gte(messages.createdAt, target.createdAt)))
     },
   }
 }
