@@ -8,6 +8,13 @@
       "when": 1780660363341,
       "tag": "0000_absent_prowler",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780779612777,
+      "tag": "0001_curvy_eternity",
+      "breakpoints": true
     }
   ]
 }

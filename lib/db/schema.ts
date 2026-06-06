@@ -74,3 +74,33 @@ export const chunks = pgTable(
     ),
   ],
 )
+
+export const conversations = pgTable(
+  "conversations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    episodeId: uuid("episode_id").references(() => episodes.id, { onDelete: "cascade" }),
+    title: text("title").notNull().default("New chat"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("conversations_episode_updated_idx").on(t.episodeId, t.updatedAt)],
+)
+
+export type MessageRole = "user" | "assistant"
+export type ChatSource = { episodeId: string; episodeTitle: string; startSec: number }
+
+export const messages = pgTable(
+  "messages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    role: text("role").$type<MessageRole>().notNull(),
+    content: text("content").notNull(),
+    sources: jsonb("sources").$type<ChatSource[]>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("messages_conversation_created_idx").on(t.conversationId, t.createdAt)],
+)
