@@ -9,35 +9,36 @@ export function useConversation(conversationId: string | null) {
   const [busy, setBusy] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
 
+  const reload = useCallback(async () => {
+    if (!conversationId) return
+    try {
+      const d = await fetch(`/api/conversations/${conversationId}`).then((r) => r.json())
+      setMessages(d.messages ?? [])
+    } catch {
+      /* ignore */
+    }
+  }, [conversationId])
+
   useEffect(() => {
     if (!conversationId) {
       setMessages([])
       return
     }
-    let active = true
-    fetch(`/api/conversations/${conversationId}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (active) setMessages(d.messages ?? [])
-      })
-      .catch(() => {})
-    return () => {
-      active = false
-    }
-  }, [conversationId])
+    void reload()
+  }, [conversationId, reload])
 
-  const send = useCallback(
-    async (content: string) => {
+  const runStream = useCallback(
+    async (payload: Record<string, unknown>, optimistic: (prev: UIMessage[]) => UIMessage[]) => {
       if (!conversationId) return
       setBusy(true)
-      setMessages((prev) => [...prev, { role: "user", content }, { role: "assistant", content: "" }])
+      setMessages(optimistic)
       const ac = new AbortController()
       abortRef.current = ac
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ conversationId, content }),
+          body: JSON.stringify({ conversationId, ...payload }),
           signal: ac.signal,
         })
         if (!res.ok) throw new Error("Chat failed")
@@ -59,33 +60,55 @@ export function useConversation(conversationId: string | null) {
             const chunk = decoder.decode(value)
             setMessages((prev) => {
               const next = [...prev]
-              const lastMsg = next[next.length - 1]
-              next[next.length - 1] = { ...lastMsg, content: lastMsg.content + chunk, sources }
+              const last = next[next.length - 1]
+              next[next.length - 1] = { ...last, content: last.content + chunk, sources }
               return next
             })
           }
         }
+        await reload()
       } catch (e) {
         if ((e as Error).name !== "AbortError") toast.error("Chat failed")
+        await reload()
       } finally {
         setBusy(false)
         abortRef.current = null
       }
     },
-    [conversationId],
+    [conversationId, reload],
+  )
+
+  const send = useCallback(
+    (content: string) =>
+      runStream({ content }, (prev) => [
+        ...prev,
+        { role: "user", content },
+        { role: "assistant", content: "" },
+      ]),
+    [runStream],
+  )
+
+  const regenerate = useCallback(
+    () =>
+      runStream({ regenerate: true }, (prev) => {
+        const idx = prev.map((m) => m.role).lastIndexOf("assistant")
+        const trimmed = idx >= 0 ? prev.slice(0, idx) : prev
+        return [...trimmed, { role: "assistant", content: "" }]
+      }),
+    [runStream],
+  )
+
+  const editAndResend = useCallback(
+    (messageId: string, content: string) =>
+      runStream({ editFromMessageId: messageId, content }, (prev) => {
+        const idx = prev.findIndex((m) => m.id === messageId)
+        const trimmed = idx >= 0 ? prev.slice(0, idx) : prev
+        return [...trimmed, { role: "user", content }, { role: "assistant", content: "" }]
+      }),
+    [runStream],
   )
 
   const stop = useCallback(() => abortRef.current?.abort(), [])
 
-  const regenerate = useCallback(() => {
-    const lastUser = [...messages].reverse().find((m) => m.role === "user")
-    if (!lastUser) return
-    setMessages((prev) => {
-      const idx = prev.map((m) => m.role).lastIndexOf("user")
-      return prev.slice(0, idx + 1)
-    })
-    void send(lastUser.content)
-  }, [messages, send])
-
-  return { messages, busy, send, stop, regenerate }
+  return { messages, busy, send, stop, regenerate, editAndResend }
 }

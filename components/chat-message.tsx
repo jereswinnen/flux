@@ -9,6 +9,7 @@ import { remarkTimestamps } from "@/lib/markdown/timestamps"
 import { parseTimestamp } from "@/lib/format"
 
 export type UIMessage = {
+  id?: string
   role: "user" | "assistant"
   content: string
   sources?: { episodeId: string; episodeTitle: string; startSec: number }[] | null
