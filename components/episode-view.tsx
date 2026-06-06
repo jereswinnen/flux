@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Play } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -64,6 +65,15 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
     if (track) player.cue(track, sec)
   }
   const chat = useEpisodeChat(episode.id)
+
+  // Deep-link: /episodes/[id]?t=<sec> cues the player to that moment on load.
+  const searchParams = useSearchParams()
+  const tParam = searchParams.get("t")
+  useEffect(() => {
+    if (tParam && track) player.cue(track, Number(tParam))
+    // Only react to the deep-link param changing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tParam])
 
   useEffect(() => {
     if (!inFlight) return
@@ -161,9 +171,11 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
                   {insights?.topics?.length ? (
                     <div className="flex flex-wrap gap-1">
                       {insights.topics.map((t, i) => (
-                        <Badge key={i} variant="secondary">
-                          {t}
-                        </Badge>
+                        <Link key={i} href={`/topics/${encodeURIComponent(t)}`}>
+                          <Badge variant="secondary" className="hover:bg-secondary/70">
+                            {t}
+                          </Badge>
+                        </Link>
                       ))}
                     </div>
                   ) : null}
@@ -186,9 +198,11 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
                   {insights?.entities?.length ? (
                     <div className="flex flex-wrap gap-1">
                       {insights.entities.map((e, i) => (
-                        <Badge key={i} variant="outline">
-                          {e.name}
-                        </Badge>
+                        <Link key={i} href={`/topics/${encodeURIComponent(e.name)}`}>
+                          <Badge variant="outline" className="hover:bg-muted">
+                            {e.name}
+                          </Badge>
+                        </Link>
                       ))}
                     </div>
                   ) : null}

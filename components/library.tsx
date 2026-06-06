@@ -73,7 +73,7 @@ export function Library({ initialEpisodes }: { initialEpisodes: LibEpisode[] }) 
             {searching ? "Searching…" : `${hits.length} moment${hits.length === 1 ? "" : "s"}`}
           </h2>
           {hits.map((h) => (
-            <Link key={h.chunkId} href={`/episodes/${h.episodeId}`}>
+            <Link key={h.chunkId} href={`/episodes/${h.episodeId}?t=${h.startSec}`}>
               <Card className="p-3 transition-colors hover:border-foreground/20">
                 <div className="text-xs text-muted-foreground">
                   {h.episodeTitle} · [{formatTimestamp(h.startSec)}]
