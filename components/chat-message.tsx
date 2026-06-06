@@ -36,23 +36,37 @@ function CopyButton({ text }: { text: string }) {
 export function ChatMessage({
   message,
   onSeek,
+  pending = false,
+  onEdit,
 }: {
   message: UIMessage
   onSeek?: (sec: number) => void
+  pending?: boolean
+  onEdit?: (m: UIMessage) => void
 }) {
   const isUser = message.role === "user"
+
+  if (isUser) {
+    return (
+      <div className="flex flex-col items-end gap-1">
+        <div className="max-w-[85%] rounded-lg bg-muted px-3 py-2 text-sm">{message.content}</div>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={() => onEdit(message)}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            Edit
+          </button>
+        )}
+      </div>
+    )
+  }
+
   return (
-    <div className={isUser ? "flex justify-end" : "space-y-2"}>
-      <div
-        className={
-          isUser
-            ? "max-w-[85%] rounded-lg bg-muted px-3 py-2 text-sm"
-            : "prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed"
-        }
-      >
-        {isUser ? (
-          message.content
-        ) : (
+    <div className="space-y-2">
+      <div className="prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed">
+        {message.content ? (
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkTimestamps]}
             components={{
@@ -79,10 +93,16 @@ export function ChatMessage({
           >
             {message.content}
           </ReactMarkdown>
-        )}
+        ) : pending ? (
+          <span className="inline-flex gap-1">
+            <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
+            <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
+            <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground" />
+          </span>
+        ) : null}
       </div>
 
-      {!isUser && message.content && (
+      {message.content && (
         <div className="flex items-center gap-3">
           <CopyButton text={message.content} />
           {message.sources && message.sources.length > 0 && (
