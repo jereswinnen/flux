@@ -65,7 +65,7 @@ export function ChatMessage({
 
   return (
     <div className="space-y-2">
-      <div className="prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed">
+      <div className="prose prose-sm dark:prose-invert max-w-none prose-pre:bg-muted prose-pre:text-foreground prose-code:before:content-none prose-code:after:content-none prose-a:text-primary leading-relaxed">
         {message.content ? (
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkTimestamps]}
