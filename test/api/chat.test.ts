@@ -1,37 +1,47 @@
-import { afterEach, expect, test, vi } from "vitest"
+import { config } from "dotenv"
+config({ path: ".env.local" })
 
-afterEach(() => vi.restoreAllMocks())
+import { afterAll, beforeEach, expect, test } from "vitest"
+import { drizzle } from "drizzle-orm/postgres-js"
+import postgres from "postgres"
+import * as schema from "@/lib/db/schema"
+import { makeConversationRepo } from "@/lib/db/conversations"
 
-test("returns 400 without a question", async () => {
+const client = postgres(process.env.TEST_DATABASE_URL!, { max: 1 })
+const db = drizzle(client, { schema })
+const repo = makeConversationRepo(db)
+beforeEach(async () => { await db.delete(schema.conversations) })
+afterAll(async () => { await client.end() })
+
+test("400 without conversationId or content", async () => {
   const { POST } = await import("@/app/api/chat/route")
-  const res = await POST(
-    new Request("http://x/api/chat", { method: "POST", body: JSON.stringify({}) }),
-  )
+  const res = await POST(new Request("http://x/api/chat", { method: "POST", body: JSON.stringify({}) }))
   expect(res.status).toBe(400)
 })
 
-test.skipIf(!process.env.OPENAI_API_KEY)(
-  "retrieves context and streams an answer",
-  async () => {
-    vi.doMock("@/lib/ai/embeddings", () => ({
-      embedQuery: vi.fn(async () => Array(1536).fill(0.1)),
-    }))
-    vi.doMock("@/lib/db/search", () => ({
-      searchChunks: vi.fn(async () => [
-        { chunkId: "c1", episodeId: "e1", episodeTitle: "E", content: "ctx", startSec: 0, endSec: 5, similarity: 0.9 },
-      ]),
-    }))
+test("404 for unknown conversation", async () => {
+  const { POST } = await import("@/app/api/chat/route")
+  const res = await POST(
+    new Request("http://x/api/chat", {
+      method: "POST",
+      body: JSON.stringify({ conversationId: "00000000-0000-0000-0000-000000000000", content: "hi" }),
+    }),
+  )
+  expect(res.status).toBe(404)
+})
 
-    vi.resetModules()
-    const { POST } = await import("@/app/api/chat/route")
-    const res = await POST(
-      new Request("http://x/api/chat", {
-        method: "POST",
-        body: JSON.stringify({ question: "what about X?", episodeId: "e1" }),
-      }),
-    )
-    expect(res.status).toBe(200)
-    const text = await res.text()
-    expect(text.length).toBeGreaterThan(0)
-  },
-)
+test.skipIf(!process.env.OPENAI_API_KEY)("persists user + assistant messages", async () => {
+  const c = await repo.create({ episodeId: null })
+  const { POST } = await import("@/app/api/chat/route")
+  const res = await POST(
+    new Request("http://x/api/chat", {
+      method: "POST",
+      body: JSON.stringify({ conversationId: c.id, content: "Say hello." }),
+    }),
+  )
+  expect(res.status).toBe(200)
+  await res.text() // drain stream so onFinish runs
+  const got = await repo.get(c.id)
+  expect(got?.messages[0]).toMatchObject({ role: "user", content: "Say hello." })
+  expect(got?.messages.at(-1)?.role).toBe("assistant")
+}, 30_000)
