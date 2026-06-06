@@ -1,9 +1,12 @@
 import { openai } from "@ai-sdk/openai"
 import { streamText, type ModelMessage } from "ai"
+import { eq } from "drizzle-orm"
 import { embedQuery } from "@/lib/ai/embeddings"
+import { buildTranscriptContext, estimateTokens, MAX_TRANSCRIPT_TOKENS } from "@/lib/ai/episode-context"
 import { db } from "@/lib/db"
 import { conversationRepo } from "@/lib/db/conversations"
 import { searchChunks } from "@/lib/db/search"
+import { transcripts } from "@/lib/db/schema"
 import { formatTimestamp } from "@/lib/format"
 import type { ChatSource } from "@/lib/db/schema"
 
@@ -22,23 +25,25 @@ export async function POST(request: Request) {
   await conversationRepo.addMessage({ conversationId: body.conversationId, role: "user", content })
   await conversationRepo.setTitleFromFirstMessage(body.conversationId, content)
 
-  const hits = await searchChunks(db, await embedQuery(content), {
-    limit: 8,
-    episodeId: episodeId ?? undefined,
-  })
   const libraryWide = !episodeId
-  const context = hits
-    .map((h) =>
-      libraryWide
-        ? `[${h.episodeTitle} — ${formatTimestamp(h.startSec)}] ${h.content}`
-        : `[${formatTimestamp(h.startSec)}] ${h.content}`,
-    )
-    .join("\n\n")
-  const sources: ChatSource[] = hits.map((h) => ({
-    episodeId: h.episodeId,
-    episodeTitle: h.episodeTitle,
-    startSec: h.startSec,
-  }))
+  let context = ""
+  let sources: ChatSource[] = []
+
+  if (episodeId) {
+    const [t] = await db.select().from(transcripts).where(eq(transcripts.episodeId, episodeId)).limit(1)
+    const full = t?.segments ? buildTranscriptContext(t.segments) : ""
+    if (full && estimateTokens(full) <= MAX_TRANSCRIPT_TOKENS) {
+      context = full // whole transcript; no source chips in this mode
+    } else {
+      const hits = await searchChunks(db, await embedQuery(content), { limit: 10, episodeId })
+      context = hits.map((h) => `[${formatTimestamp(h.startSec)}] ${h.content}`).join("\n\n")
+      sources = hits.map((h) => ({ episodeId: h.episodeId, episodeTitle: h.episodeTitle, startSec: h.startSec }))
+    }
+  } else {
+    const hits = await searchChunks(db, await embedQuery(content), { limit: 8 })
+    context = hits.map((h) => `[${h.episodeTitle} — ${formatTimestamp(h.startSec)}] ${h.content}`).join("\n\n")
+    sources = hits.map((h) => ({ episodeId: h.episodeId, episodeTitle: h.episodeTitle, startSec: h.startSec }))
+  }
 
   const history: ModelMessage[] = data.messages.map((m) => ({ role: m.role, content: m.content }))
   const messages: ModelMessage[] = [...history, { role: "user", content }]
