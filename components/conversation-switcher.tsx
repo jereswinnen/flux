@@ -1,17 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Plus } from "lucide-react"
+import { ChevronsUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-
-type Convo = { id: string; title: string }
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { ConversationList, type ConversationListItem } from "@/components/conversation-list"
 
 export function ConversationSwitcher({
   episodeId,
@@ -22,12 +15,13 @@ export function ConversationSwitcher({
   activeId: string | null
   onSelect: (id: string) => void
 }) {
-  const [convos, setConvos] = useState<Convo[]>([])
+  const [convos, setConvos] = useState<ConversationListItem[]>([])
+  const [open, setOpen] = useState(false)
 
   async function refresh() {
     const d = await fetch(`/api/conversations?episodeId=${episodeId}`).then((r) => r.json())
     setConvos(d.conversations ?? [])
-    return (d.conversations ?? []) as Convo[]
+    return (d.conversations ?? []) as ConversationListItem[]
   }
 
   useEffect(() => {
@@ -37,7 +31,7 @@ export function ConversationSwitcher({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [episodeId])
 
-  async function newChat() {
+  async function onNew() {
     const d = await fetch("/api/conversations", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -45,25 +39,45 @@ export function ConversationSwitcher({
     }).then((r) => r.json())
     await refresh()
     onSelect(d.conversation.id)
+    setOpen(false)
+  }
+  async function onRename(id: string, title: string) {
+    await fetch(`/api/conversations/${id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title }),
+    })
+    await refresh()
+  }
+  async function onDelete(id: string) {
+    await fetch(`/api/conversations/${id}`, { method: "DELETE" })
+    const list = await refresh()
+    if (activeId === id) onSelect(list[0]?.id ?? "")
   }
 
+  const activeTitle = convos.find((c) => c.id === activeId)?.title ?? "New chat"
+
   return (
-    <div className="flex items-center gap-2">
-      <Select value={activeId ?? undefined} onValueChange={onSelect}>
-        <SelectTrigger className="h-8 flex-1 text-xs">
-          <SelectValue placeholder="No conversations yet" />
-        </SelectTrigger>
-        <SelectContent>
-          {convos.map((c) => (
-            <SelectItem key={c.id} value={c.id} className="text-xs">
-              {c.title}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Button size="icon" variant="outline" className="size-8 shrink-0" onClick={newChat} aria-label="New chat">
-        <Plus className="size-4" />
-      </Button>
-    </div>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8 w-full justify-between text-xs">
+          <span className="truncate">{activeTitle}</span>
+          <ChevronsUpDown className="size-3.5 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-2" align="start">
+        <ConversationList
+          items={convos}
+          activeId={activeId}
+          onSelect={(id) => {
+            onSelect(id)
+            setOpen(false)
+          }}
+          onRename={onRename}
+          onDelete={onDelete}
+          onNew={onNew}
+        />
+      </PopoverContent>
+    </Popover>
   )
 }
