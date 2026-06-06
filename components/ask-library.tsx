@@ -59,7 +59,7 @@ export function AskLibrary() {
       </aside>
       <Card className="flex min-h-[60vh] flex-col p-4">
         {activeId ? (
-          <ConversationView chat={chat} disabled={!activeId} emptyHint="Ask anything across your whole library." />
+          <ConversationView chat={chat} emptyHint="Ask anything across your whole library." />
         ) : (
           <div className="flex flex-1 items-center justify-center">
             <Button onClick={onNew}>Start your first conversation</Button>

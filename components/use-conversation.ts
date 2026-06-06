@@ -19,6 +19,27 @@ export function useConversation(conversationId: string | null) {
     }
   }, [conversationId])
 
+  // After a stream, the assistant turn is persisted in the route's onFinish (after the
+  // stream closes), so a quick GET can miss it. Poll briefly until it lands, then adopt
+  // the canonical messages (with ids); otherwise keep the streamed optimistic content.
+  const syncAfterStream = useCallback(async () => {
+    if (!conversationId) return
+    for (let i = 0; i < 4; i++) {
+      try {
+        const d = await fetch(`/api/conversations/${conversationId}`).then((r) => r.json())
+        const server: UIMessage[] = d.messages ?? []
+        const last = server[server.length - 1]
+        if (last && last.role === "assistant" && last.content) {
+          setMessages(server)
+          return
+        }
+      } catch {
+        /* ignore */
+      }
+      await new Promise((r) => setTimeout(r, 400))
+    }
+  }, [conversationId])
+
   useEffect(() => {
     if (!conversationId) {
       setMessages([])
@@ -66,16 +87,20 @@ export function useConversation(conversationId: string | null) {
             })
           }
         }
-        await reload()
+        await syncAfterStream()
       } catch (e) {
-        if ((e as Error).name !== "AbortError") toast.error("Chat failed")
-        await reload()
+        if ((e as Error).name === "AbortError") {
+          // Stopped by the user — keep the streamed-so-far optimistic content.
+        } else {
+          toast.error("Chat failed")
+          await reload()
+        }
       } finally {
         setBusy(false)
         abortRef.current = null
       }
     },
-    [conversationId, reload],
+    [conversationId, reload, syncAfterStream],
   )
 
   const send = useCallback(
