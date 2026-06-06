@@ -13,18 +13,41 @@ import type { ChatSource } from "@/lib/db/schema"
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null)
-  if (!body?.conversationId || !body?.content) {
-    return Response.json({ error: "conversationId and content are required" }, { status: 400 })
+  if (!body?.conversationId) {
+    return Response.json({ error: "conversationId is required" }, { status: 400 })
   }
+  const conversationId: string = body.conversationId
+  const isRegenerate = !!body.regenerate
+  const editFromMessageId: string | undefined = body.editFromMessageId
 
-  const data = await conversationRepo.get(body.conversationId)
+  let data = await conversationRepo.get(conversationId)
   if (!data) return Response.json({ error: "conversation not found" }, { status: 404 })
 
-  const episodeId = data.conversation.episodeId
-  const content: string = body.content
+  let content: string
+  if (isRegenerate) {
+    const lastUser = [...data.messages].reverse().find((m) => m.role === "user")
+    if (!lastUser) return Response.json({ error: "nothing to regenerate" }, { status: 400 })
+    const after = data.messages.find((m) => new Date(m.createdAt) > new Date(lastUser.createdAt))
+    if (after) await conversationRepo.truncateFrom(conversationId, after.id)
+    data = (await conversationRepo.get(conversationId))!
+    content = lastUser.content
+  } else if (editFromMessageId) {
+    if (!body.content) return Response.json({ error: "content is required" }, { status: 400 })
+    await conversationRepo.truncateFrom(conversationId, editFromMessageId)
+    content = body.content
+    await conversationRepo.addMessage({ conversationId, role: "user", content })
+    data = (await conversationRepo.get(conversationId))!
+  } else {
+    if (!body.content) return Response.json({ error: "content is required" }, { status: 400 })
+    content = body.content
+    await conversationRepo.addMessage({ conversationId, role: "user", content })
+    await conversationRepo.setTitleFromFirstMessage(conversationId, content)
+    data = (await conversationRepo.get(conversationId))!
+  }
 
-  await conversationRepo.addMessage({ conversationId: body.conversationId, role: "user", content })
-  await conversationRepo.setTitleFromFirstMessage(body.conversationId, content)
+  const episodeId = data.conversation.episodeId
+  const messages: ModelMessage[] = data.messages.map((m) => ({ role: m.role, content: m.content }))
+  const priorTurns = data.messages.slice(0, -1).map((m) => ({ role: m.role, content: m.content }))
 
   const libraryWide = !episodeId
   let context = ""
@@ -34,24 +57,18 @@ export async function POST(request: Request) {
     const [t] = await db.select().from(transcripts).where(eq(transcripts.episodeId, episodeId)).limit(1)
     const full = t?.segments ? buildTranscriptContext(t.segments) : ""
     if (full && estimateTokens(full) <= MAX_TRANSCRIPT_TOKENS) {
-      context = full // whole transcript; no source chips in this mode
+      context = full
     } else {
       const hits = await searchChunks(db, await embedQuery(content), { limit: 10, episodeId })
       context = hits.map((h) => `[${formatTimestamp(h.startSec)}] ${h.content}`).join("\n\n")
       sources = hits.map((h) => ({ episodeId: h.episodeId, episodeTitle: h.episodeTitle, startSec: h.startSec }))
     }
   } else {
-    const searchQuery = await condenseQuery(
-      data.messages.map((m) => ({ role: m.role, content: m.content })),
-      content,
-    )
+    const searchQuery = await condenseQuery(priorTurns, content)
     const hits = await hybridSearch(db, await embedQuery(searchQuery), searchQuery, { limit: 8 })
     context = hits.map((h) => `[${h.episodeTitle} — ${formatTimestamp(h.startSec)}] ${h.content}`).join("\n\n")
     sources = hits.map((h) => ({ episodeId: h.episodeId, episodeTitle: h.episodeTitle, startSec: h.startSec }))
   }
-
-  const history: ModelMessage[] = data.messages.map((m) => ({ role: m.role, content: m.content }))
-  const messages: ModelMessage[] = [...history, { role: "user", content }]
 
   const result = streamText({
     model: openai("gpt-5.4-mini-2026-03-17"),
@@ -64,13 +81,8 @@ export async function POST(request: Request) {
       context,
     messages,
     onFinish: async ({ text }) => {
-      await conversationRepo.addMessage({
-        conversationId: body.conversationId,
-        role: "assistant",
-        content: text,
-        sources,
-      })
-      await conversationRepo.touch(body.conversationId)
+      await conversationRepo.addMessage({ conversationId, role: "assistant", content: text, sources })
+      await conversationRepo.touch(conversationId)
     },
   })
 

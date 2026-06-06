@@ -45,3 +45,22 @@ test.skipIf(!process.env.OPENAI_API_KEY)("persists user + assistant messages", a
   expect(got?.messages[0]).toMatchObject({ role: "user", content: "Say hello." })
   expect(got?.messages.at(-1)?.role).toBe("assistant")
 }, 30_000)
+
+test.skipIf(!process.env.OPENAI_API_KEY)("regenerate replaces the assistant turn without duplicating the user turn", async () => {
+  const c = await repo.create({ episodeId: null })
+  const { POST } = await import("@/app/api/chat/route")
+  await (await POST(new Request("http://x", { method: "POST", body: JSON.stringify({ conversationId: c.id, content: "Say hi." }) }))).text()
+  let got = await repo.get(c.id)
+  expect(got?.messages.filter((m) => m.role === "user").length).toBe(1)
+  await (await POST(new Request("http://x", { method: "POST", body: JSON.stringify({ conversationId: c.id, regenerate: true }) }))).text()
+  got = await repo.get(c.id)
+  expect(got?.messages.filter((m) => m.role === "user").length).toBe(1)
+  expect(got?.messages.filter((m) => m.role === "assistant").length).toBe(1)
+}, 60_000)
+
+test("regenerate with no messages returns 400", async () => {
+  const c = await repo.create({ episodeId: null })
+  const { POST } = await import("@/app/api/chat/route")
+  const res = await POST(new Request("http://x", { method: "POST", body: JSON.stringify({ conversationId: c.id, regenerate: true }) }))
+  expect(res.status).toBe(400)
+})
