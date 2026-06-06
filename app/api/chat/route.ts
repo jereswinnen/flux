@@ -2,10 +2,11 @@ import { openai } from "@ai-sdk/openai"
 import { streamText, type ModelMessage } from "ai"
 import { eq } from "drizzle-orm"
 import { embedQuery } from "@/lib/ai/embeddings"
+import { condenseQuery } from "@/lib/ai/condense"
 import { buildTranscriptContext, estimateTokens, MAX_TRANSCRIPT_TOKENS } from "@/lib/ai/episode-context"
 import { db } from "@/lib/db"
 import { conversationRepo } from "@/lib/db/conversations"
-import { searchChunks } from "@/lib/db/search"
+import { searchChunks, hybridSearch } from "@/lib/db/search"
 import { transcripts } from "@/lib/db/schema"
 import { formatTimestamp } from "@/lib/format"
 import type { ChatSource } from "@/lib/db/schema"
@@ -40,7 +41,11 @@ export async function POST(request: Request) {
       sources = hits.map((h) => ({ episodeId: h.episodeId, episodeTitle: h.episodeTitle, startSec: h.startSec }))
     }
   } else {
-    const hits = await searchChunks(db, await embedQuery(content), { limit: 8 })
+    const searchQuery = await condenseQuery(
+      data.messages.map((m) => ({ role: m.role, content: m.content })),
+      content,
+    )
+    const hits = await hybridSearch(db, await embedQuery(searchQuery), searchQuery, { limit: 8 })
     context = hits.map((h) => `[${h.episodeTitle} — ${formatTimestamp(h.startSec)}] ${h.content}`).join("\n\n")
     sources = hits.map((h) => ({ episodeId: h.episodeId, episodeTitle: h.episodeTitle, startSec: h.startSec }))
   }
