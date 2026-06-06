@@ -15,6 +15,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { useCommand } from "@/components/command-context"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -24,6 +25,9 @@ type RecentEpisode = { id: string; title: string; artworkUrl: string | null; sta
 export function AppSidebar() {
   const pathname = usePathname()
   const { openCommand } = useCommand()
+  const { setOpenMobile } = useSidebar()
+  // Close the mobile sidebar sheet on any navigation/action (no-op on desktop).
+  const close = () => setOpenMobile(false)
   const [recent, setRecent] = useState<RecentEpisode[]>([])
 
   useEffect(() => {
@@ -53,7 +57,7 @@ export function AppSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild size="lg">
+            <SidebarMenuButton asChild size="lg" onClick={close}>
               <Link href="/">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <AudioLines className="size-4" />
@@ -72,17 +76,17 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === "/"} tooltip="Library">
+              <SidebarMenuButton asChild isActive={pathname === "/"} tooltip="Library" onClick={close}>
                 <Link href="/"><Library className="size-4" /><span>Library</span></Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === "/ask"} tooltip="Ask your library">
+              <SidebarMenuButton asChild isActive={pathname === "/ask"} tooltip="Ask your library" onClick={close}>
                 <Link href="/ask"><Sparkles className="size-4" /><span>Ask</span></Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton onClick={openCommand} tooltip="Add episode (⌘K)">
+              <SidebarMenuButton onClick={() => { close(); openCommand() }} tooltip="Add episode (⌘K)">
                 <Plus className="size-4" /><span>Add episode</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -95,7 +99,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {recent.map((e) => (
                 <SidebarMenuItem key={e.id}>
-                  <SidebarMenuButton asChild isActive={pathname === `/episodes/${e.id}`} tooltip={e.title}>
+                  <SidebarMenuButton asChild isActive={pathname === `/episodes/${e.id}`} tooltip={e.title} onClick={close}>
                     <Link href={`/episodes/${e.id}`}>
                       {!["ready", "failed"].includes(e.status) ? (
                         <Loader2 className="size-4 animate-spin text-muted-foreground" />
