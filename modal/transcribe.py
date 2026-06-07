@@ -39,11 +39,16 @@ def transcribe(audio_url: str, episode_id: str, callback_url: str, secret: str):
         snapshot_present = os.path.isdir(
             os.path.join(CACHE_DIR, "models--Systran--faster-whisper-large-v3")
         )
+        # When the snapshot is already cached, load fully offline so faster-whisper
+        # doesn't ping the HF Hub to resolve the revision (avoids the unauthenticated
+        # warning + a network round-trip). First run downloads, then commits.
         model = WhisperModel(
-            "large-v3", device="cuda", compute_type="float16", download_root=CACHE_DIR
+            "large-v3",
+            device="cuda",
+            compute_type="float16",
+            download_root=CACHE_DIR,
+            local_files_only=snapshot_present,
         )
-        # Only persist the Volume when we actually downloaded weights (first run),
-        # not on every transcription.
         if not snapshot_present:
             model_cache.commit()
         segments_iter, _info = model.transcribe(audio_path, vad_filter=True)
