@@ -39,6 +39,10 @@ def transcribe(audio_url: str, episode_id: str, callback_url: str, secret: str):
         snapshot_present = os.path.isdir(
             os.path.join(CACHE_DIR, "models--Systran--faster-whisper-large-v3")
         )
+        if snapshot_present:
+            print("[whisper-cache] HIT — loading large-v3 from cached volume (offline)")
+        else:
+            print("[whisper-cache] MISS — downloading large-v3, will commit to volume")
         # When the snapshot is already cached, load fully offline so faster-whisper
         # doesn't ping the HF Hub to resolve the revision (avoids the unauthenticated
         # warning + a network round-trip). First run downloads, then commits.
