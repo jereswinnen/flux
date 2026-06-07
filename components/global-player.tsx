@@ -20,7 +20,8 @@ export function GlobalPlayer() {
   const pct = duration ? (current / duration) * 100 : 0
 
   return (
-    <div className="sticky bottom-0 z-30 flex items-center gap-3 border-t bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:px-6">
+    <div className="pointer-events-none sticky bottom-4 z-30 mx-auto w-[calc(100%-1.5rem)] max-w-3xl md:bottom-6">
+      <div className="pointer-events-auto flex items-center gap-3 rounded-2xl border bg-background/80 px-3 py-2 shadow-lg ring-1 ring-black/5 backdrop-blur-md supports-[backdrop-filter]:bg-background/70 md:px-4">
       <Link
         href={`/episodes/${track.episodeId}`}
         className="flex min-w-0 max-w-[28%] items-center gap-2 shrink-0"
@@ -75,6 +76,7 @@ export function GlobalPlayer() {
       <span className="w-10 shrink-0 text-xs tabular-nums text-muted-foreground">
         {formatTimestamp(duration)}
       </span>
+      </div>
     </div>
   )
 }
