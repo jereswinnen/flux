@@ -47,8 +47,12 @@ export function EpisodeActions({
   const markdown = () => buildEpisodeMarkdown(episode, transcript, insights)
 
   async function copy() {
-    await navigator.clipboard.writeText(markdown())
-    toast.success("Copied markdown")
+    try {
+      await navigator.clipboard.writeText(markdown())
+      toast.success("Copied markdown")
+    } catch {
+      toast.error("Copy failed")
+    }
   }
 
   function download() {

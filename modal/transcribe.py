@@ -33,11 +33,19 @@ def transcribe(audio_url: str, episode_id: str, callback_url: str, secret: str):
                     f.write(chunk)
             audio_path = f.name
 
+        import os
+
         model_cache.reload()
+        snapshot_present = os.path.isdir(
+            os.path.join(CACHE_DIR, "models--Systran--faster-whisper-large-v3")
+        )
         model = WhisperModel(
             "large-v3", device="cuda", compute_type="float16", download_root=CACHE_DIR
         )
-        model_cache.commit()
+        # Only persist the Volume when we actually downloaded weights (first run),
+        # not on every transcription.
+        if not snapshot_present:
+            model_cache.commit()
         segments_iter, _info = model.transcribe(audio_path, vad_filter=True)
 
         segments = []
