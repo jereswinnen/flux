@@ -1,8 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { hiResArtwork } from "@/lib/artwork"
 import { formatRelativeDate } from "@/lib/format"
 
 export type LibEpisode = {
@@ -23,32 +23,35 @@ function statusVariant(status: string): "default" | "secondary" | "destructive" 
 
 export function EpisodeCard({ episode }: { episode: LibEpisode }) {
   const inFlight = !["ready", "failed"].includes(episode.status)
+  const art = hiResArtwork(episode.artworkUrl)
   return (
-    <Link href={`/episodes/${episode.id}`} className="group">
-      <Card className="overflow-hidden p-0 transition-colors hover:border-foreground/20">
-        <div className="aspect-square w-full overflow-hidden bg-muted">
-          {episode.artworkUrl ? (
-            <img
-              src={episode.artworkUrl}
-              alt=""
-              className="size-full object-cover transition-transform group-hover:scale-105"
-            />
-          ) : null}
-        </div>
-        <div className="space-y-1 p-3">
-          <div className="flex items-start justify-between gap-2">
-            <span className="line-clamp-2 text-sm font-medium">{episode.title}</span>
-            {episode.status !== "ready" && (
-              <Badge variant={statusVariant(episode.status)} className={inFlight ? "animate-pulse" : ""}>
-                {episode.status}
-              </Badge>
-            )}
-          </div>
+    <Link href={`/episodes/${episode.id}`} className="group block w-40 shrink-0">
+      <div className="relative aspect-square w-full overflow-hidden rounded-lg border bg-muted">
+        {art ? (
+          <img
+            src={art}
+            alt=""
+            loading="lazy"
+            className="size-full object-cover transition-transform duration-200 group-hover:scale-105"
+          />
+        ) : null}
+        {episode.status !== "ready" && (
+          <Badge
+            variant={statusVariant(episode.status)}
+            className={`absolute right-2 top-2 ${inFlight ? "animate-pulse" : ""}`}
+          >
+            {episode.status}
+          </Badge>
+        )}
+      </div>
+      <div className="mt-2 space-y-0.5">
+        <div className="line-clamp-2 text-sm font-medium leading-snug">{episode.title}</div>
+        {episode.publishedAt && (
           <div className="truncate text-xs text-muted-foreground">
-            {episode.podcastName} {episode.publishedAt ? `· ${formatRelativeDate(episode.publishedAt)}` : ""}
+            {formatRelativeDate(episode.publishedAt)}
           </div>
-        </div>
-      </Card>
+        )}
+      </div>
     </Link>
   )
 }

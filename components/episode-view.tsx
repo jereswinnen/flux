@@ -13,6 +13,7 @@ import { useConversation } from "@/components/use-conversation"
 import { ConversationView } from "@/components/conversation-view"
 import { ConversationSwitcher } from "@/components/conversation-switcher"
 import { usePlayer, type AudioMarker, type Track } from "@/components/player-context"
+import { hiResArtwork } from "@/lib/artwork"
 import { formatRelativeDate, formatTimestamp } from "@/lib/format"
 import { EpisodeActions } from "@/components/episode-actions"
 
@@ -98,7 +99,7 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
       <header className="flex items-center gap-4 border-b p-4 md:px-6">
         <div className="size-14 shrink-0 overflow-hidden rounded-md bg-muted md:size-16">
           {episode.artworkUrl ? (
-            <img src={episode.artworkUrl} alt="" className="size-full object-cover" />
+            <img src={hiResArtwork(episode.artworkUrl, 240)} alt="" className="size-full object-cover" />
           ) : null}
         </div>
         <div className="min-w-0 flex-1">

@@ -8,11 +8,37 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { EpisodeCard, type LibEpisode } from "@/components/episode-card"
 import { useCommand } from "@/components/command-context"
+import { hiResArtwork } from "@/lib/artwork"
 import { formatTimestamp } from "@/lib/format"
 
 type Hit = {
   chunkId: string; episodeId: string; episodeTitle: string
   content: string; startSec: number; endSec: number; similarity: number
+}
+
+type ShowGroup = { name: string; artworkUrl: string | null; episodes: LibEpisode[] }
+
+function episodeTime(e: LibEpisode): number {
+  return new Date(e.publishedAt ?? e.createdAt).getTime()
+}
+
+function groupByShow(episodes: LibEpisode[]): ShowGroup[] {
+  const groups = new Map<string, ShowGroup>()
+  for (const e of episodes) {
+    const name = e.podcastName ?? "Unknown show"
+    let g = groups.get(name)
+    if (!g) {
+      g = { name, artworkUrl: e.artworkUrl, episodes: [] }
+      groups.set(name, g)
+    }
+    if (!g.artworkUrl && e.artworkUrl) g.artworkUrl = e.artworkUrl
+    g.episodes.push(e)
+  }
+  const result = [...groups.values()]
+  for (const g of result) g.episodes.sort((a, b) => episodeTime(b) - episodeTime(a))
+  // Shows with the most recent activity float to the top.
+  result.sort((a, b) => episodeTime(b.episodes[0]) - episodeTime(a.episodes[0]))
+  return result
 }
 
 export function Library({ initialEpisodes }: { initialEpisodes: LibEpisode[] }) {
@@ -92,9 +118,32 @@ export function Library({ initialEpisodes }: { initialEpisodes: LibEpisode[] }) 
           <Button onClick={openCommand}>Add your first episode</Button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {episodes.map((e) => (
-            <EpisodeCard key={e.id} episode={e} />
+        <div className="flex flex-col gap-8">
+          {groupByShow(episodes).map((g) => (
+            <section key={g.name} className="space-y-3">
+              <div className="flex items-center gap-3">
+                {g.artworkUrl ? (
+                  <img
+                    src={hiResArtwork(g.artworkUrl, 120)}
+                    alt=""
+                    className="size-9 shrink-0 rounded-md border object-cover"
+                  />
+                ) : (
+                  <div className="size-9 shrink-0 rounded-md border bg-muted" />
+                )}
+                <div className="min-w-0">
+                  <h2 className="truncate text-sm font-semibold leading-tight">{g.name}</h2>
+                  <p className="text-xs text-muted-foreground">
+                    {g.episodes.length} episode{g.episodes.length === 1 ? "" : "s"}
+                  </p>
+                </div>
+              </div>
+              <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-2">
+                {g.episodes.map((e) => (
+                  <EpisodeCard key={e.id} episode={e} />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       )}
