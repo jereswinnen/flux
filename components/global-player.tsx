@@ -1,10 +1,37 @@
 "use client"
 
+import type { ReactNode } from "react"
 import Link from "next/link"
 import { Pause, Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { usePlayer } from "@/components/player-context"
 import { formatTimestamp } from "@/lib/format"
+
+// Circular playback-progress ring wrapping the artwork.
+function ProgressRing({ pct, children }: { pct: number; children: ReactNode }) {
+  const r = 18
+  const circ = 2 * Math.PI * r
+  const offset = circ - (Math.max(0, Math.min(100, pct)) / 100) * circ
+  return (
+    <div className="relative size-10 shrink-0">
+      <svg className="absolute inset-0 size-full -rotate-90" viewBox="0 0 40 40" aria-hidden>
+        <circle cx="20" cy="20" r={r} fill="none" strokeWidth="2.5" className="stroke-muted" />
+        <circle
+          cx="20"
+          cy="20"
+          r={r}
+          fill="none"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          strokeDashoffset={offset}
+          className="stroke-primary transition-[stroke-dashoffset] duration-300 ease-linear"
+        />
+      </svg>
+      <div className="absolute inset-[4px] overflow-hidden rounded-full bg-muted">{children}</div>
+    </div>
+  )
+}
 
 export function GlobalPlayer() {
   const { track, playing, current, duration, toggle, seek, scrub } = usePlayer()
@@ -26,22 +53,25 @@ export function GlobalPlayer() {
         href={`/episodes/${track.episodeId}`}
         className="flex min-w-0 max-w-[28%] items-center gap-2 shrink-0"
       >
-        <div className="size-9 shrink-0 overflow-hidden rounded bg-muted">
+        <ProgressRing pct={pct}>
           {track.artworkUrl ? (
             <img src={track.artworkUrl} alt="" className="size-full object-cover" />
           ) : null}
-        </div>
+        </ProgressRing>
         <span className="truncate text-sm font-medium">{track.title}</span>
       </Link>
 
       <Button
         size="icon"
-        variant="secondary"
         onClick={toggle}
         className="size-9 shrink-0 rounded-full"
         aria-label={playing ? "Pause" : "Play"}
       >
-        {playing ? <Pause className="size-4" /> : <Play className="size-4" />}
+        {playing ? (
+          <Pause className="size-4 fill-current" />
+        ) : (
+          <Play className="size-4 translate-x-px fill-current" />
+        )}
       </Button>
 
       <span className="w-10 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
