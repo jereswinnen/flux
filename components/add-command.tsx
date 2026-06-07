@@ -2,7 +2,7 @@
 
 import { type KeyboardEvent, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Link2, Loader2 } from "lucide-react"
+import { ArrowLeft, ChevronRight, Link2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import {
   Command,
@@ -13,10 +13,13 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
+  CommandShortcut,
 } from "@/components/ui/command"
+import { Badge } from "@/components/ui/badge"
 import { useCommand } from "@/components/command-context"
+import { hiResArtwork } from "@/lib/artwork"
 import { isUrl, looksLikeFeedUrl } from "@/lib/url"
-import { formatRelativeDate } from "@/lib/format"
+import { formatRelativeDate, formatTimestamp } from "@/lib/format"
 
 type Show = { collectionId: number; name: string; artistName: string; artworkUrl?: string; feedUrl?: string }
 type EpisodeResult = {
@@ -26,10 +29,38 @@ type EpisodeResult = {
 type FeedEpisode = {
   title: string; guid?: string; audioUrl: string; publishedAt?: string; durationSec?: number
 }
+type LibEpisode = {
+  id: string; title: string; podcastName: string | null; artworkUrl: string | null
+  status: string; publishedAt: string | null
+}
+type Moment = {
+  chunkId: string; episodeId: string; episodeTitle: string; podcastName: string | null
+  artworkUrl: string | null; content: string; startSec: number; endSec: number
+}
 
-function Thumb({ src, alt }: { src?: string; alt: string }) {
-  if (!src) return <div className="size-9 shrink-0 rounded bg-muted" aria-hidden />
-  return <img src={src} alt={alt} className="size-9 shrink-0 rounded object-cover" />
+function Thumb({ src, alt }: { src?: string | null; alt: string }) {
+  const url = hiResArtwork(src, 120)
+  if (!url) return <div className="size-9 shrink-0 rounded bg-muted" aria-hidden />
+  return <img src={url} alt={alt} className="size-9 shrink-0 rounded object-cover" />
+}
+
+// Highlight the matched query terms inside a transcript snippet.
+function Highlight({ text, query }: { text: string; query: string }) {
+  const terms = query.trim().split(/\s+/).filter((t) => t.length > 1).map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+  if (terms.length === 0) return <>{text}</>
+  const parts = text.split(new RegExp(`(${terms.join("|")})`, "gi"))
+  const set = new Set(terms.map((t) => t.toLowerCase()))
+  return (
+    <>
+      {parts.map((p, i) =>
+        set.has(p.toLowerCase()) ? (
+          <mark key={i} className="rounded bg-primary/20 px-0.5 text-foreground">{p}</mark>
+        ) : (
+          <span key={i}>{p}</span>
+        ),
+      )}
+    </>
+  )
 }
 
 export function AddCommand() {
@@ -41,8 +72,12 @@ export function AddCommand() {
   const [shows, setShows] = useState<Show[]>([])
   const [episodes, setEpisodes] = useState<EpisodeResult[]>([])
   const [feedEpisodes, setFeedEpisodes] = useState<FeedEpisode[]>([])
+  const [libEpisodes, setLibEpisodes] = useState<LibEpisode[]>([])
+  const [moments, setMoments] = useState<Moment[]>([])
+  const [recents, setRecents] = useState<LibEpisode[]>([])
   const [context, setContext] = useState<{ name?: string; artworkUrl?: string; feedUrl?: string }>({})
   const [loading, setLoading] = useState(false)
+  const [localLoading, setLocalLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [active, setActive] = useState("")
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -50,26 +85,51 @@ export function AddCommand() {
 
   useEffect(() => {
     if (!open) {
-      setQuery(""); setMode("search"); setShows([]); setEpisodes([]); setFeedEpisodes([]); setContext({}); setActive("")
+      setQuery(""); setMode("search"); setShows([]); setEpisodes([]); setFeedEpisodes([])
+      setLibEpisodes([]); setMoments([]); setContext({}); setActive("")
+      return
     }
+    // Load recent episodes for the empty state.
+    fetch("/api/episodes")
+      .then((r) => r.json())
+      .then((d) => setRecents((d.episodes ?? []).slice(0, 6)))
+      .catch(() => {})
   }, [open])
 
   useEffect(() => {
     if (mode !== "search") return
     if (debounce.current) clearTimeout(debounce.current)
     const q = query.trim()
-    if (q.length < 2 || isUrl(q)) { setShows([]); setEpisodes([]); return }
+    if (q.length < 2 || isUrl(q)) {
+      setShows([]); setEpisodes([]); setLibEpisodes([]); setMoments([])
+      return
+    }
     debounce.current = setTimeout(async () => {
       const seq = ++searchSeq.current
-      setLoading(true)
+      setLoading(true); setLocalLoading(true)
+      // Your own library and Apple Podcasts resolve in parallel.
+      fetch("/api/library/search", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query: q }),
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          if (seq !== searchSeq.current) return
+          setLibEpisodes(d.episodes ?? [])
+          setMoments(d.moments ?? [])
+        })
+        .catch(() => {})
+        .finally(() => { if (seq === searchSeq.current) setLocalLoading(false) })
+
       try {
         const [showRes, epRes] = await Promise.all([
           fetch(`/api/itunes/search?type=podcast&q=${encodeURIComponent(q)}`).then((r) => r.json()),
           fetch(`/api/itunes/search?type=episode&q=${encodeURIComponent(q)}`).then((r) => r.json()),
         ])
         if (seq !== searchSeq.current) return
-        setShows((showRes.results ?? []).slice(0, 6))
-        setEpisodes((epRes.results ?? []).filter((e: EpisodeResult) => e.audioUrl).slice(0, 6))
+        setShows((showRes.results ?? []).slice(0, 5))
+        setEpisodes((epRes.results ?? []).filter((e: EpisodeResult) => e.audioUrl).slice(0, 5))
       } finally {
         if (seq === searchSeq.current) setLoading(false)
       }
@@ -111,7 +171,15 @@ export function AddCommand() {
     }
   }
 
+  function goTo(href: string) {
+    setOpen(false)
+    router.push(href)
+  }
+
   const urlQuery = isUrl(query.trim()) ? query.trim() : null
+  const typing = query.trim().length >= 2 && !urlQuery
+  const noLocalResults = typing && !localLoading && libEpisodes.length === 0 && moments.length === 0
+  const noAddResults = typing && !loading && shows.length === 0 && episodes.length === 0
 
   function goBack() {
     setMode("search")
@@ -142,21 +210,35 @@ export function AddCommand() {
     <CommandDialog open={open} onOpenChange={setOpen} className="sm:max-w-2xl">
       <Command shouldFilter={mode === "episodes"} onValueChange={setActive} onKeyDown={handleKeyDown}>
       <CommandInput
-        placeholder={mode === "episodes" ? "Filter episodes…" : "Search podcasts, episodes, or paste a URL…"}
+        placeholder={mode === "episodes" ? "Filter episodes…" : "Search your library, Apple Podcasts, or paste a URL…"}
         value={query}
         onValueChange={setQuery}
       />
-      <CommandList className="max-h-[440px]">
-        {loading && (
-          <div className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> Loading…
+      <CommandList className="max-h-[460px]">
+        {(loading || localLoading) && (
+          <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Searching…
           </div>
         )}
 
         {mode === "search" && (
           <>
-            {!loading && query.trim().length < 2 && (
-              <CommandEmpty>Type to search Apple Podcasts, or paste an episode/feed URL.</CommandEmpty>
+            {!typing && !urlQuery && recents.length > 0 && (
+              <CommandGroup heading="Recent">
+                {recents.map((e) => (
+                  <CommandItem key={`recent-${e.id}`} value={`recent-${e.id}`} onSelect={() => goTo(`/episodes/${e.id}`)}>
+                    <Thumb src={e.artworkUrl} alt={e.title} />
+                    <div className="min-w-0">
+                      <div className="truncate">{e.title}</div>
+                      <div className="truncate text-xs text-muted-foreground">{e.podcastName}</div>
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+
+            {!typing && !urlQuery && recents.length === 0 && (
+              <CommandEmpty>Search your library, Apple Podcasts, or paste an episode/feed URL.</CommandEmpty>
             )}
 
             {urlQuery && (
@@ -178,8 +260,46 @@ export function AddCommand() {
               </CommandGroup>
             )}
 
-            {shows.length > 0 && (
-              <CommandGroup heading="Shows">
+            {libEpisodes.length > 0 && (
+              <CommandGroup heading="In your library">
+                {libEpisodes.map((e) => (
+                  <CommandItem key={`lib-${e.id}`} value={`lib-${e.id}`} onSelect={() => goTo(`/episodes/${e.id}`)}>
+                    <Thumb src={e.artworkUrl} alt={e.title} />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate">{e.title}</div>
+                      <div className="truncate text-xs text-muted-foreground">{e.podcastName}</div>
+                    </div>
+                    {e.status !== "ready" && (
+                      <Badge variant={e.status === "failed" ? "destructive" : "secondary"}>{e.status}</Badge>
+                    )}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+
+            {moments.length > 0 && (
+              <CommandGroup heading="Moments">
+                {moments.map((m) => (
+                  <CommandItem
+                    key={`moment-${m.chunkId}`}
+                    value={`moment-${m.chunkId}`}
+                    onSelect={() => goTo(`/episodes/${m.episodeId}?t=${Math.floor(m.startSec)}`)}
+                  >
+                    <Thumb src={m.artworkUrl} alt={m.episodeTitle} />
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-2 text-sm">
+                        <Highlight text={m.content} query={query} />
+                      </p>
+                      <div className="truncate text-xs text-muted-foreground">{m.episodeTitle}</div>
+                    </div>
+                    <CommandShortcut>{formatTimestamp(m.startSec)}</CommandShortcut>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+
+            {(shows.length > 0 || episodes.length > 0) && (
+              <CommandGroup heading="Add from Apple Podcasts">
                 {shows.map((s) => (
                   <CommandItem
                     key={`show-${s.collectionId}`}
@@ -188,17 +308,13 @@ export function AddCommand() {
                     onSelect={() => s.feedUrl && loadShowEpisodes(s.feedUrl, { name: s.name, artworkUrl: s.artworkUrl })}
                   >
                     <Thumb src={s.artworkUrl} alt={s.name} />
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="truncate">{s.name}</div>
-                      <div className="truncate text-xs text-muted-foreground">{s.artistName}</div>
+                      <div className="truncate text-xs text-muted-foreground">Show · {s.artistName}</div>
                     </div>
+                    {s.feedUrl && <ChevronRight className="size-4 text-muted-foreground" />}
                   </CommandItem>
                 ))}
-              </CommandGroup>
-            )}
-
-            {episodes.length > 0 && (
-              <CommandGroup heading="Episodes">
                 {episodes.map((e) => (
                   <CommandItem
                     key={`ep-${e.trackId}`}
@@ -226,7 +342,8 @@ export function AddCommand() {
                 ))}
               </CommandGroup>
             )}
-            {!loading && query.trim().length >= 2 && !urlQuery && shows.length === 0 && episodes.length === 0 && (
+
+            {noLocalResults && noAddResults && (
               <CommandEmpty>No results for &ldquo;{query.trim()}&rdquo;.</CommandEmpty>
             )}
           </>
@@ -278,7 +395,7 @@ export function AddCommand() {
         ) : (
           <span className="flex items-center gap-1"><kbd className="rounded bg-muted px-1 py-0.5">←</kbd> back</span>
         )}
-        <span className="ml-auto flex items-center gap-1"><kbd className="rounded bg-muted px-1 py-0.5">↵</kbd> add</span>
+        <span className="ml-auto flex items-center gap-1"><kbd className="rounded bg-muted px-1 py-0.5">↵</kbd> open / add</span>
       </div>
       </Command>
     </CommandDialog>

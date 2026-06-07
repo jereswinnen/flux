@@ -7,6 +7,8 @@ export interface SearchHit {
   chunkId: string
   episodeId: string
   episodeTitle: string
+  podcastName: string | null
+  artworkUrl: string | null
   content: string
   startSec: number
   endSec: number
@@ -24,6 +26,8 @@ export async function searchChunks(
       chunkId: chunks.id,
       episodeId: chunks.episodeId,
       episodeTitle: episodes.title,
+      podcastName: episodes.podcastName,
+      artworkUrl: episodes.artworkUrl,
       content: chunks.content,
       startSec: chunks.startSec,
       endSec: chunks.endSec,
@@ -65,6 +69,7 @@ export async function hybridSearch(
       from vec full outer join fts on vec.id = fts.id
     )
     select c.id as "chunkId", c.episode_id as "episodeId", e.title as "episodeTitle",
+           e.podcast_name as "podcastName", e.artwork_url as "artworkUrl",
            c.content, c.start_sec as "startSec", c.end_sec as "endSec", f.score as "similarity"
     from fused f
     join chunks c on c.id = f.id

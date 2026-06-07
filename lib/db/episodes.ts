@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm"
+import { desc, eq, ilike, or } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { episodes, type EpisodeStatus } from "./schema"
 import * as schema from "./schema"
@@ -44,6 +44,18 @@ export function makeEpisodeRepo(db: DB) {
 
     async list() {
       return db.select().from(episodes).orderBy(desc(episodes.createdAt))
+    },
+
+    // Local title/show search for the global ⌘K palette. Matches the episode
+    // title or its podcast name, newest first.
+    async search(query: string, limit = 6) {
+      const term = `%${query}%`
+      return db
+        .select()
+        .from(episodes)
+        .where(or(ilike(episodes.title, term), ilike(episodes.podcastName, term)))
+        .orderBy(desc(episodes.createdAt))
+        .limit(limit)
     },
 
     async updateStatus(id: string, status: EpisodeStatus, errorMessage?: string) {
