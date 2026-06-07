@@ -24,3 +24,9 @@ export async function GET(
 
   return Response.json({ episode, transcript: transcript ?? null, insights: insight ?? null })
 }
+
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  await episodeRepo.remove(id)
+  return Response.json({ status: "deleted" })
+}

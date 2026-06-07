@@ -52,6 +52,10 @@ export function makeEpisodeRepo(db: DB) {
         .set({ status, errorMessage: errorMessage ?? null })
         .where(eq(episodes.id, id))
     },
+
+    async remove(id: string) {
+      await db.delete(episodes).where(eq(episodes.id, id))
+    },
   }
 }
 
