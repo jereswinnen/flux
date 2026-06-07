@@ -2,6 +2,11 @@ import modal
 
 app = modal.App("podcast-kb-transcribe")
 
+# Persist the ~3GB large-v3 weights across cold starts: download once into a Volume,
+# reuse on every subsequent run (faster + cheaper — no repeated download time).
+CACHE_DIR = "/cache"
+model_cache = modal.Volume.from_name("whisper-cache", create_if_missing=True)
+
 # faster-whisper (CTranslate2) loads CUDA libs (libcublas, libcudnn) at runtime,
 # so the image must be built on an NVIDIA CUDA + cuDNN base — debian_slim lacks them.
 image = (
@@ -13,7 +18,7 @@ image = (
 )
 
 
-@app.function(image=image, gpu="A10G", timeout=1800)
+@app.function(image=image, gpu="A10G", timeout=1800, volumes={CACHE_DIR: model_cache})
 def transcribe(audio_url: str, episode_id: str, callback_url: str, secret: str):
     import tempfile
     import requests
@@ -28,7 +33,11 @@ def transcribe(audio_url: str, episode_id: str, callback_url: str, secret: str):
                     f.write(chunk)
             audio_path = f.name
 
-        model = WhisperModel("large-v3", device="cuda", compute_type="float16")
+        model_cache.reload()
+        model = WhisperModel(
+            "large-v3", device="cuda", compute_type="float16", download_root=CACHE_DIR
+        )
+        model_cache.commit()
         segments_iter, _info = model.transcribe(audio_path, vad_filter=True)
 
         segments = []
