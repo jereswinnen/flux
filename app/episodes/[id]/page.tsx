@@ -30,6 +30,7 @@ export default async function EpisodePage({ params }: { params: Promise<{ id: st
           publishedAt: episode.publishedAt ? episode.publishedAt.toISOString() : null,
           durationSec: episode.durationSec,
           audioUrl: episode.audioUrl,
+          sourceUrl: episode.sourceUrl,
         }}
         transcript={transcript ? { fullText: transcript.fullText, segments: transcript.segments ?? [] } : null}
         insights={insight ?? null}

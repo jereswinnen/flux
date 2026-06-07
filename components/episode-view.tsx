@@ -14,6 +14,7 @@ import { ConversationView } from "@/components/conversation-view"
 import { ConversationSwitcher } from "@/components/conversation-switcher"
 import { usePlayer, type AudioMarker, type Track } from "@/components/player-context"
 import { formatRelativeDate, formatTimestamp } from "@/lib/format"
+import { EpisodeActions } from "@/components/episode-actions"
 
 type Segment = { start: number; end: number; text: string }
 type Insights = {
@@ -35,6 +36,7 @@ export type EpisodeViewProps = {
     publishedAt: string | null
     durationSec: number | null
     audioUrl: string | null
+    sourceUrl: string | null
   }
   transcript: { fullText: string; segments: Segment[] } | null
   insights: Insights
@@ -124,6 +126,18 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
             {episode.status}
           </Badge>
         )}
+        <EpisodeActions
+          episodeId={episode.id}
+          episode={{
+            title: episode.title,
+            podcastName: episode.podcastName,
+            durationSec: episode.durationSec,
+            publishedAt: episode.publishedAt,
+            sourceUrl: episode.sourceUrl,
+          }}
+          transcript={transcript}
+          insights={insights}
+        />
       </header>
 
       {episode.status === "failed" ? (
