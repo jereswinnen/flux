@@ -131,8 +131,7 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
       />
       {/* One natural scroll region under the pinned breadcrumb. */}
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-5xl gap-10 px-4 py-4 md:px-6 md:py-6">
-          <div className="min-w-0 flex-1">
+        <div className="mx-auto w-full max-w-4xl px-4 py-4 md:px-6 md:py-6">
           {/* Episode header — one compact row on every breakpoint */}
           <header className="flex items-start gap-3 pb-5 sm:gap-4">
             <div className="size-12 shrink-0 overflow-hidden rounded-md bg-muted sm:size-14">
@@ -201,15 +200,15 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
               </TabsContent>
             </Tabs>
           )}
-          </div>
-
-          {transcript && tab === "insights" && sections.length > 0 && (
-            <aside className="hidden w-44 shrink-0 lg:block">
-              <InsightsNav sections={sections} scrollRef={scrollRef} />
-            </aside>
-          )}
         </div>
       </div>
+
+      {/* Floating on-this-page nav — right edge, vertically centered, doesn't shift content. */}
+      {transcript && tab === "insights" && sections.length > 0 && (
+        <div className="fixed right-6 top-1/2 z-20 hidden -translate-y-1/2 xl:block">
+          <InsightsNav sections={sections} scrollRef={scrollRef} />
+        </div>
+      )}
     </>
   )
 }

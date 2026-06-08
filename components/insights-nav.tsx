@@ -40,7 +40,7 @@ export function InsightsNav({
   if (sections.length === 0) return null
 
   return (
-    <nav className="sticky top-4 space-y-2.5">
+    <nav className="max-w-44 space-y-2.5">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">On this page</p>
       {sections.map((s) => (
         <button
