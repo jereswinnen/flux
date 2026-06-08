@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { ChatMessage } from "@/components/chat-message"
 import { useStickToBottom } from "@/components/use-stick-to-bottom"
 import { hiResArtwork } from "@/lib/artwork"
-import { cn } from "@/lib/utils"
 import type { useConversation } from "@/components/use-conversation"
 
 export type AttachableEpisode = {
@@ -168,14 +167,13 @@ export function ConversationView({
           )}
 
           {attached && (
-            <div className="flex items-center gap-2 rounded-t-xl border border-b-0 border-foreground/15 bg-muted px-3 py-2">
-              <span className="shrink-0 text-xs text-muted-foreground">Asking about</span>
+            <div className="flex items-center gap-2 rounded-t-2xl bg-muted px-3 py-2">
               <div className="size-4 shrink-0 overflow-hidden rounded bg-background">
                 {attached.artworkUrl ? (
                   <img src={hiResArtwork(attached.artworkUrl, 80)} alt="" className="size-full object-cover" />
                 ) : null}
               </div>
-              <span className="min-w-0 flex-1 truncate text-sm font-medium">{attached.title}</span>
+              <span className="min-w-0 flex-1 truncate text-xs font-medium">{attached.title}</span>
               <button
                 type="button"
                 aria-label="Detach episode"
@@ -186,12 +184,7 @@ export function ConversationView({
               </button>
             </div>
           )}
-          <div
-            className={cn(
-              "flex items-end gap-2 border border-foreground/15 bg-background py-2 pr-2 pl-3 shadow-sm transition-[border-color,box-shadow] focus-within:border-transparent focus-within:ring-2 focus-within:ring-teal-500 focus-within:ring-offset-1",
-              attached ? "rounded-b-xl" : "rounded-2xl",
-            )}
-          >
+          <div className="flex items-end gap-2 rounded-2xl border border-foreground/15 bg-background py-2 pr-2 pl-3 shadow-sm transition-[border-color,box-shadow] focus-within:border-transparent focus-within:ring-2 focus-within:ring-teal-500 focus-within:ring-offset-1">
               <Textarea
                 ref={taRef}
                 rows={1}
