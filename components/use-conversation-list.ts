@@ -5,7 +5,11 @@ import type { ConversationListItem } from "@/components/conversation-list"
 
 // Manages the list of conversations for a scope (an episode, or library-wide)
 // plus which one is active. Auto-creates one empty conversation if none exist.
-export function useConversationList(episodeId?: string) {
+export function useConversationList(
+  episodeId?: string,
+  opts: { autoStart?: boolean } = {},
+) {
+  const autoStart = opts.autoStart ?? true
   const [conversations, setConversations] = useState<ConversationListItem[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const seeded = useRef(false)
@@ -38,6 +42,9 @@ export function useConversationList(episodeId?: string) {
   useEffect(() => {
     seeded.current = false
     refresh().then(async (list) => {
+      // When autoStart is off, the caller will pick/create the active conversation
+      // (e.g. the Ask deep link wants a brand-new chat) — just load the list.
+      if (!autoStart) return
       if (list[0]) {
         setActiveId(list[0].id)
       } else if (!seeded.current) {

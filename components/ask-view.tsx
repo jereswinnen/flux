@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Plus } from "lucide-react"
 import { AppHeader } from "@/components/app-header"
@@ -11,11 +11,22 @@ import { useConversation } from "@/components/use-conversation"
 import { useConversationList } from "@/components/use-conversation-list"
 
 export function AskView() {
-  const list = useConversationList()
-  const chat = useConversation(list.activeId, { onStreamEnd: () => void list.refresh() })
-  const [episodes, setEpisodes] = useState<AttachableEpisode[]>([])
   const searchParams = useSearchParams()
   const attachId = searchParams.get("attach")
+  // Arriving from an episode's "Ask" button starts a fresh chat (don't reuse the
+  // last conversation); otherwise resume the most recent one.
+  const list = useConversationList(undefined, { autoStart: !attachId })
+  const chat = useConversation(list.activeId, { onStreamEnd: () => void list.refresh() })
+  const [episodes, setEpisodes] = useState<AttachableEpisode[]>([])
+  const startedFresh = useRef(false)
+
+  useEffect(() => {
+    if (attachId && !startedFresh.current) {
+      startedFresh.current = true
+      void list.create()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attachId])
 
   // Episodes power the @-mention picker and resolve the ?attach= deep link.
   useEffect(() => {

@@ -169,7 +169,7 @@ export function ConversationView({
           <div className="flex items-end gap-2 rounded-2xl border border-foreground/15 bg-background py-2 pr-2 pl-3 shadow-sm transition-[border-color,box-shadow] focus-within:border-transparent focus-within:ring-2 focus-within:ring-teal-500 focus-within:ring-offset-1">
             <div className="flex min-w-0 flex-1 items-start gap-1.5 py-1">
               {attached && (
-                <span className="min-w-0 max-w-[55%] shrink-0 truncate text-base font-semibold leading-7 text-primary">
+                <span className="min-w-0 max-w-[55%] shrink-0 truncate text-sm font-semibold leading-7 text-primary">
                   @{attached.title}:
                 </span>
               )}
