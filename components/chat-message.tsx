@@ -1,18 +1,29 @@
 "use client"
 
-import Link from "next/link"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-import { Check, Copy } from "lucide-react"
+import { Check, Copy, Play } from "lucide-react"
 import { remarkTimestamps } from "@/lib/markdown/timestamps"
-import { parseTimestamp } from "@/lib/format"
+import { hiResArtwork } from "@/lib/artwork"
+import { parseTimestamp, formatTimestamp } from "@/lib/format"
+import { usePlayer } from "@/components/player-context"
+
+export type ChatSourceRef = {
+  episodeId: string
+  episodeTitle: string
+  startSec: number
+  podcastName?: string | null
+  artworkUrl?: string | null
+  audioUrl?: string | null
+}
 
 export type UIMessage = {
   id?: string
   role: "user" | "assistant"
   content: string
-  sources?: { episodeId: string; episodeTitle: string; startSec: number }[] | null
+  sources?: ChatSourceRef[] | null
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -37,47 +48,80 @@ export function ChatMessage({
   message,
   onSeek,
   pending = false,
-  onEdit,
 }: {
   message: UIMessage
   onSeek?: (sec: number) => void
   pending?: boolean
-  onEdit?: (m: UIMessage) => void
 }) {
-  const isUser = message.role === "user"
+  const player = usePlayer()
+  const router = useRouter()
 
-  if (isUser) {
+  // Start playback at a source's moment — cue the global player in place when we
+  // have the audio URL, otherwise navigate to the episode (which cues on load).
+  function openSource(s: ChatSourceRef) {
+    if (s.audioUrl) {
+      player.cue(
+        {
+          episodeId: s.episodeId,
+          audioUrl: s.audioUrl,
+          title: s.episodeTitle,
+          artworkUrl: s.artworkUrl ?? null,
+          markers: [],
+        },
+        Math.floor(s.startSec),
+      )
+    } else {
+      router.push(`/episodes/${s.episodeId}?t=${Math.floor(s.startSec)}`)
+    }
+  }
+
+  if (message.role === "user") {
     return (
-      <div className="flex flex-col items-end gap-1">
-        <div className="max-w-[85%] rounded-lg bg-muted px-3 py-2 text-sm">{message.content}</div>
-        {onEdit && (
-          <button
-            type="button"
-            onClick={() => onEdit(message)}
-            className="text-xs text-muted-foreground hover:text-foreground"
-          >
-            Edit
-          </button>
-        )}
+      <div className="flex justify-end">
+        <div className="max-w-[85%] rounded-2xl bg-muted px-4 py-2.5 font-serif text-base">
+          {message.content}
+        </div>
       </div>
     )
   }
 
+  const sources = message.sources ?? []
+  // Turn bare [n] citations into clickable chips (the model emits them for
+  // library-wide answers). Episode [m:ss] citations are handled by remarkTimestamps.
+  const content = message.content.replace(/\[(\d+)\](?!\()/g, "[$1](cite:$1)")
+
   return (
-    <div className="space-y-2">
-      <div className="prose prose-sm dark:prose-invert max-w-none prose-pre:bg-muted prose-pre:text-foreground prose-code:before:content-none prose-code:after:content-none prose-a:text-primary leading-relaxed">
+    <div className="space-y-3">
+      <div className="prose prose-lg max-w-none font-serif leading-relaxed dark:prose-invert prose-headings:font-sans prose-p:my-2.5 prose-a:text-primary prose-li:my-1 prose-strong:font-semibold">
         {message.content ? (
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkTimestamps]}
             components={{
               a({ href, children }: { href?: string; children?: React.ReactNode }) {
+                if (href?.startsWith("cite:")) {
+                  const n = Number(href.slice(5))
+                  const s = sources[n - 1]
+                  if (s) {
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => openSource(s)}
+                        title={`${s.episodeTitle} · ${formatTimestamp(s.startSec)}`}
+                        className="mx-0.5 inline-flex size-5 -translate-y-[0.15em] items-center justify-center rounded bg-primary/15 align-baseline font-sans text-[11px] font-medium text-primary no-underline hover:bg-primary/25"
+                      >
+                        {n}
+                      </button>
+                    )
+                  }
+                  return null
+                }
                 if (href?.startsWith("#t=")) {
                   const sec = parseTimestamp(String(children).replace(/[[\]]/g, ""))
                   return (
                     <button
                       type="button"
                       onClick={() => onSeek?.(Number(href.slice(3)) || sec)}
-                      className="text-primary hover:underline"
+                      className="font-sans text-primary hover:underline"
                     >
                       {children}
                     </button>
@@ -91,7 +135,7 @@ export function ChatMessage({
               },
             }}
           >
-            {message.content}
+            {content}
           </ReactMarkdown>
         ) : pending ? (
           <span className="inline-flex gap-1">
@@ -103,23 +147,44 @@ export function ChatMessage({
       </div>
 
       {message.content && (
-        <div className="flex items-center gap-3">
-          <CopyButton text={message.content} />
-          {message.sources && message.sources.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {message.sources.map((s, i) => (
-                <Link
-                  key={i}
-                  href={`/episodes/${s.episodeId}?t=${s.startSec}`}
-                  title={s.episodeTitle}
-                  className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground"
-                >
-                  {s.episodeTitle.length > 24 ? `${s.episodeTitle.slice(0, 24)}…` : s.episodeTitle}
-                </Link>
-              ))}
+        <>
+          {sources.length > 0 && (
+            <div className="space-y-2">
+              <p className="font-sans text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Sources
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {sources.map((s, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => openSource(s)}
+                    className="group flex items-center gap-3 rounded-xl border p-2.5 text-left transition-colors hover:border-foreground/20 hover:bg-muted/50"
+                  >
+                    <span className="flex size-5 shrink-0 items-center justify-center rounded bg-primary/15 font-sans text-[11px] font-medium text-primary">
+                      {i + 1}
+                    </span>
+                    <div className="size-9 shrink-0 overflow-hidden rounded-md bg-muted">
+                      {s.artworkUrl ? (
+                        <img src={hiResArtwork(s.artworkUrl, 120)} alt="" className="size-full object-cover" />
+                      ) : null}
+                    </div>
+                    <div className="min-w-0 flex-1 font-sans">
+                      <div className="line-clamp-1 text-sm font-medium">{s.episodeTitle}</div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {[s.podcastName, formatTimestamp(s.startSec)].filter(Boolean).join(" · ")}
+                      </div>
+                    </div>
+                    <Play className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                  </button>
+                ))}
+              </div>
             </div>
           )}
-        </div>
+          <div className="font-sans">
+            <CopyButton text={message.content} />
+          </div>
+        </>
       )}
     </div>
   )

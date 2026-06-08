@@ -6,7 +6,7 @@ import { condenseQuery } from "@/lib/ai/condense"
 import { buildTranscriptContext, estimateTokens, MAX_TRANSCRIPT_TOKENS } from "@/lib/ai/episode-context"
 import { db } from "@/lib/db"
 import { conversationRepo } from "@/lib/db/conversations"
-import { searchChunks, hybridSearch } from "@/lib/db/search"
+import { searchChunks, hybridSearch, refineHitTimestamps } from "@/lib/db/search"
 import { transcripts } from "@/lib/db/schema"
 import { formatTimestamp } from "@/lib/format"
 import type { ChatSource } from "@/lib/db/schema"
@@ -61,13 +61,30 @@ export async function POST(request: Request) {
     } else {
       const hits = await searchChunks(db, await embedQuery(content), { limit: 10, episodeId })
       context = hits.map((h) => `[${formatTimestamp(h.startSec)}] ${h.content}`).join("\n\n")
-      sources = hits.map((h) => ({ episodeId: h.episodeId, episodeTitle: h.episodeTitle, startSec: h.startSec }))
+      sources = hits.map((h) => ({
+        episodeId: h.episodeId,
+        episodeTitle: h.episodeTitle,
+        startSec: h.startSec,
+        podcastName: h.podcastName,
+        artworkUrl: h.artworkUrl,
+        audioUrl: h.audioUrl,
+      }))
     }
   } else {
     const searchQuery = await condenseQuery(priorTurns, content)
-    const hits = await hybridSearch(db, await embedQuery(searchQuery), searchQuery, { limit: 8 })
-    context = hits.map((h) => `[${h.episodeTitle} — ${formatTimestamp(h.startSec)}] ${h.content}`).join("\n\n")
-    sources = hits.map((h) => ({ episodeId: h.episodeId, episodeTitle: h.episodeTitle, startSec: h.startSec }))
+    const rawHits = await hybridSearch(db, await embedQuery(searchQuery), searchQuery, { limit: 8 })
+    const hits = await refineHitTimestamps(db, rawHits, searchQuery)
+    context = hits
+      .map((h, i) => `[${i + 1}] (${h.episodeTitle} — ${formatTimestamp(h.startSec)}) ${h.content}`)
+      .join("\n\n")
+    sources = hits.map((h) => ({
+      episodeId: h.episodeId,
+      episodeTitle: h.episodeTitle,
+      startSec: h.startSec,
+      podcastName: h.podcastName,
+      artworkUrl: h.artworkUrl,
+      audioUrl: h.audioUrl,
+    }))
   }
 
   const result = streamText({
@@ -75,7 +92,7 @@ export async function POST(request: Request) {
     system:
       "You are answering questions about podcast transcripts using ONLY the provided excerpts. " +
       (libraryWide
-        ? "Cite the episode title and [timestamp] you rely on. "
+        ? "The excerpts are numbered; cite the claims you rely on with the matching [n] (e.g. [1], [2][3]). Do not write out episode titles inline. "
         : "Cite the [timestamp] you rely on. ") +
       "Use markdown. If the answer isn't in the excerpts, say so.\n\nExcerpts:\n" +
       context,

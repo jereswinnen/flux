@@ -89,7 +89,14 @@ export const conversations = pgTable(
 )
 
 export type MessageRole = "user" | "assistant"
-export type ChatSource = { episodeId: string; episodeTitle: string; startSec: number }
+export type ChatSource = {
+  episodeId: string
+  episodeTitle: string
+  startSec: number
+  podcastName?: string | null
+  artworkUrl?: string | null
+  audioUrl?: string | null
+}
 
 export const messages = pgTable(
   "messages",
