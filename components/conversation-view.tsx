@@ -166,9 +166,9 @@ export function ConversationView({
             </div>
           )}
 
-          <div className="rounded-2xl border border-foreground/15 bg-background shadow-sm transition-[border-color,box-shadow] focus-within:border-transparent focus-within:ring-2 focus-within:ring-teal-500 focus-within:ring-offset-1">
+          <div className="overflow-hidden rounded-2xl border border-foreground/15 bg-background shadow-sm transition-[border-color,box-shadow] focus-within:border-transparent focus-within:ring-2 focus-within:ring-teal-500 focus-within:ring-offset-1">
             {attached && (
-              <div className="flex items-center gap-2 border-b px-3 py-2">
+              <div className="flex items-center gap-2 border-b bg-muted px-3 py-2">
                 <span className="shrink-0 text-xs text-muted-foreground">Asking about</span>
                 <div className="size-4 shrink-0 overflow-hidden rounded bg-muted">
                   {attached.artworkUrl ? (
