@@ -27,9 +27,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <CommandProvider>
             <PlayerProvider>
               <TooltipProvider>
-                <SidebarProvider>
+                <SidebarProvider className="h-svh">
                   <AppSidebar />
-                  <SidebarInset>
+                  <SidebarInset className="min-h-0 overflow-hidden">
                     {children}
                     <GlobalPlayer />
                   </SidebarInset>

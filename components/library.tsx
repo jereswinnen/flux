@@ -45,7 +45,7 @@ export function Library({ initialEpisodes }: { initialEpisodes: LibEpisode[] }) 
   }, [anyInFlight])
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+    <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-4 md:p-6">
       {episodes.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 py-24 text-center">
           <p className="text-muted-foreground">No episodes yet.</p>
