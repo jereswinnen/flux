@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { ChatMessage } from "@/components/chat-message"
 import { useStickToBottom } from "@/components/use-stick-to-bottom"
 import { hiResArtwork } from "@/lib/artwork"
+import { cn } from "@/lib/utils"
 import type { useConversation } from "@/components/use-conversation"
 
 export type AttachableEpisode = {
@@ -41,6 +42,10 @@ export function ConversationView({
   )
   const [mention, setMention] = useState<string | null>(null) // active @query, or null
   const [highlight, setHighlight] = useState(0)
+  // Keep the bar mounted (with its last content) through its exit animation.
+  const [barRendered, setBarRendered] = useState(!!attached)
+  const [shownAttachment, setShownAttachment] = useState(attached)
+  const [prevBarKey, setPrevBarKey] = useState(attached?.id ?? null)
   const taRef = useRef<HTMLTextAreaElement>(null)
 
   // Sync the attachment when the deep-linked episode (?attach=) resolves — done
@@ -49,6 +54,22 @@ export function ConversationView({
     setPrevAttachId(initialAttachment?.id ?? null)
     if (initialAttachment) setAttached(initialAttachment)
   }
+  // On (re)attach, mount the bar and capture the content to display while it's open.
+  if ((attached?.id ?? null) !== prevBarKey) {
+    setPrevBarKey(attached?.id ?? null)
+    if (attached) {
+      setShownAttachment(attached)
+      setBarRendered(true)
+    }
+  }
+  // After detaching, unmount the bar once its exit animation has played.
+  useEffect(() => {
+    if (!attached && barRendered) {
+      const t = setTimeout(() => setBarRendered(false), 200)
+      return () => clearTimeout(t)
+    }
+  }, [attached, barRendered])
+
   const { ref, atBottom, scrollToBottom, onScroll } = useStickToBottom(messages)
 
   useEffect(() => {
@@ -166,14 +187,21 @@ export function ConversationView({
             </div>
           )}
 
-          {attached && (
-            <div className="flex items-center gap-2 rounded-t-2xl bg-muted px-3 pb-5 pt-2">
+          {barRendered && shownAttachment && (
+            <div
+              className={cn(
+                "flex items-center gap-2 rounded-t-2xl bg-muted px-3 pb-5 pt-2 duration-200",
+                attached
+                  ? "animate-in fade-in slide-in-from-bottom-2"
+                  : "animate-out fade-out slide-out-to-bottom-2",
+              )}
+            >
               <div className="size-4 shrink-0 overflow-hidden rounded bg-background">
-                {attached.artworkUrl ? (
-                  <img src={hiResArtwork(attached.artworkUrl, 80)} alt="" className="size-full object-cover" />
+                {shownAttachment.artworkUrl ? (
+                  <img src={hiResArtwork(shownAttachment.artworkUrl, 80)} alt="" className="size-full object-cover" />
                 ) : null}
               </div>
-              <span className="min-w-0 flex-1 truncate text-xs font-medium">{attached.title}</span>
+              <span className="min-w-0 flex-1 truncate text-xs font-medium">{shownAttachment.title}</span>
               <button
                 type="button"
                 aria-label="Detach episode"
@@ -184,7 +212,7 @@ export function ConversationView({
               </button>
             </div>
           )}
-          <div className="relative flex items-end gap-2 rounded-2xl border border-foreground/15 bg-background py-2 pr-2 pl-3 shadow-sm transition-[border-color,box-shadow] focus-within:border-transparent focus-within:ring-2 focus-within:ring-teal-500 focus-within:ring-offset-1 data-[attached=true]:-mt-3" data-attached={attached ? "true" : "false"}>
+          <div className="relative flex items-end gap-2 rounded-2xl border border-foreground/15 bg-background py-2 pr-2 pl-3 shadow-sm transition-[border-color,box-shadow] focus-within:border-transparent focus-within:ring-2 focus-within:ring-teal-500 focus-within:ring-offset-1 data-[attached=true]:-mt-3" data-attached={barRendered ? "true" : "false"}>
               <Textarea
                 ref={taRef}
                 rows={1}
