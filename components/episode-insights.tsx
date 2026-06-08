@@ -33,7 +33,7 @@ function Section({
   children: React.ReactNode
 }) {
   return (
-    <section className="space-y-3">
+    <section className="space-y-4">
       <h3 className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {icon}
         {title}
@@ -59,7 +59,7 @@ export function EpisodeInsights({
   const entities = insights.entities ?? []
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {insights.summary && (
         <p className="font-serif text-xl leading-relaxed text-foreground">{insights.summary}</p>
       )}
@@ -72,7 +72,7 @@ export function EpisodeInsights({
                 <button
                   type="button"
                   onClick={() => onSeek(c.startSec)}
-                  className="group flex w-full items-baseline gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted"
+                  className="group flex w-full items-baseline gap-3 px-4 py-3 text-left transition-colors hover:bg-muted"
                 >
                   <span className="w-12 shrink-0 font-mono text-xs tabular-nums text-muted-foreground group-hover:text-foreground">
                     {formatTimestamp(c.startSec)}
@@ -87,10 +87,10 @@ export function EpisodeInsights({
 
       {takeaways.length > 0 && (
         <Section icon={<Lightbulb className="size-3.5" />} title="Key takeaways">
-          <ul className="space-y-2.5">
+          <ul className="space-y-4">
             {takeaways.map((t, i) => (
               <li key={i} className="flex gap-3 font-serif text-lg leading-relaxed">
-                <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" />
+                <span aria-hidden className="mt-2.5 size-1.5 shrink-0 rounded-full bg-primary" />
                 <span>{t}</span>
               </li>
             ))}
@@ -100,7 +100,7 @@ export function EpisodeInsights({
 
       {quotes.length > 0 && (
         <Section icon={<Quote className="size-3.5" />} title="Notable quotes">
-          <div className="space-y-4">
+          <div className="space-y-5">
             {quotes.map((q, i) => (
               <blockquote
                 key={i}
@@ -136,12 +136,12 @@ export function EpisodeInsights({
 
       {entities.length > 0 && (
         <Section icon={<Users className="size-3.5" />} title="Mentioned">
-          <div className="space-y-3">
+          <div className="space-y-4">
             {ENTITY_GROUPS.map(({ type, label }) => {
               const items = entities.filter((e) => (e.type ?? "other") === type)
               if (items.length === 0) return null
               return (
-                <div key={type} className="space-y-1.5">
+                <div key={type} className="space-y-2">
                   <p className="text-xs text-muted-foreground">{label}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {items.map((e, i) => (
