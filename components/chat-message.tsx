@@ -78,7 +78,7 @@ export function ChatMessage({
   if (message.role === "user") {
     return (
       <div className="flex flex-col items-end gap-1">
-        <div className="max-w-[85%] rounded-2xl bg-muted px-4 py-2.5 font-serif text-base">
+        <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl bg-muted px-4 py-2.5 font-serif text-base">
           {message.content}
         </div>
         <div className="px-1">
@@ -105,7 +105,7 @@ export function ChatMessage({
 
   return (
     <div className="space-y-3">
-      <div className="prose prose-lg max-w-none font-serif leading-relaxed dark:prose-invert prose-headings:font-sans prose-p:my-2.5 prose-a:text-primary prose-li:my-1 prose-strong:font-semibold">
+      <div className="prose prose-lg max-w-none break-words font-serif leading-relaxed dark:prose-invert prose-headings:font-sans prose-p:my-2.5 prose-pre:overflow-x-auto prose-a:text-primary prose-li:my-1 prose-strong:font-semibold">
         {message.content ? (
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkTimestamps]}
