@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { ArrowDown, Loader2, RefreshCw, Square } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
 import { ChatMessage, type UIMessage } from "@/components/chat-message"
 import { useStickToBottom } from "@/components/use-stick-to-bottom"
@@ -55,28 +56,30 @@ export function ConversationView({
 
   return (
     <div className="flex h-full flex-col gap-3">
-      <div ref={ref} onScroll={onScroll} className="relative flex-1 space-y-4 overflow-y-auto">
-        {messages.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{emptyHint}</p>
-        ) : (
-          messages.map((m, i) => {
-            const isLast = i === messages.length - 1
-            return (
-              <ChatMessage
-                key={m.id ?? i}
-                message={m}
-                onSeek={onSeek}
-                pending={isLast && m.role === "assistant" && busy}
-                onEdit={
-                  (m.role === "user" && !!m.id && m.id === lastUserId && !busy)
-                    ? startEdit
-                    : undefined
-                }
-              />
-            )
-          })
-        )}
-      </div>
+      <ScrollArea className="min-h-0 flex-1" viewportRef={ref} viewportProps={{ onScroll }}>
+        <div className="space-y-4 pr-3">
+          {messages.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{emptyHint}</p>
+          ) : (
+            messages.map((m, i) => {
+              const isLast = i === messages.length - 1
+              return (
+                <ChatMessage
+                  key={m.id ?? i}
+                  message={m}
+                  onSeek={onSeek}
+                  pending={isLast && m.role === "assistant" && busy}
+                  onEdit={
+                    (m.role === "user" && !!m.id && m.id === lastUserId && !busy)
+                      ? startEdit
+                      : undefined
+                  }
+                />
+              )
+            })
+          )}
+        </div>
+      </ScrollArea>
 
       {!atBottom && (
         <div className="flex justify-center">
