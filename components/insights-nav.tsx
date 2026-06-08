@@ -41,7 +41,6 @@ export function InsightsNav({
 
   return (
     <nav className="max-w-44 space-y-2.5">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">On this page</p>
       {sections.map((s) => (
         <button
           key={s.id}
@@ -50,7 +49,7 @@ export function InsightsNav({
             document.getElementById(s.id)?.scrollIntoView({ behavior: "smooth", block: "start" })
           }
           className={cn(
-            "block w-full text-left text-sm leading-snug transition-colors",
+            "block w-full text-right text-sm leading-snug transition-colors",
             active === s.id ? "font-medium text-foreground" : "text-muted-foreground hover:text-foreground",
           )}
         >
