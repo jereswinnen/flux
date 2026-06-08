@@ -36,6 +36,7 @@ export function ConversationView({
   const [draft, setDraft] = useState("")
   const [attached, setAttached] = useState<AttachableEpisode | null>(null)
   const [mention, setMention] = useState<string | null>(null) // active @query, or null
+  const [highlight, setHighlight] = useState(0)
   const taRef = useRef<HTMLTextAreaElement>(null)
   const { ref, atBottom, scrollToBottom, onScroll } = useStickToBottom(messages)
 
@@ -54,11 +55,12 @@ export function ConversationView({
     }
   }, [initialAttachment?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Match against both the episode title and the show (podcast) title.
   const matches =
     mention !== null
       ? episodes
           .filter((e) => {
-            const q = mention.toLowerCase()
+            const q = mention.toLowerCase().trim()
             return (
               !q ||
               e.title.toLowerCase().includes(q) ||
@@ -67,6 +69,11 @@ export function ConversationView({
           })
           .slice(0, 6)
       : []
+
+  // Keep the keyboard highlight in range as the query narrows.
+  useEffect(() => {
+    setHighlight(0)
+  }, [mention])
 
   function onDraftChange(value: string) {
     setDraft(value)
@@ -124,26 +131,23 @@ export function ConversationView({
         <div className="relative rounded-2xl border bg-background shadow-sm transition-colors focus-within:border-foreground/20 focus-within:ring-1 focus-within:ring-ring/30">
           {/* @-mention episode picker */}
           {mention !== null && matches.length > 0 && (
-            <div className="absolute bottom-full left-0 z-20 mb-2 w-full overflow-hidden rounded-xl border bg-popover shadow-md">
-              <p className="px-3 pb-1 pt-2 text-xs text-muted-foreground">Attach an episode</p>
-              {matches.map((e) => (
+            <div className="absolute bottom-full left-0 z-20 mb-2 w-full overflow-hidden rounded-xl border bg-popover py-1 shadow-md">
+              {matches.map((e, idx) => (
                 <button
                   key={e.id}
                   type="button"
                   onClick={() => attachEpisode(e)}
-                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-muted"
+                  onMouseEnter={() => setHighlight(idx)}
+                  className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm ${
+                    idx === highlight ? "bg-muted" : ""
+                  }`}
                 >
-                  <div className="size-7 shrink-0 overflow-hidden rounded bg-muted">
+                  <div className="size-6 shrink-0 overflow-hidden rounded bg-muted">
                     {e.artworkUrl ? (
                       <img src={hiResArtwork(e.artworkUrl, 80)} alt="" className="size-full object-cover" />
                     ) : null}
                   </div>
-                  <div className="min-w-0">
-                    <div className="truncate">{e.title}</div>
-                    {e.podcastName && (
-                      <div className="truncate text-xs text-muted-foreground">{e.podcastName}</div>
-                    )}
-                  </div>
+                  <span className="truncate">{e.title}</span>
                 </button>
               ))}
             </div>
@@ -175,13 +179,24 @@ export function ConversationView({
             disabled={disabled}
             className="max-h-[220px] min-h-[52px] resize-none border-0 bg-transparent px-4 py-3.5 pr-14 text-base shadow-none focus-visible:ring-0 dark:bg-transparent"
             onKeyDown={(e) => {
+              const picking = mention !== null && matches.length > 0
+              if (picking && e.key === "ArrowDown") {
+                e.preventDefault()
+                setHighlight((h) => (h + 1) % matches.length)
+                return
+              }
+              if (picking && e.key === "ArrowUp") {
+                e.preventDefault()
+                setHighlight((h) => (h - 1 + matches.length) % matches.length)
+                return
+              }
               if (e.key === "Escape" && mention !== null) {
                 setMention(null)
                 return
               }
               if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault()
-                if (mention !== null && matches.length > 0) attachEpisode(matches[0])
+                if (picking) attachEpisode(matches[highlight] ?? matches[0])
                 else submit()
               }
             }}
