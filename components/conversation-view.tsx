@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { ArrowDown, ArrowUp, Square } from "lucide-react"
+import { ArrowDown, ArrowUp, Square, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ChatMessage } from "@/components/chat-message"
@@ -87,7 +87,7 @@ export function ConversationView({
   }
 
   function attachEpisode(e: AttachableEpisode) {
-    setAttached({ id: e.id, title: e.title })
+    setAttached(e)
     setDraft((d) => d.replace(/@[^\s@]*$/, "").replace(/\s+$/, ""))
     setMention(null)
     taRef.current?.focus()
@@ -166,13 +166,27 @@ export function ConversationView({
             </div>
           )}
 
-          <div className="flex items-end gap-2 rounded-2xl border border-foreground/15 bg-background py-2 pr-2 pl-3 shadow-sm transition-[border-color,box-shadow] focus-within:border-transparent focus-within:ring-2 focus-within:ring-teal-500 focus-within:ring-offset-1">
-            <div className="flex min-w-0 flex-1 items-start gap-1.5 py-1">
-              {attached && (
-                <span className="max-w-[11rem] shrink-0 truncate text-base font-semibold leading-7 text-primary">
-                  @{attached.title}:
-                </span>
-              )}
+          <div className="rounded-2xl border border-foreground/15 bg-background shadow-sm transition-[border-color,box-shadow] focus-within:border-transparent focus-within:ring-2 focus-within:ring-teal-500 focus-within:ring-offset-1">
+            {attached && (
+              <div className="flex items-center gap-2 border-b px-3 py-2">
+                <span className="shrink-0 text-xs text-muted-foreground">Asking about</span>
+                <div className="size-4 shrink-0 overflow-hidden rounded bg-muted">
+                  {attached.artworkUrl ? (
+                    <img src={hiResArtwork(attached.artworkUrl, 80)} alt="" className="size-full object-cover" />
+                  ) : null}
+                </div>
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">{attached.title}</span>
+                <button
+                  type="button"
+                  aria-label="Detach episode"
+                  onClick={() => setAttached(null)}
+                  className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            )}
+            <div className="flex items-end gap-2 py-2 pr-2 pl-3">
               <Textarea
                 ref={taRef}
                 rows={1}
@@ -180,7 +194,7 @@ export function ConversationView({
                 onChange={(e) => onDraftChange(e.target.value)}
                 placeholder={attached ? "Ask about this episode…" : "Ask anything…  (type @ to attach an episode)"}
                 disabled={disabled}
-                className="max-h-55 min-h-7 flex-1 resize-none border-0 bg-transparent p-0 text-base leading-7 shadow-none focus-visible:ring-0 dark:bg-transparent"
+                className="max-h-55 min-h-7 flex-1 resize-none border-0 bg-transparent p-0 py-1 text-base leading-7 shadow-none focus-visible:ring-0 dark:bg-transparent"
                 onKeyDown={(e) => {
                   const picking = mention !== null && matches.length > 0
                   if (picking && e.key === "ArrowDown") {
@@ -210,22 +224,22 @@ export function ConversationView({
                   }
                 }}
               />
+              {busy ? (
+                <Button size="icon" onClick={stop} aria-label="Stop" className="size-8 shrink-0 rounded-full">
+                  <Square className="size-4 fill-current" />
+                </Button>
+              ) : (
+                <Button
+                  size="icon"
+                  onClick={submit}
+                  disabled={!draft.trim() || disabled}
+                  aria-label="Send"
+                  className="size-8 shrink-0 rounded-full"
+                >
+                  <ArrowUp className="size-4" />
+                </Button>
+              )}
             </div>
-            {busy ? (
-              <Button size="icon" onClick={stop} aria-label="Stop" className="size-8 shrink-0 rounded-full">
-                <Square className="size-4 fill-current" />
-              </Button>
-            ) : (
-              <Button
-                size="icon"
-                onClick={submit}
-                disabled={!draft.trim() || disabled}
-                aria-label="Send"
-                className="size-8 shrink-0 rounded-full"
-              >
-                <ArrowUp className="size-4" />
-              </Button>
-            )}
           </div>
         </div>
       </div>
