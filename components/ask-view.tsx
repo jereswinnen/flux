@@ -1,6 +1,8 @@
 "use client"
 
+import { Plus } from "lucide-react"
 import { AppHeader } from "@/components/app-header"
+import { Button } from "@/components/ui/button"
 import { ConversationMenu } from "@/components/conversation-menu"
 import { ConversationView } from "@/components/conversation-view"
 import { useConversation } from "@/components/use-conversation"
@@ -13,8 +15,8 @@ export function AskView() {
   return (
     <>
       <AppHeader
-        breadcrumbs={[{ label: "Ask" }]}
-        actions={
+        breadcrumbs={[{ label: "Ask", href: "/ask" }]}
+        breadcrumbMenu={
           <ConversationMenu
             conversations={list.conversations}
             activeId={list.activeId}
@@ -22,6 +24,11 @@ export function AskView() {
             onNew={() => void list.create()}
             onDelete={(id) => void list.remove(id)}
           />
+        }
+        actions={
+          <Button size="sm" className="gap-1.5" onClick={() => void list.create()}>
+            <Plus className="size-4" /> New chat
+          </Button>
         }
       />
       <div className="flex min-h-0 flex-1 flex-col p-4 md:p-6">

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { AppHeader } from "@/components/app-header"
 import { ChatPanel } from "@/components/chat-panel"
 import { usePlayer, type AudioMarker, type Track } from "@/components/player-context"
 import { hiResArtwork } from "@/lib/artwork"
@@ -89,52 +90,56 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
   ].filter(Boolean) as string[]
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      {/* Minimal header */}
-      <header className="flex shrink-0 items-center gap-4 border-b p-4 md:px-6">
-        <div className="size-14 shrink-0 overflow-hidden rounded-md bg-muted md:size-16">
-          {episode.artworkUrl ? (
-            <img src={hiResArtwork(episode.artworkUrl, 240)} alt="" className="size-full object-cover" />
-          ) : null}
-        </div>
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-lg font-semibold">{episode.title}</h1>
-          <div className="flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
-            {meta.map((m, i) => (
-              <span key={i} className="flex items-center gap-1.5">
-                {i > 0 && <span aria-hidden>·</span>}
-                <span className="truncate">{m}</span>
-              </span>
-            ))}
+    <>
+      <AppHeader
+        breadcrumbs={[{ label: "Library", href: "/" }, { label: episode.title }]}
+        actions={
+          <>
+            {episode.status !== "ready" && (
+              <Badge variant={statusVariant(episode.status)} className={inFlight ? "animate-pulse" : ""}>
+                {episode.status}
+              </Badge>
+            )}
+            {track && (
+              <Button size="sm" onClick={() => player.play(track)} className="gap-2">
+                <Play className="size-4" /> Play
+              </Button>
+            )}
+            <EpisodeActions
+              episodeId={episode.id}
+              episode={{
+                title: episode.title,
+                podcastName: episode.podcastName,
+                durationSec: episode.durationSec,
+                publishedAt: episode.publishedAt,
+                sourceUrl: episode.sourceUrl,
+              }}
+              transcript={transcript}
+              insights={insights}
+            />
+          </>
+        }
+      />
+      <div className="flex min-h-0 flex-1 flex-col">
+        {/* Episode header */}
+        <header className="flex shrink-0 items-center gap-4 border-b p-4 md:px-6">
+          <div className="size-14 shrink-0 overflow-hidden rounded-md bg-muted md:size-16">
+            {episode.artworkUrl ? (
+              <img src={hiResArtwork(episode.artworkUrl, 240)} alt="" className="size-full object-cover" />
+            ) : null}
           </div>
-        </div>
-        {track && (
-          <Button
-            size="sm"
-            onClick={() => player.play(track)}
-            className="shrink-0 gap-2"
-          >
-            <Play className="size-4" /> Play
-          </Button>
-        )}
-        {episode.status !== "ready" && (
-          <Badge variant={statusVariant(episode.status)} className={inFlight ? "animate-pulse" : ""}>
-            {episode.status}
-          </Badge>
-        )}
-        <EpisodeActions
-          episodeId={episode.id}
-          episode={{
-            title: episode.title,
-            podcastName: episode.podcastName,
-            durationSec: episode.durationSec,
-            publishedAt: episode.publishedAt,
-            sourceUrl: episode.sourceUrl,
-          }}
-          transcript={transcript}
-          insights={insights}
-        />
-      </header>
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-lg font-semibold">{episode.title}</h1>
+            <div className="flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
+              {meta.map((m, i) => (
+                <span key={i} className="flex items-center gap-1.5">
+                  {i > 0 && <span aria-hidden>·</span>}
+                  <span className="truncate">{m}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        </header>
 
       {episode.status === "failed" ? (
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 md:p-6">
@@ -209,6 +214,7 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
           </aside>
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }

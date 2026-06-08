@@ -16,9 +16,13 @@ export type Crumb = { label: string; href?: string }
 
 export function AppHeader({
   breadcrumbs,
+  breadcrumbMenu,
   actions,
 }: {
   breadcrumbs: Crumb[]
+  // Rendered as a trailing breadcrumb segment (e.g. a conversation switcher).
+  breadcrumbMenu?: React.ReactNode
+  // Rendered right-aligned (page actions: Play, ⋯, New chat, …).
   actions?: React.ReactNode
 }) {
   return (
@@ -29,7 +33,7 @@ export function AppHeader({
         <Breadcrumb>
           <BreadcrumbList>
             {breadcrumbs.map((c, i) => {
-              const last = i === breadcrumbs.length - 1
+              const last = i === breadcrumbs.length - 1 && !breadcrumbMenu
               return (
                 <span key={i} className="contents">
                   <BreadcrumbItem>
@@ -41,19 +45,15 @@ export function AppHeader({
                       </BreadcrumbLink>
                     )}
                   </BreadcrumbItem>
-                  {!last && <BreadcrumbSeparator />}
+                  {(i < breadcrumbs.length - 1 || breadcrumbMenu) && <BreadcrumbSeparator />}
                 </span>
               )
             })}
+            {breadcrumbMenu && <BreadcrumbItem>{breadcrumbMenu}</BreadcrumbItem>}
           </BreadcrumbList>
         </Breadcrumb>
-        {actions && (
-          <>
-            <Separator orientation="vertical" className="data-[orientation=vertical]:h-4" />
-            {actions}
-          </>
-        )}
       </div>
+      {actions && <div className="ml-auto flex items-center gap-2 px-4">{actions}</div>}
     </header>
   )
 }

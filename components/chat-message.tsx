@@ -77,9 +77,12 @@ export function ChatMessage({
 
   if (message.role === "user") {
     return (
-      <div className="flex justify-end">
+      <div className="group flex flex-col items-end gap-1">
         <div className="max-w-[85%] rounded-2xl bg-muted px-4 py-2.5 font-serif text-base">
           {message.content}
+        </div>
+        <div className="px-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <CopyButton text={message.content} />
         </div>
       </div>
     )
