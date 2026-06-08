@@ -2,7 +2,7 @@
 
 import { type KeyboardEvent, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, ChevronRight, Link2, Loader2 } from "lucide-react"
+import { ArrowLeft, ChevronRight, Link2, Loader2, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 import {
   Command,
@@ -264,6 +264,18 @@ export function AddCommand() {
               </CommandGroup>
             )}
 
+            {typing && (
+              <CommandGroup heading="Search">
+                <CommandItem
+                  value="__search-all"
+                  onSelect={() => goTo(`/search?q=${encodeURIComponent(query.trim())}`)}
+                >
+                  <Sparkles className="size-4" />
+                  Search your library for &ldquo;{query.trim()}&rdquo;
+                </CommandItem>
+              </CommandGroup>
+            )}
+
             {libEpisodes.length > 0 && (
               <CommandGroup heading="In your library">
                 {libEpisodes.map((e) => (
@@ -282,8 +294,8 @@ export function AddCommand() {
             )}
 
             {moments.length > 0 && (
-              <CommandGroup heading="Moments">
-                {moments.map((m) => (
+              <CommandGroup heading="Top moments">
+                {moments.slice(0, 3).map((m) => (
                   <CommandItem
                     key={`moment-${m.chunkId}`}
                     value={`moment-${m.chunkId}`}
