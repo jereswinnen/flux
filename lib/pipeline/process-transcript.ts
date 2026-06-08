@@ -17,14 +17,15 @@ export interface TranscriptResult {
 
 export interface PipelineDeps {
   db: PostgresJsDatabase<typeof schema>
-  generateInsights?: (transcript: string) => Promise<Insights>
+  generateInsights?: (transcript: string, segments: Segment[]) => Promise<Insights>
   embedTexts?: (texts: string[]) => Promise<number[][]>
 }
 
 export async function processTranscript(result: TranscriptResult, deps: PipelineDeps) {
   const { db } = deps
   const repo = makeEpisodeRepo(db)
-  const genInsights = deps.generateInsights ?? ((t: string) => defaultGenerateInsights(t))
+  const genInsights =
+    deps.generateInsights ?? ((t: string, s: Segment[]) => defaultGenerateInsights(t, { segments: s }))
   const embed = deps.embedTexts ?? ((t: string[]) => defaultEmbedTexts(t))
 
   try {
@@ -42,12 +43,13 @@ export async function processTranscript(result: TranscriptResult, deps: Pipeline
 
     // 2. Insights
     await repo.updateStatus(result.episodeId, "analyzing")
-    const insights = await genInsights(result.transcript)
+    const insights = await genInsights(result.transcript, result.segments)
     await db.insert(schema.insights).values({
       episodeId: result.episodeId,
       summary: insights.summary,
       takeaways: insights.takeaways,
       topics: insights.topics,
+      chapters: insights.chapters,
       quotes: insights.quotes,
       entities: insights.entities,
     })

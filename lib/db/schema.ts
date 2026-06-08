@@ -51,6 +51,7 @@ export const insights = pgTable("insights", {
   summary: text("summary"),
   takeaways: jsonb("takeaways").$type<string[]>(),
   topics: jsonb("topics").$type<string[]>(),
+  chapters: jsonb("chapters").$type<{ title: string; startSec: number }[]>(),
   quotes: jsonb("quotes").$type<{ text: string; approxTimestampSec: number }[]>(),
   entities: jsonb("entities").$type<{ name: string; type: string }[]>(),
 })

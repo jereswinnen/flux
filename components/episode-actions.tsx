@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Copy, Download, MoreVertical, Trash2 } from "lucide-react"
+import { Copy, Download, MoreVertical, Sparkles, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -67,6 +67,16 @@ export function EpisodeActions({
     URL.revokeObjectURL(url)
   }
 
+  async function reanalyze() {
+    const res = await fetch(`/api/episodes/${episodeId}/retry`, { method: "POST" })
+    if (res.ok) {
+      toast.success("Re-analyzing — insights will refresh shortly")
+      router.refresh()
+    } else {
+      toast.error("Couldn't start re-analysis")
+    }
+  }
+
   async function remove() {
     const res = await fetch(`/api/episodes/${episodeId}`, { method: "DELETE" })
     if (res.ok) {
@@ -91,6 +101,10 @@ export function EpisodeActions({
           </DropdownMenuItem>
           <DropdownMenuItem onClick={download} className="whitespace-nowrap">
             <Download className="size-4" /> Download .md
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={reanalyze} className="whitespace-nowrap">
+            <Sparkles className="size-4" /> Re-analyze
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem

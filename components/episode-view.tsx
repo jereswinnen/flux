@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Play } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -16,12 +15,14 @@ import { usePlayer, type AudioMarker, type Track } from "@/components/player-con
 import { hiResArtwork } from "@/lib/artwork"
 import { formatRelativeDate, formatTimestamp } from "@/lib/format"
 import { EpisodeActions } from "@/components/episode-actions"
+import { EpisodeInsights } from "@/components/episode-insights"
 
 type Segment = { start: number; end: number; text: string }
 type Insights = {
   summary?: string | null
   takeaways?: string[] | null
   topics?: string[] | null
+  chapters?: { title: string; startSec: number }[] | null
   quotes?: { text: string; approxTimestampSec: number }[] | null
   entities?: { name: string; type: string }[] | null
 } | null
@@ -171,61 +172,8 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
                 <TabsTrigger value="chat" className="lg:hidden">Chat</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="insights" className="pt-3">
-                <Card className="space-y-5 p-5">
-                  {insights?.summary && (
-                    <p className="font-serif text-lg leading-relaxed">{insights.summary}</p>
-                  )}
-                  {insights?.takeaways?.length ? (
-                    <div>
-                      <h3 className="mb-2 text-sm font-medium text-muted-foreground">Takeaways</h3>
-                      <ul className="list-disc space-y-1.5 pl-5 font-serif text-lg leading-relaxed">
-                        {insights.takeaways.map((t, i) => (
-                          <li key={i}>{t}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                  {insights?.topics?.length ? (
-                    <div className="flex flex-wrap gap-1">
-                      {insights.topics.map((t, i) => (
-                        <Link key={i} href={`/topics/${encodeURIComponent(t)}`}>
-                          <Badge variant="secondary" className="hover:bg-secondary/70">
-                            {t}
-                          </Badge>
-                        </Link>
-                      ))}
-                    </div>
-                  ) : null}
-                  {insights?.quotes?.length ? (
-                    <div className="space-y-3">
-                      {insights.quotes.map((q, i) => (
-                        <blockquote key={i} className="border-l-2 pl-3 font-serif text-lg italic leading-relaxed">
-                          &ldquo;{q.text}&rdquo;{" "}
-                          <button
-                            type="button"
-                            onClick={() => seek(q.approxTimestampSec)}
-                            className="font-sans text-sm text-muted-foreground not-italic hover:text-foreground hover:underline"
-                          >
-                            [{formatTimestamp(q.approxTimestampSec)}]
-                          </button>
-                        </blockquote>
-                      ))}
-                    </div>
-                  ) : null}
-                  {insights?.entities?.length ? (
-                    <div className="flex flex-wrap gap-1">
-                      {insights.entities.map((e, i) => (
-                        <Link key={i} href={`/topics/${encodeURIComponent(e.name)}`}>
-                          <Badge variant="outline" className="hover:bg-muted">
-                            {e.name}
-                          </Badge>
-                        </Link>
-                      ))}
-                    </div>
-                  ) : null}
-                  {!insights && <p className="text-sm text-muted-foreground">No insights yet.</p>}
-                </Card>
+              <TabsContent value="insights" className="pt-4">
+                <EpisodeInsights insights={insights} onSeek={seek} />
               </TabsContent>
 
               <TabsContent value="transcript" className="pt-3">
