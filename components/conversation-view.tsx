@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { ArrowDown, ArrowUp, AtSign, Square, X } from "lucide-react"
+import { ArrowDown, ArrowUp, Square } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
@@ -34,8 +34,12 @@ export function ConversationView({
 }) {
   const { messages, busy, send, stop } = chat
   const [draft, setDraft] = useState("")
-  const [attached, setAttached] = useState<AttachableEpisode | null>(initialAttachment)
-  const [prevAttachId, setPrevAttachId] = useState(initialAttachment?.id ?? null)
+  const [attached, setAttached] = useState<AttachableEpisode | null>(
+    initialAttachment
+  )
+  const [prevAttachId, setPrevAttachId] = useState(
+    initialAttachment?.id ?? null
+  )
   const [mention, setMention] = useState<string | null>(null) // active @query, or null
   const [highlight, setHighlight] = useState(0)
   const taRef = useRef<HTMLTextAreaElement>(null)
@@ -100,7 +104,11 @@ export function ConversationView({
 
   return (
     <div className="flex h-full flex-col gap-3">
-      <ScrollArea className="min-h-0 flex-1" viewportRef={ref} viewportProps={{ onScroll }}>
+      <ScrollArea
+        className="min-h-0 flex-1"
+        viewportRef={ref}
+        viewportProps={{ onScroll }}
+      >
         <div className="mx-auto w-full max-w-3xl space-y-6 pr-3">
           {messages.length === 0 ? (
             <p className="text-sm text-muted-foreground">{emptyHint}</p>
@@ -122,14 +130,19 @@ export function ConversationView({
 
       {!atBottom && (
         <div className="flex justify-center">
-          <Button variant="outline" size="sm" className="gap-1" onClick={scrollToBottom}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1"
+            onClick={scrollToBottom}
+          >
             <ArrowDown className="size-3.5" /> Jump to latest
           </Button>
         </div>
       )}
 
       <div className="mx-auto w-full max-w-3xl">
-        <div className="relative rounded-2xl border bg-background shadow-sm transition-colors focus-within:border-foreground/20 focus-within:ring-1 focus-within:ring-ring/30">
+        <div className="relative">
           {/* @-mention episode picker — styled like the sidebar nav */}
           {mention !== null && matches.length > 0 && (
             <div className="absolute bottom-full left-0 z-20 mb-2 w-72 max-w-full overflow-hidden rounded-xl border bg-popover p-1 shadow-md">
@@ -145,7 +158,11 @@ export function ConversationView({
                 >
                   <div className="size-5 shrink-0 overflow-hidden rounded bg-muted">
                     {e.artworkUrl ? (
-                      <img src={hiResArtwork(e.artworkUrl, 80)} alt="" className="size-full object-cover" />
+                      <img
+                        src={hiResArtwork(e.artworkUrl, 80)}
+                        alt=""
+                        className="size-full object-cover"
+                      />
                     ) : null}
                   </div>
                   <span className="truncate">{e.title}</span>
@@ -154,74 +171,69 @@ export function ConversationView({
             </div>
           )}
 
-          {attached && (
-            <div className="flex flex-wrap gap-1.5 px-3 pt-3">
-              <span className="inline-flex max-w-full items-center gap-1.5 rounded-md bg-primary/10 py-1 pl-2 pr-1 text-xs font-medium text-primary">
-                <AtSign className="size-3 shrink-0" />
-                <span className="truncate">{attached.title}</span>
-                <button
-                  type="button"
-                  aria-label="Detach episode"
-                  onClick={() => setAttached(null)}
-                  className="shrink-0 rounded p-0.5 hover:bg-primary/15"
-                >
-                  <X className="size-3" />
-                </button>
-              </span>
+          <div className="flex flex-col gap-1 rounded-2xl border border-foreground/15 bg-background px-3 py-2.5 shadow-sm transition-[border-color,box-shadow] focus-within:border-transparent focus-within:ring-2 focus-within:ring-teal-500 focus-within:ring-offset-1">
+            <div className="flex items-start gap-1.5">
+              {attached && (
+                <span className="min-w-0 shrink-0 truncate text-base font-semibold leading-7 text-primary">
+                  @{attached.title}:
+                </span>
+              )}
+              <Textarea
+                ref={taRef}
+                rows={1}
+                value={draft}
+                onChange={(e) => onDraftChange(e.target.value)}
+                placeholder={attached ? "Ask about this episode…" : "Ask anything…  (type @ to attach an episode)"}
+                disabled={disabled}
+                className="max-h-55 min-h-7 flex-1 resize-none border-0 bg-transparent p-0 text-base leading-7 shadow-none focus-visible:ring-0 dark:bg-transparent"
+                onKeyDown={(e) => {
+                  const picking = mention !== null && matches.length > 0
+                  if (picking && e.key === "ArrowDown") {
+                    e.preventDefault()
+                    setHighlight((h) => (h + 1) % matches.length)
+                    return
+                  }
+                  if (picking && e.key === "ArrowUp") {
+                    e.preventDefault()
+                    setHighlight((h) => (h - 1 + matches.length) % matches.length)
+                    return
+                  }
+                  if (e.key === "Escape" && mention !== null) {
+                    setMention(null)
+                    return
+                  }
+                  // Backspace on an empty input detaches the attached episode.
+                  if (e.key === "Backspace" && draft.length === 0 && attached) {
+                    e.preventDefault()
+                    setAttached(null)
+                    return
+                  }
+                  if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault()
+                    if (picking) attachEpisode(matches[highlight] ?? matches[0])
+                    else submit()
+                  }
+                }}
+              />
             </div>
-          )}
-
-          <Textarea
-            ref={taRef}
-            rows={1}
-            value={draft}
-            onChange={(e) => onDraftChange(e.target.value)}
-            placeholder={attached ? "Ask about this episode…" : "Ask anything…  (type @ to attach an episode)"}
-            disabled={disabled}
-            className="max-h-[220px] min-h-[52px] resize-none border-0 bg-transparent px-4 py-3.5 pr-14 text-base shadow-none focus-visible:ring-0 dark:bg-transparent"
-            onKeyDown={(e) => {
-              const picking = mention !== null && matches.length > 0
-              if (picking && e.key === "ArrowDown") {
-                e.preventDefault()
-                setHighlight((h) => (h + 1) % matches.length)
-                return
-              }
-              if (picking && e.key === "ArrowUp") {
-                e.preventDefault()
-                setHighlight((h) => (h - 1 + matches.length) % matches.length)
-                return
-              }
-              if (e.key === "Escape" && mention !== null) {
-                setMention(null)
-                return
-              }
-              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                e.preventDefault()
-                if (picking) attachEpisode(matches[highlight] ?? matches[0])
-                else submit()
-              }
-            }}
-          />
-          {busy ? (
-            <Button
-              size="icon"
-              onClick={stop}
-              aria-label="Stop"
-              className="absolute bottom-2.5 right-2.5 size-9 rounded-full"
-            >
-              <Square className="size-4 fill-current" />
-            </Button>
-          ) : (
-            <Button
-              size="icon"
-              onClick={submit}
-              disabled={!draft.trim() || disabled}
-              aria-label="Send"
-              className="absolute bottom-2.5 right-2.5 size-9 rounded-full"
-            >
-              <ArrowUp className="size-4" />
-            </Button>
-          )}
+            <div className="flex justify-end">
+              {busy ? (
+                <Button size="icon" onClick={stop} aria-label="Stop" className="size-8 rounded-full">
+                  <Square className="size-4 fill-current" />
+                </Button>
+              ) : (
+                <Button
+                  size="icon"
+                  onClick={submit}
+                  disabled={!draft.trim() || disabled}
+                  aria-label="Send"
+                  className="size-8 rounded-full"
+                >
+                  <ArrowUp className="size-4" />
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
