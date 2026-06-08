@@ -34,10 +34,18 @@ export function ConversationView({
 }) {
   const { messages, busy, send, stop } = chat
   const [draft, setDraft] = useState("")
-  const [attached, setAttached] = useState<AttachableEpisode | null>(null)
+  const [attached, setAttached] = useState<AttachableEpisode | null>(initialAttachment)
+  const [prevAttachId, setPrevAttachId] = useState(initialAttachment?.id ?? null)
   const [mention, setMention] = useState<string | null>(null) // active @query, or null
   const [highlight, setHighlight] = useState(0)
   const taRef = useRef<HTMLTextAreaElement>(null)
+
+  // Sync the attachment when the deep-linked episode (?attach=) resolves — done
+  // during render (not in an effect) to avoid cascading re-renders.
+  if ((initialAttachment?.id ?? null) !== prevAttachId) {
+    setPrevAttachId(initialAttachment?.id ?? null)
+    if (initialAttachment) setAttached(initialAttachment)
+  }
   const { ref, atBottom, scrollToBottom, onScroll } = useStickToBottom(messages)
 
   useEffect(() => {
@@ -47,12 +55,9 @@ export function ConversationView({
     ta.style.height = `${Math.min(ta.scrollHeight, 220)}px`
   }, [draft])
 
-  // Pre-attach an episode when arriving from the episode detail "Ask" button.
+  // Focus the composer when an episode is pre-attached from the episode detail button.
   useEffect(() => {
-    if (initialAttachment) {
-      setAttached(initialAttachment)
-      taRef.current?.focus()
-    }
+    if (initialAttachment) taRef.current?.focus()
   }, [initialAttachment?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Match against both the episode title and the show (podcast) title.
@@ -70,16 +75,12 @@ export function ConversationView({
           .slice(0, 6)
       : []
 
-  // Keep the keyboard highlight in range as the query narrows.
-  useEffect(() => {
-    setHighlight(0)
-  }, [mention])
-
   function onDraftChange(value: string) {
     setDraft(value)
     // Detect a trailing "@query" token to drive the episode picker.
     const m = value.match(/(?:^|\s)@([^\s@]*)$/)
     setMention(m && episodes.length > 0 ? m[1] : null)
+    setHighlight(0)
   }
 
   function attachEpisode(e: AttachableEpisode) {
