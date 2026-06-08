@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Play } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -8,9 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useConversation } from "@/components/use-conversation"
-import { ConversationView } from "@/components/conversation-view"
-import { ConversationSwitcher } from "@/components/conversation-switcher"
+import { ChatPanel } from "@/components/chat-panel"
 import { usePlayer, type AudioMarker, type Track } from "@/components/player-context"
 import { hiResArtwork } from "@/lib/artwork"
 import { formatRelativeDate, formatTimestamp } from "@/lib/format"
@@ -70,9 +68,6 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
   const seek = (sec: number) => {
     if (track) player.cue(track, sec)
   }
-  const [activeConvo, setActiveConvo] = useState<string | null>(null)
-  const chat = useConversation(activeConvo)
-
   // Deep-link: /episodes/[id]?t=<sec> cues the player to that moment on load.
   const searchParams = useSearchParams()
   const tParam = searchParams.get("t")
@@ -198,24 +193,19 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
               </TabsContent>
 
               <TabsContent value="chat" className="pt-3 lg:hidden">
-                <Card className="p-5">
-                  <div className="flex h-full flex-col gap-3">
-                    <ConversationSwitcher episodeId={episode.id} activeId={activeConvo} onSelect={setActiveConvo} />
-                    <ConversationView chat={chat} onSeek={seek} disabled={!activeConvo} emptyHint="Ask about this episode." />
-                  </div>
-                </Card>
+                <div className="flex h-[70vh] flex-col overflow-hidden rounded-xl border bg-card">
+                  <ChatPanel episodeId={episode.id} onSeek={seek} emptyHint="Ask about this episode." />
+                </div>
               </TabsContent>
             </Tabs>
           </div>
 
           <aside className="hidden lg:col-span-1 lg:block">
-            <Card className="space-y-3 p-4 lg:sticky lg:top-6 max-h-[75vh] flex flex-col">
-              <h2 className="text-sm font-medium text-muted-foreground">Ask this episode</h2>
-              <div className="flex flex-1 flex-col gap-3 min-h-0">
-                <ConversationSwitcher episodeId={episode.id} activeId={activeConvo} onSelect={setActiveConvo} />
-                <ConversationView chat={chat} onSeek={seek} disabled={!activeConvo} emptyHint="Ask about this episode." />
+            <div className="lg:sticky lg:top-6">
+              <div className="flex h-[calc(100vh-7rem)] flex-col overflow-hidden rounded-xl border bg-card">
+                <ChatPanel episodeId={episode.id} onSeek={seek} emptyHint="Ask about this episode." />
               </div>
-            </Card>
+            </div>
           </aside>
         </div>
       )}
