@@ -142,7 +142,7 @@ export function ConversationView({
                     idx === highlight ? "bg-accent text-accent-foreground" : ""
                   }`}
                 >
-                  <div className="size-7 shrink-0 overflow-hidden rounded-md bg-muted">
+                  <div className="size-5 shrink-0 overflow-hidden rounded bg-muted">
                     {e.artworkUrl ? (
                       <img src={hiResArtwork(e.artworkUrl, 80)} alt="" className="size-full object-cover" />
                     ) : null}
