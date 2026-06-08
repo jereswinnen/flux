@@ -91,10 +91,13 @@ export async function POST(request: Request) {
     model: openai("gpt-5.4-mini-2026-03-17"),
     system:
       "You are answering questions about podcast transcripts using ONLY the provided excerpts. " +
+      "Be thorough and well-organized: cover each distinct point the excerpts make and include concrete specifics " +
+      "(names, numbers, examples, direct phrasing). When there are several distinct points, use a short markdown " +
+      "list; otherwise a tight paragraph. Don't pad or repeat yourself. " +
       (libraryWide
         ? "The excerpts are numbered; cite the claims you rely on with the matching [n] (e.g. [1], [2][3]). Do not write out episode titles inline. "
         : "Cite the [timestamp] you rely on. ") +
-      "Use markdown. If the answer isn't in the excerpts, say so.\n\nExcerpts:\n" +
+      "If the answer isn't in the excerpts, say so.\n\nExcerpts:\n" +
       context,
     messages,
     onFinish: async ({ text }) => {

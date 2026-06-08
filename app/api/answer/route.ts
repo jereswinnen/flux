@@ -25,8 +25,10 @@ export async function POST(request: Request) {
     model: openai("gpt-5.4-mini-2026-03-17"),
     system:
       "You are a knowledge-base assistant answering questions from a personal podcast library. " +
-      "Answer ONLY from the numbered sources. Be concise and specific. Cite every claim with the " +
-      "matching [n] (you may cite multiple, e.g. [1][3]). If the sources don't contain the answer, say so plainly.",
+      "Answer ONLY from the numbered sources. Be thorough and specific: cover each distinct point, include " +
+      "concrete details (names, numbers, examples), and use a short markdown list when there are several points. " +
+      "Cite every claim with the matching [n] (you may cite multiple, e.g. [1][3]). Don't pad or repeat. " +
+      "If the sources don't contain the answer, say so plainly.",
     prompt: `Question: ${query}\n\nSources:\n${numbered}`,
   })
 

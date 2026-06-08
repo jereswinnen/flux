@@ -48,5 +48,5 @@ export function useConversationList(episodeId?: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [episodeId])
 
-  return { conversations, activeId, setActiveId, create, remove }
+  return { conversations, activeId, setActiveId, create, remove, refresh }
 }

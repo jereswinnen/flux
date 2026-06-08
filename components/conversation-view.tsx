@@ -41,7 +41,11 @@ export function ConversationView({
 
   return (
     <div className="flex h-full flex-col gap-3">
-      <ScrollArea className="min-h-0 flex-1" viewportRef={ref} viewportProps={{ onScroll }}>
+      <ScrollArea
+        className="min-h-0 flex-1"
+        viewportRef={ref}
+        viewportProps={{ onScroll }}
+      >
         <div className="mx-auto w-full max-w-3xl space-y-6 pr-3">
           {messages.length === 0 ? (
             <p className="text-sm text-muted-foreground">{emptyHint}</p>
@@ -63,7 +67,12 @@ export function ConversationView({
 
       {!atBottom && (
         <div className="flex justify-center">
-          <Button variant="outline" size="sm" className="gap-1" onClick={scrollToBottom}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1"
+            onClick={scrollToBottom}
+          >
             <ArrowDown className="size-3.5" /> Jump to latest
           </Button>
         </div>
@@ -80,7 +89,11 @@ export function ConversationView({
             disabled={disabled}
             className="max-h-[220px] min-h-[52px] resize-none border-0 bg-transparent px-4 py-3.5 pr-14 text-base shadow-none focus-visible:ring-0 dark:bg-transparent"
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+              if (
+                e.key === "Enter" &&
+                !e.shiftKey &&
+                !e.nativeEvent.isComposing
+              ) {
                 e.preventDefault()
                 submit()
               }
@@ -91,7 +104,7 @@ export function ConversationView({
               size="icon"
               onClick={stop}
               aria-label="Stop"
-              className="absolute bottom-2.5 right-2.5 size-9 rounded-full"
+              className="absolute right-2.5 bottom-2.5 size-9 rounded-full"
             >
               <Square className="size-4 fill-current" />
             </Button>
@@ -101,7 +114,7 @@ export function ConversationView({
               onClick={submit}
               disabled={!draft.trim() || disabled}
               aria-label="Send"
-              className="absolute bottom-2.5 right-2.5 size-9 rounded-full"
+              className="absolute right-2.5 bottom-2.5 size-9 rounded-full"
             >
               <ArrowUp className="size-4" />
             </Button>

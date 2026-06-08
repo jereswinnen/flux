@@ -17,7 +17,7 @@ export function ChatPanel({
   emptyHint?: string
 }) {
   const list = useConversationList(episodeId)
-  const chat = useConversation(list.activeId)
+  const chat = useConversation(list.activeId, { onStreamEnd: () => void list.refresh() })
 
   return (
     <div className="flex h-full flex-col">

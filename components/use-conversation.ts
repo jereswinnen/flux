@@ -4,10 +4,16 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import type { UIMessage } from "@/components/chat-message"
 
-export function useConversation(conversationId: string | null) {
+export function useConversation(
+  conversationId: string | null,
+  opts: { onStreamEnd?: () => void } = {},
+) {
   const [messages, setMessages] = useState<UIMessage[]>([])
   const [busy, setBusy] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
+  // Keep the latest callback without making it a stream dependency.
+  const onStreamEndRef = useRef(opts.onStreamEnd)
+  onStreamEndRef.current = opts.onStreamEnd
 
   const reload = useCallback(async () => {
     if (!conversationId) return
@@ -98,6 +104,9 @@ export function useConversation(conversationId: string | null) {
       } finally {
         setBusy(false)
         abortRef.current = null
+        // The conversation may have just been auto-titled from the first message;
+        // let consumers (e.g. the breadcrumb conversation list) refresh.
+        onStreamEndRef.current?.()
       }
     },
     [conversationId, reload, syncAfterStream],

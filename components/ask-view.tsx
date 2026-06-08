@@ -10,7 +10,7 @@ import { useConversationList } from "@/components/use-conversation-list"
 
 export function AskView() {
   const list = useConversationList()
-  const chat = useConversation(list.activeId)
+  const chat = useConversation(list.activeId, { onStreamEnd: () => void list.refresh() })
 
   return (
     <>
