@@ -171,8 +171,8 @@ export function ConversationView({
             </div>
           )}
 
-          <div className="flex flex-col gap-1 rounded-2xl border border-foreground/15 bg-background px-3 py-2.5 shadow-sm transition-[border-color,box-shadow] focus-within:border-transparent focus-within:ring-2 focus-within:ring-teal-500 focus-within:ring-offset-1">
-            <div className="flex items-start gap-1.5">
+          <div className="flex items-end gap-2 rounded-2xl border border-foreground/15 bg-background py-2 pr-2 pl-3 shadow-sm transition-[border-color,box-shadow] focus-within:border-transparent focus-within:ring-2 focus-within:ring-teal-500 focus-within:ring-offset-1">
+            <div className="flex min-w-0 flex-1 items-start gap-1.5 py-1">
               {attached && (
                 <span className="min-w-0 shrink-0 truncate text-base font-semibold leading-7 text-primary">
                   @{attached.title}:
@@ -216,23 +216,21 @@ export function ConversationView({
                 }}
               />
             </div>
-            <div className="flex justify-end">
-              {busy ? (
-                <Button size="icon" onClick={stop} aria-label="Stop" className="size-8 rounded-full">
-                  <Square className="size-4 fill-current" />
-                </Button>
-              ) : (
-                <Button
-                  size="icon"
-                  onClick={submit}
-                  disabled={!draft.trim() || disabled}
-                  aria-label="Send"
-                  className="size-8 rounded-full"
-                >
-                  <ArrowUp className="size-4" />
-                </Button>
-              )}
-            </div>
+            {busy ? (
+              <Button size="icon" onClick={stop} aria-label="Stop" className="size-8 shrink-0 rounded-full">
+                <Square className="size-4 fill-current" />
+              </Button>
+            ) : (
+              <Button
+                size="icon"
+                onClick={submit}
+                disabled={!draft.trim() || disabled}
+                aria-label="Send"
+                className="size-8 shrink-0 rounded-full"
+              >
+                <ArrowUp className="size-4" />
+              </Button>
+            )}
           </div>
         </div>
       </div>
