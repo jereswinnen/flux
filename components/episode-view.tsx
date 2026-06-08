@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Play } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ChatPanel } from "@/components/chat-panel"
 import { usePlayer, type AudioMarker, type Track } from "@/components/player-context"
@@ -166,25 +167,31 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
                 <TabsTrigger value="chat" className="lg:hidden">Chat</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="insights" className="min-h-0 flex-1 overflow-y-auto pb-6 pt-4">
-                <EpisodeInsights insights={insights} onSeek={seek} />
+              <TabsContent value="insights" className="min-h-0 flex-1">
+                <ScrollArea className="h-full">
+                  <div className="pb-6 pr-4 pt-4">
+                    <EpisodeInsights insights={insights} onSeek={seek} />
+                  </div>
+                </ScrollArea>
               </TabsContent>
 
-              <TabsContent value="transcript" className="min-h-0 flex-1 overflow-y-auto pb-6 pt-4">
-                <div className="space-y-2 font-serif text-lg leading-relaxed">
-                  {transcript.segments.map((s, i) => (
-                    <p key={s.start ?? i}>
-                      <button
-                        type="button"
-                        onClick={() => seek(s.start)}
-                        className="mr-2 font-sans text-sm tabular-nums text-muted-foreground hover:text-foreground hover:underline"
-                      >
-                        {formatTimestamp(s.start)}
-                      </button>
-                      {s.text}
-                    </p>
-                  ))}
-                </div>
+              <TabsContent value="transcript" className="min-h-0 flex-1">
+                <ScrollArea className="h-full">
+                  <div className="space-y-2 pb-6 pr-4 pt-4 font-serif text-lg leading-relaxed">
+                    {transcript.segments.map((s, i) => (
+                      <p key={s.start ?? i}>
+                        <button
+                          type="button"
+                          onClick={() => seek(s.start)}
+                          className="mr-2 font-sans text-sm tabular-nums text-muted-foreground hover:text-foreground hover:underline"
+                        >
+                          {formatTimestamp(s.start)}
+                        </button>
+                        {s.text}
+                      </p>
+                    ))}
+                  </div>
+                </ScrollArea>
               </TabsContent>
 
               <TabsContent value="chat" className="min-h-0 flex-1 pt-3 lg:hidden">
