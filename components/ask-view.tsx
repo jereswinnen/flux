@@ -1,16 +1,43 @@
 "use client"
 
+import { useEffect, useMemo, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { Plus } from "lucide-react"
 import { AppHeader } from "@/components/app-header"
 import { Button } from "@/components/ui/button"
 import { ConversationMenu } from "@/components/conversation-menu"
-import { ConversationView } from "@/components/conversation-view"
+import { ConversationView, type AttachableEpisode } from "@/components/conversation-view"
 import { useConversation } from "@/components/use-conversation"
 import { useConversationList } from "@/components/use-conversation-list"
 
 export function AskView() {
   const list = useConversationList()
   const chat = useConversation(list.activeId, { onStreamEnd: () => void list.refresh() })
+  const [episodes, setEpisodes] = useState<AttachableEpisode[]>([])
+  const searchParams = useSearchParams()
+  const attachId = searchParams.get("attach")
+
+  // Episodes power the @-mention picker and resolve the ?attach= deep link.
+  useEffect(() => {
+    fetch("/api/episodes")
+      .then((r) => r.json())
+      .then((d) =>
+        setEpisodes(
+          (d.episodes ?? []).map((e: AttachableEpisode) => ({
+            id: e.id,
+            title: e.title,
+            podcastName: e.podcastName,
+            artworkUrl: e.artworkUrl,
+          })),
+        ),
+      )
+      .catch(() => {})
+  }, [])
+
+  const initialAttachment = useMemo(
+    () => (attachId ? episodes.find((e) => e.id === attachId) ?? null : null),
+    [attachId, episodes],
+  )
 
   return (
     <>
@@ -36,7 +63,9 @@ export function AskView() {
           <ConversationView
             chat={chat}
             disabled={!list.activeId}
-            emptyHint="Ask anything across your whole library."
+            episodes={episodes}
+            initialAttachment={initialAttachment}
+            emptyHint="Ask anything across your library — or type @ to attach a specific episode."
           />
         </div>
       </div>

@@ -113,8 +113,8 @@ export function useConversation(
   )
 
   const send = useCallback(
-    (content: string) =>
-      runStream({ content }, (prev) => [
+    (content: string, episodeId?: string) =>
+      runStream({ content, episodeId }, (prev) => [
         ...prev,
         { role: "user", content },
         { role: "assistant", content: "" },

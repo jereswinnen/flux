@@ -1,14 +1,14 @@
 "use client"
 
 import { useEffect } from "react"
+import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Play } from "lucide-react"
+import { Play, Sparkles } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AppHeader } from "@/components/app-header"
-import { ChatPanel } from "@/components/chat-panel"
 import { usePlayer, type AudioMarker, type Track } from "@/components/player-context"
 import { hiResArtwork } from "@/lib/artwork"
 import { formatRelativeDate, formatTimestamp } from "@/lib/format"
@@ -100,6 +100,11 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
                 {episode.status}
               </Badge>
             )}
+            <Button asChild variant="outline" size="sm" className="gap-1.5">
+              <Link href={`/ask?attach=${episode.id}`}>
+                <Sparkles className="size-4" /> Ask
+              </Link>
+            </Button>
             {track && (
               <Button size="sm" onClick={() => player.play(track)} className="gap-2">
                 <Play className="size-4" /> Play
@@ -160,58 +165,40 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
           Processing… this page updates automatically.
         </div>
       ) : (
-        // Bounded by the viewport shell: the active left tab scrolls on its own,
-        // and the chat rail flexes the remaining column height (plain h-full).
-        <div className="grid min-h-0 flex-1 gap-6 p-4 md:p-6 lg:grid-cols-3">
-          <div className="flex min-h-0 flex-col lg:col-span-2">
-            <Tabs defaultValue="insights" className="flex min-h-0 flex-1 flex-col">
-              <TabsList className="shrink-0 self-start">
-                <TabsTrigger value="insights">Insights</TabsTrigger>
-                <TabsTrigger value="transcript">Transcript</TabsTrigger>
-                {/* Chat is a tab on mobile; it lives in the side rail on desktop. */}
-                <TabsTrigger value="chat" className="lg:hidden">Chat</TabsTrigger>
-              </TabsList>
+        <div className="flex min-h-0 flex-1 flex-col p-4 md:p-6">
+          <Tabs defaultValue="insights" className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col">
+            <TabsList className="shrink-0 self-start">
+              <TabsTrigger value="insights">Insights</TabsTrigger>
+              <TabsTrigger value="transcript">Transcript</TabsTrigger>
+            </TabsList>
 
-              <TabsContent value="insights" className="min-h-0 flex-1">
-                <ScrollArea className="h-full">
-                  <div className="pb-6 pr-4 pt-4">
-                    <EpisodeInsights insights={insights} onSeek={seek} />
-                  </div>
-                </ScrollArea>
-              </TabsContent>
-
-              <TabsContent value="transcript" className="min-h-0 flex-1">
-                <ScrollArea className="h-full">
-                  <div className="space-y-2 pb-6 pr-4 pt-4 font-serif text-lg leading-relaxed">
-                    {transcript.segments.map((s, i) => (
-                      <p key={s.start ?? i}>
-                        <button
-                          type="button"
-                          onClick={() => seek(s.start)}
-                          className="mr-2 font-sans text-sm tabular-nums text-muted-foreground hover:text-foreground hover:underline"
-                        >
-                          {formatTimestamp(s.start)}
-                        </button>
-                        {s.text}
-                      </p>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
-
-              <TabsContent value="chat" className="min-h-0 flex-1 pt-3 lg:hidden">
-                <div className="flex h-full flex-col overflow-hidden rounded-xl border bg-card">
-                  <ChatPanel episodeId={episode.id} onSeek={seek} emptyHint="Ask about this episode." />
+            <TabsContent value="insights" className="min-h-0 flex-1">
+              <ScrollArea className="h-full">
+                <div className="pb-6 pr-4 pt-4">
+                  <EpisodeInsights insights={insights} onSeek={seek} />
                 </div>
-              </TabsContent>
-            </Tabs>
-          </div>
+              </ScrollArea>
+            </TabsContent>
 
-          <aside className="hidden min-h-0 lg:col-span-1 lg:block">
-            <div className="flex h-full flex-col overflow-hidden rounded-xl border bg-card">
-              <ChatPanel episodeId={episode.id} onSeek={seek} emptyHint="Ask about this episode." />
-            </div>
-          </aside>
+            <TabsContent value="transcript" className="min-h-0 flex-1">
+              <ScrollArea className="h-full">
+                <div className="space-y-2 pb-6 pr-4 pt-4 font-serif text-lg leading-relaxed">
+                  {transcript.segments.map((s, i) => (
+                    <p key={s.start ?? i}>
+                      <button
+                        type="button"
+                        onClick={() => seek(s.start)}
+                        className="mr-2 font-sans text-sm tabular-nums text-muted-foreground hover:text-foreground hover:underline"
+                      >
+                        {formatTimestamp(s.start)}
+                      </button>
+                      {s.text}
+                    </p>
+                  ))}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
         </div>
       )}
       </div>

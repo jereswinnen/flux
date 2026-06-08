@@ -45,7 +45,12 @@ export async function POST(request: Request) {
     data = (await conversationRepo.get(conversationId))!
   }
 
-  const episodeId = data.conversation.episodeId
+  // Episode scope is per-message: an episode can be "attached" to a single
+  // question (the `@` mention in the composer). Fall back to a legacy
+  // episode-scoped conversation if one exists.
+  const attachedEpisodeId =
+    typeof body.episodeId === "string" && body.episodeId ? body.episodeId : undefined
+  const episodeId = attachedEpisodeId ?? data.conversation.episodeId
   const messages: ModelMessage[] = data.messages.map((m) => ({ role: m.role, content: m.content }))
   const priorTurns = data.messages.slice(0, -1).map((m) => ({ role: m.role, content: m.content }))
 
