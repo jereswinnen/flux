@@ -42,6 +42,7 @@ test("stores transcript, insights, chunks and marks ready", async () => {
         summary: "s",
         takeaways: ["t"],
         topics: ["x"],
+        chapters: [],
         quotes: [],
         entities: [],
       }),

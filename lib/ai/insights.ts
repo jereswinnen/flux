@@ -7,9 +7,10 @@ export const insightsSchema = z.object({
   summary: z.string().describe("2-3 sentence summary (the TL;DR)"),
   takeaways: z.array(z.string()).describe("key bulleted takeaways"),
   topics: z.array(z.string()).describe("topics/themes discussed"),
+  // Required (return [] if none): OpenAI strict structured-output rejects
+  // optional keys — every property must be present.
   chapters: z
     .array(z.object({ title: z.string(), startSec: z.number() }))
-    .optional()
     .describe("chronological chapters/sections with the start time in seconds"),
   quotes: z
     .array(z.object({ text: z.string(), approxTimestampSec: z.number() }))
@@ -38,6 +39,35 @@ function timestampedTranscript(segments: Segment[] | undefined, fallback: string
     .join("\n")
 }
 
+const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim()
+
+// The model only *estimates* the second a quote/chapter occurs at. Anchor it to
+// the real transcript by finding the segment whose words best overlap the text,
+// and use that segment's actual start time. Falls back to the model's value.
+function anchorToSegment(text: string, segments: Segment[], fallbackSec: number): number {
+  const target = normalize(text)
+  if (!target) return fallbackSec
+  const words = new Set(target.split(" ").filter((w) => w.length > 3))
+  if (words.size === 0) return fallbackSec
+
+  let bestStart = fallbackSec
+  let bestScore = 0
+  for (const seg of segments) {
+    const segWords = normalize(seg.text).split(" ")
+    if (segWords.length === 0) continue
+    let hits = 0
+    for (const w of segWords) if (words.has(w)) hits++
+    // Normalize by segment length so long segments don't always win.
+    const score = hits / Math.sqrt(segWords.length)
+    if (score > bestScore) {
+      bestScore = score
+      bestStart = seg.start
+    }
+  }
+  // Require a minimum signal before trusting the match.
+  return bestScore >= 1 ? bestStart : fallbackSec
+}
+
 export async function generateInsights(
   transcript: string,
   opts: { model?: LanguageModel; segments?: Segment[] } = {},
@@ -60,5 +90,17 @@ export async function generateInsights(
       "Transcript:\n" +
       body,
   })
-  return object
+
+  // Quotes are near-verbatim, so snap them onto the real segment they came from
+  // for accurate timestamps. Chapter titles are paraphrased summaries, so we keep
+  // the model's marker-derived startSec for those.
+  const segments = opts.segments
+  if (!segments || segments.length === 0) return object
+  return {
+    ...object,
+    quotes: object.quotes.map((q) => ({
+      ...q,
+      approxTimestampSec: anchorToSegment(q.text, segments, q.approxTimestampSec),
+    })),
+  }
 }

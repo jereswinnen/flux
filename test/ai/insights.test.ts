@@ -7,6 +7,7 @@ test("generateInsights returns a structured object validated by the schema", asy
     summary: "A talk about X.",
     takeaways: ["one", "two"],
     topics: ["x"],
+    chapters: [{ title: "Intro", startSec: 0 }],
     quotes: [{ text: "quote", approxTimestampSec: 12 }],
     entities: [{ name: "Jane", type: "person" }],
   }
