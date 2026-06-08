@@ -5,8 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Play } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ChatPanel } from "@/components/chat-panel"
 import { usePlayer, type AudioMarker, type Track } from "@/components/player-context"
@@ -92,7 +90,7 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
   return (
     <div className="flex flex-1 flex-col">
       {/* Minimal header */}
-      <header className="flex items-center gap-4 border-b p-4 md:px-6">
+      <header className="flex shrink-0 items-center gap-4 border-b p-4 md:px-6">
         <div className="size-14 shrink-0 overflow-hidden rounded-md bg-muted md:size-16">
           {episode.artworkUrl ? (
             <img src={hiResArtwork(episode.artworkUrl, 240)} alt="" className="size-full object-cover" />
@@ -156,7 +154,8 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
           Processing… this page updates automatically.
         </div>
       ) : (
-        // Split: tabbed insights/transcript (left), chat sidebar (right)
+        // Split: tabbed insights/transcript (left, flows with the page), chat rail
+        // (right, sticks and fills the viewport). The page itself scrolls naturally.
         <div className="grid flex-1 gap-6 p-4 md:p-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <Tabs defaultValue="insights">
@@ -171,29 +170,25 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
                 <EpisodeInsights insights={insights} onSeek={seek} />
               </TabsContent>
 
-              <TabsContent value="transcript" className="pt-3">
-                <Card className="p-5">
-                  <ScrollArea className="h-[60vh] pr-3">
-                    <div className="space-y-2 font-serif text-lg leading-relaxed">
-                      {transcript.segments.map((s, i) => (
-                        <p key={s.start ?? i}>
-                          <button
-                            type="button"
-                            onClick={() => seek(s.start)}
-                            className="mr-2 font-sans text-sm tabular-nums text-muted-foreground hover:text-foreground hover:underline"
-                          >
-                            {formatTimestamp(s.start)}
-                          </button>
-                          {s.text}
-                        </p>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </Card>
+              <TabsContent value="transcript" className="pt-4">
+                <div className="space-y-2 font-serif text-lg leading-relaxed">
+                  {transcript.segments.map((s, i) => (
+                    <p key={s.start ?? i}>
+                      <button
+                        type="button"
+                        onClick={() => seek(s.start)}
+                        className="mr-2 font-sans text-sm tabular-nums text-muted-foreground hover:text-foreground hover:underline"
+                      >
+                        {formatTimestamp(s.start)}
+                      </button>
+                      {s.text}
+                    </p>
+                  ))}
+                </div>
               </TabsContent>
 
               <TabsContent value="chat" className="pt-3 lg:hidden">
-                <div className="flex h-[70vh] flex-col overflow-hidden rounded-xl border bg-card">
+                <div className="flex h-[70svh] flex-col overflow-hidden rounded-xl border bg-card">
                   <ChatPanel episodeId={episode.id} onSeek={seek} emptyHint="Ask about this episode." />
                 </div>
               </TabsContent>
@@ -201,8 +196,8 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
           </div>
 
           <aside className="hidden lg:col-span-1 lg:block">
-            <div className="lg:sticky lg:top-6">
-              <div className="flex h-[calc(100vh-7rem)] flex-col overflow-hidden rounded-xl border bg-card">
+            <div className="sticky top-6 h-[calc(100svh-3rem)]">
+              <div className="flex h-full flex-col overflow-hidden rounded-xl border bg-card">
                 <ChatPanel episodeId={episode.id} onSeek={seek} emptyHint="Ask about this episode." />
               </div>
             </div>

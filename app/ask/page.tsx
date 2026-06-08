@@ -12,7 +12,7 @@ export default function AskPage() {
             Question everything you&apos;ve transcribed. Answers cite the episodes and moments they came from.
           </p>
         </div>
-        <div className="flex h-[calc(100vh-12rem)] flex-col overflow-hidden rounded-xl border bg-card">
+        <div className="flex h-[70svh] flex-col overflow-hidden rounded-xl border bg-card">
           <ChatPanel emptyHint="Ask anything across your whole library." />
         </div>
       </div>

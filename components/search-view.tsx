@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import { Loader2, Search, Sparkles } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { hiResArtwork } from "@/lib/artwork"
@@ -48,31 +50,43 @@ function groupSources(sources: Source[]): Group[] {
   return groups
 }
 
-// Render the answer, turning [n] citations into links to the source moment.
+// Render the answer as markdown, turning [n] citations into chip links to the
+// source moment. We rewrite bare [n] into a `cite:n` link, then render that as a
+// small superscript chip in the markdown `a` handler.
 function Answer({ text, sources }: { text: string; sources: Source[] }) {
-  const parts = text.split(/(\[\d+\])/g)
+  const withCitations = text.replace(/\[(\d+)\](?!\()/g, "[$1](cite:$1)")
   return (
-    <div className="font-serif text-lg leading-relaxed">
-      {parts.map((p, i) => {
-        const m = p.match(/^\[(\d+)\]$/)
-        if (m) {
-          const n = Number(m[1])
-          const s = sources[n - 1]
-          if (s) {
+    <div className="prose prose-base max-w-none leading-relaxed dark:prose-invert prose-p:my-2 prose-a:text-primary prose-li:my-0.5">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          a({ href, children }: { href?: string; children?: React.ReactNode }) {
+            if (href?.startsWith("cite:")) {
+              const n = Number(href.slice(5))
+              const s = sources[n - 1]
+              if (s) {
+                return (
+                  <Link
+                    href={`/episodes/${s.episodeId}?t=${Math.floor(s.startSec)}`}
+                    title={`${s.episodeTitle} · ${formatTimestamp(s.startSec)}`}
+                    className="mx-0.5 inline-flex size-4 translate-y-[-0.15em] items-center justify-center rounded bg-primary/15 align-baseline text-[10px] font-medium text-primary no-underline hover:bg-primary/25"
+                  >
+                    {n}
+                  </Link>
+                )
+              }
+              return <>{children}</>
+            }
             return (
-              <Link
-                key={i}
-                href={`/episodes/${s.episodeId}?t=${Math.floor(s.startSec)}`}
-                title={`${s.episodeTitle} · ${formatTimestamp(s.startSec)}`}
-                className="mx-0.5 inline-flex size-4 -translate-y-1.5 items-center justify-center rounded bg-primary/15 align-baseline font-sans text-[10px] font-medium text-primary hover:bg-primary/25"
-              >
-                {n}
-              </Link>
+              <a href={href} className="text-primary hover:underline">
+                {children}
+              </a>
             )
-          }
-        }
-        return <span key={i}>{p}</span>
-      })}
+          },
+        }}
+      >
+        {withCitations}
+      </ReactMarkdown>
     </div>
   )
 }
