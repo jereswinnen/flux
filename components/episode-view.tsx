@@ -88,7 +88,7 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
   ].filter(Boolean) as string[]
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       {/* Minimal header */}
       <header className="flex shrink-0 items-center gap-4 border-b p-4 md:px-6">
         <div className="size-14 shrink-0 overflow-hidden rounded-md bg-muted md:size-16">
@@ -136,7 +136,7 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
       </header>
 
       {episode.status === "failed" ? (
-        <div className="space-y-3 p-4 md:p-6">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 md:p-6">
           <p className="text-sm text-destructive">{episode.errorMessage ?? "Processing failed."}</p>
           <Button
             size="sm"
@@ -150,27 +150,27 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
           </Button>
         </div>
       ) : !transcript ? (
-        <div className="p-4 text-sm text-muted-foreground md:p-6">
+        <div className="min-h-0 flex-1 p-4 text-sm text-muted-foreground md:p-6">
           Processing… this page updates automatically.
         </div>
       ) : (
-        // Split: tabbed insights/transcript (left, flows with the page), chat rail
-        // (right, sticks and fills the viewport). The page itself scrolls naturally.
-        <div className="grid flex-1 gap-6 p-4 md:p-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <Tabs defaultValue="insights">
-              <TabsList>
+        // The content region fills the bounded shell. The active left tab scrolls
+        // on its own; the chat rail fills the column height (plain h-full).
+        <div className="grid min-h-0 flex-1 gap-6 p-4 md:p-6 lg:grid-cols-3">
+          <div className="flex min-h-0 flex-col lg:col-span-2">
+            <Tabs defaultValue="insights" className="flex min-h-0 flex-1 flex-col">
+              <TabsList className="shrink-0 self-start">
                 <TabsTrigger value="insights">Insights</TabsTrigger>
                 <TabsTrigger value="transcript">Transcript</TabsTrigger>
                 {/* Chat is a tab on mobile; it lives in the side rail on desktop. */}
                 <TabsTrigger value="chat" className="lg:hidden">Chat</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="insights" className="pt-4">
+              <TabsContent value="insights" className="min-h-0 flex-1 overflow-y-auto pb-6 pt-4">
                 <EpisodeInsights insights={insights} onSeek={seek} />
               </TabsContent>
 
-              <TabsContent value="transcript" className="pt-4">
+              <TabsContent value="transcript" className="min-h-0 flex-1 overflow-y-auto pb-6 pt-4">
                 <div className="space-y-2 font-serif text-lg leading-relaxed">
                   {transcript.segments.map((s, i) => (
                     <p key={s.start ?? i}>
@@ -187,19 +187,17 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
                 </div>
               </TabsContent>
 
-              <TabsContent value="chat" className="pt-3 lg:hidden">
-                <div className="flex h-[70svh] flex-col overflow-hidden rounded-xl border bg-card">
+              <TabsContent value="chat" className="min-h-0 flex-1 pt-3 lg:hidden">
+                <div className="flex h-full flex-col overflow-hidden rounded-xl border bg-card">
                   <ChatPanel episodeId={episode.id} onSeek={seek} emptyHint="Ask about this episode." />
                 </div>
               </TabsContent>
             </Tabs>
           </div>
 
-          <aside className="hidden lg:col-span-1 lg:block">
-            <div className="sticky top-6 h-[calc(100svh-3rem)]">
-              <div className="flex h-full flex-col overflow-hidden rounded-xl border bg-card">
-                <ChatPanel episodeId={episode.id} onSeek={seek} emptyHint="Ask about this episode." />
-              </div>
+          <aside className="hidden min-h-0 lg:col-span-1 lg:block">
+            <div className="flex h-full flex-col overflow-hidden rounded-xl border bg-card">
+              <ChatPanel episodeId={episode.id} onSeek={seek} emptyHint="Ask about this episode." />
             </div>
           </aside>
         </div>
