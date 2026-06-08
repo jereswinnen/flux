@@ -126,9 +126,9 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
       />
       {/* One natural scroll region under the pinned breadcrumb. */}
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-4xl px-5 py-6 md:px-8 md:py-8">
+        <div className="mx-auto w-full max-w-4xl px-4 py-4 md:px-6 md:py-6">
           {/* Episode header — one compact row on every breakpoint */}
-          <header className="flex items-start gap-3 pb-7 sm:gap-4">
+          <header className="flex items-start gap-3 pb-5 sm:gap-4">
             <div className="size-12 shrink-0 overflow-hidden rounded-md bg-muted sm:size-14">
               {episode.artworkUrl ? (
                 <img src={hiResArtwork(episode.artworkUrl, 240)} alt="" className="size-full object-cover" />
@@ -166,18 +166,18 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
           ) : (
             <Tabs defaultValue="insights">
               {/* Tab bar sticks just under the breadcrumb while content scrolls. */}
-              <div className="sticky top-0 z-10 -mx-5 mb-4 bg-background/95 px-5 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:-mx-8 md:px-8">
+              <div className="sticky top-0 z-10 -mx-4 mb-2 bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:-mx-6 md:px-6">
                 <TabsList>
                   <TabsTrigger value="insights">Insights</TabsTrigger>
                   <TabsTrigger value="transcript">Transcript</TabsTrigger>
                 </TabsList>
               </div>
 
-              <TabsContent value="insights" className="pb-12 pt-3">
+              <TabsContent value="insights" className="pb-10 pt-2">
                 <EpisodeInsights insights={insights} onSeek={seek} />
               </TabsContent>
 
-              <TabsContent value="transcript" className="pb-12 pt-3">
+              <TabsContent value="transcript" className="pb-10 pt-2">
                 <div className="space-y-2 font-serif text-lg leading-relaxed">
                   {transcript.segments.map((s, i) => (
                     <p key={s.start ?? i}>
