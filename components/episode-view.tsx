@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Play, Sparkles } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AppHeader } from "@/components/app-header"
 import { usePlayer, type AudioMarker, type Track } from "@/components/player-context"
@@ -125,64 +124,61 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
           </>
         }
       />
-      <div className="flex min-h-0 flex-1 flex-col">
-        {/* Episode header */}
-        <header className="flex shrink-0 items-center gap-4 border-b p-4 md:px-6">
-          <div className="size-14 shrink-0 overflow-hidden rounded-md bg-muted md:size-16">
-            {episode.artworkUrl ? (
-              <img src={hiResArtwork(episode.artworkUrl, 240)} alt="" className="size-full object-cover" />
-            ) : null}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-lg font-semibold">{episode.title}</h1>
-            <div className="flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
-              {meta.map((m, i) => (
-                <span key={i} className="flex items-center gap-1.5">
-                  {i > 0 && <span aria-hidden>·</span>}
-                  <span className="truncate">{m}</span>
-                </span>
-              ))}
+      {/* One natural scroll region under the pinned breadcrumb. */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-4xl px-4 py-4 md:px-6 md:py-6">
+          {/* Episode header (scrolls with the content) */}
+          <header className="flex items-center gap-4 pb-6">
+            <div className="size-14 shrink-0 overflow-hidden rounded-md bg-muted md:size-16">
+              {episode.artworkUrl ? (
+                <img src={hiResArtwork(episode.artworkUrl, 240)} alt="" className="size-full object-cover" />
+              ) : null}
             </div>
-          </div>
-        </header>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-lg font-semibold leading-snug">{episode.title}</h1>
+              <div className="flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
+                {meta.map((m, i) => (
+                  <span key={i} className="flex items-center gap-1.5">
+                    {i > 0 && <span aria-hidden>·</span>}
+                    <span>{m}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </header>
 
-      {episode.status === "failed" ? (
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 md:p-6">
-          <p className="text-sm text-destructive">{episode.errorMessage ?? "Processing failed."}</p>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={async () => {
-              await fetch(`/api/episodes/${episode.id}/retry`, { method: "POST" })
-              router.refresh()
-            }}
-          >
-            Retry
-          </Button>
-        </div>
-      ) : !transcript ? (
-        <div className="p-4 text-sm text-muted-foreground md:p-6">
-          Processing… this page updates automatically.
-        </div>
-      ) : (
-        <div className="flex min-h-0 flex-1 flex-col p-4 md:p-6">
-          <Tabs defaultValue="insights" className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col">
-            <TabsList className="shrink-0 self-start">
-              <TabsTrigger value="insights">Insights</TabsTrigger>
-              <TabsTrigger value="transcript">Transcript</TabsTrigger>
-            </TabsList>
+          {episode.status === "failed" ? (
+            <div className="space-y-3">
+              <p className="text-sm text-destructive">{episode.errorMessage ?? "Processing failed."}</p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  await fetch(`/api/episodes/${episode.id}/retry`, { method: "POST" })
+                  router.refresh()
+                }}
+              >
+                Retry
+              </Button>
+            </div>
+          ) : !transcript ? (
+            <div className="text-sm text-muted-foreground">Processing… this page updates automatically.</div>
+          ) : (
+            <Tabs defaultValue="insights">
+              {/* Tab bar sticks just under the breadcrumb while content scrolls. */}
+              <div className="sticky top-0 z-10 -mx-4 mb-2 bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:-mx-6 md:px-6">
+                <TabsList>
+                  <TabsTrigger value="insights">Insights</TabsTrigger>
+                  <TabsTrigger value="transcript">Transcript</TabsTrigger>
+                </TabsList>
+              </div>
 
-            <TabsContent value="insights" className="min-h-0 flex-1">
-              <ScrollArea className="h-full">
-                <div className="pb-6 pr-4 pt-4">
-                  <EpisodeInsights insights={insights} onSeek={seek} />
-                </div>
-              </ScrollArea>
-            </TabsContent>
+              <TabsContent value="insights" className="pb-10 pt-2">
+                <EpisodeInsights insights={insights} onSeek={seek} />
+              </TabsContent>
 
-            <TabsContent value="transcript" className="min-h-0 flex-1">
-              <ScrollArea className="h-full">
-                <div className="space-y-2 pb-6 pr-4 pt-4 font-serif text-lg leading-relaxed">
+              <TabsContent value="transcript" className="pb-10 pt-2">
+                <div className="space-y-2 font-serif text-lg leading-relaxed">
                   {transcript.segments.map((s, i) => (
                     <p key={s.start ?? i}>
                       <button
@@ -196,11 +192,10 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
                     </p>
                   ))}
                 </div>
-              </ScrollArea>
-            </TabsContent>
-          </Tabs>
+              </TabsContent>
+            </Tabs>
+          )}
         </div>
-      )}
       </div>
     </>
   )
