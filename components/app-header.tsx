@@ -47,8 +47,13 @@ export function AppHeader({
             })}
           </BreadcrumbList>
         </Breadcrumb>
+        {actions && (
+          <>
+            <Separator orientation="vertical" className="data-[orientation=vertical]:h-4" />
+            {actions}
+          </>
+        )}
       </div>
-      {actions && <div className="ml-auto flex items-center px-4">{actions}</div>}
     </header>
   )
 }

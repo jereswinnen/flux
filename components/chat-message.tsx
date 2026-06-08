@@ -90,6 +90,16 @@ export function ChatMessage({
   // library-wide answers). Episode [m:ss] citations are handled by remarkTimestamps.
   const content = message.content.replace(/\[(\d+)\](?!\()/g, "[$1](cite:$1)")
 
+  // Only surface the sources the answer actually cited (keeping their original
+  // numbers so the [n] chips still line up). Older messages have no [n] citations
+  // — fall back to showing all retrieved sources.
+  const citedNums = new Set(
+    Array.from(message.content.matchAll(/\[(\d+)\]/g), (m) => Number(m[1])),
+  )
+  const shownSources = sources
+    .map((s, i) => ({ s, n: i + 1 }))
+    .filter(({ n }) => citedNums.size === 0 || citedNums.has(n))
+
   return (
     <div className="space-y-3">
       <div className="prose prose-lg max-w-none font-serif leading-relaxed dark:prose-invert prose-headings:font-sans prose-p:my-2.5 prose-a:text-primary prose-li:my-1 prose-strong:font-semibold">
@@ -148,21 +158,21 @@ export function ChatMessage({
 
       {message.content && (
         <>
-          {sources.length > 0 && (
+          {shownSources.length > 0 && (
             <div className="space-y-2">
               <p className="font-sans text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Sources
               </p>
               <div className="grid gap-2 sm:grid-cols-2">
-                {sources.map((s, i) => (
+                {shownSources.map(({ s, n }) => (
                   <button
-                    key={i}
+                    key={n}
                     type="button"
                     onClick={() => openSource(s)}
                     className="group flex items-center gap-3 rounded-xl border p-2.5 text-left transition-colors hover:border-foreground/20 hover:bg-muted/50"
                   >
                     <span className="flex size-5 shrink-0 items-center justify-center rounded bg-primary/15 font-sans text-[11px] font-medium text-primary">
-                      {i + 1}
+                      {n}
                     </span>
                     <div className="size-9 shrink-0 overflow-hidden rounded-md bg-muted">
                       {s.artworkUrl ? (
