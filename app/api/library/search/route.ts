@@ -1,7 +1,7 @@
 import { db } from "@/lib/db"
 import { episodeRepo } from "@/lib/db/episodes"
 import { embedQuery } from "@/lib/ai/embeddings"
-import { hybridSearch } from "@/lib/db/search"
+import { hybridSearch, refineHitTimestamps } from "@/lib/db/search"
 
 // Global ⌘K library search: matching episodes (by title/show) + transcript
 // moments (hybrid vector + full-text), resolved in parallel.
@@ -14,6 +14,7 @@ export async function POST(request: Request) {
     episodeRepo.search(query, 6),
     embedQuery(query)
       .then((embedding) => hybridSearch(db, embedding, query, { limit: 6 }))
+      .then((hits) => refineHitTimestamps(db, hits, query))
       .catch(() => []),
   ])
 

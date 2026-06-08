@@ -2,7 +2,7 @@ import { openai } from "@ai-sdk/openai"
 import { generateText } from "ai"
 import { db } from "@/lib/db"
 import { embedQuery } from "@/lib/ai/embeddings"
-import { hybridSearch } from "@/lib/db/search"
+import { hybridSearch, refineHitTimestamps } from "@/lib/db/search"
 import { formatTimestamp } from "@/lib/format"
 
 // One-shot "smart search": synthesize a cited answer from the best transcript
@@ -13,8 +13,9 @@ export async function POST(request: Request) {
   const query = typeof body?.query === "string" ? body.query.trim() : ""
   if (query.length < 2) return Response.json({ answer: null, sources: [] })
 
-  const sources = await hybridSearch(db, await embedQuery(query), query, { limit: 10 })
-  if (sources.length === 0) return Response.json({ answer: null, sources: [] })
+  const rawSources = await hybridSearch(db, await embedQuery(query), query, { limit: 10 })
+  if (rawSources.length === 0) return Response.json({ answer: null, sources: [] })
+  const sources = await refineHitTimestamps(db, rawSources, query)
 
   const numbered = sources
     .map((s, i) => `[${i + 1}] (${s.episodeTitle} @ ${formatTimestamp(s.startSec)}) ${s.content}`)

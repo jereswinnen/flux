@@ -1,6 +1,6 @@
-import { cosineDistance, desc, eq, sql } from "drizzle-orm"
+import { cosineDistance, desc, eq, inArray, sql } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import { chunks, episodes } from "./schema"
+import { chunks, episodes, transcripts } from "./schema"
 import * as schema from "./schema"
 
 export interface SearchHit {
@@ -80,4 +80,46 @@ export async function hybridSearch(
   // postgres-js via drizzle execute may return the array directly OR { rows }. Normalize:
   const rows = Array.isArray(result) ? result : (result as { rows?: unknown[] }).rows ?? []
   return rows as unknown as SearchHit[]
+}
+
+const normalizeText = (s: string) =>
+  s.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim()
+
+/**
+ * Hits are retrieved at chunk granularity (~600 tokens / several minutes), and a
+ * chunk's startSec points at its beginning. Refine each hit's timestamp to the
+ * single transcript segment inside the chunk that best matches the query, so
+ * "jump to moment" lands on the relevant sentence rather than the chunk start.
+ */
+export async function refineHitTimestamps(
+  db: PostgresJsDatabase<typeof schema>,
+  hits: SearchHit[],
+  query: string,
+): Promise<SearchHit[]> {
+  if (hits.length === 0) return hits
+  const words = new Set(normalizeText(query).split(" ").filter((w) => w.length > 3))
+  if (words.size === 0) return hits
+
+  const episodeIds = [...new Set(hits.map((h) => h.episodeId))]
+  const rows = await db
+    .select({ episodeId: transcripts.episodeId, segments: transcripts.segments })
+    .from(transcripts)
+    .where(inArray(transcripts.episodeId, episodeIds))
+  const segsByEpisode = new Map(rows.map((r) => [r.episodeId, r.segments ?? []]))
+
+  return hits.map((h) => {
+    const segs = segsByEpisode.get(h.episodeId) ?? []
+    let bestStart = h.startSec
+    let bestScore = 0
+    for (const s of segs) {
+      if (s.start < h.startSec || s.start > h.endSec) continue
+      let score = 0
+      for (const w of normalizeText(s.text).split(" ")) if (words.has(w)) score++
+      if (score > bestScore) {
+        bestScore = score
+        bestStart = Math.floor(s.start)
+      }
+    }
+    return bestScore > 0 ? { ...h, startSec: bestStart } : h
+  })
 }
