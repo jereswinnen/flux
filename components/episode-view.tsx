@@ -127,16 +127,16 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
       {/* One natural scroll region under the pinned breadcrumb. */}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-4xl px-4 py-4 md:px-6 md:py-6">
-          {/* Episode header (scrolls with the content) — stacked hero on mobile */}
-          <header className="flex flex-col gap-3 pb-6 sm:flex-row sm:items-center sm:gap-4">
-            <div className="size-20 shrink-0 overflow-hidden rounded-lg bg-muted sm:size-16">
+          {/* Episode header — one compact row on every breakpoint */}
+          <header className="flex items-start gap-3 pb-5 sm:gap-4">
+            <div className="size-12 shrink-0 overflow-hidden rounded-md bg-muted sm:size-14">
               {episode.artworkUrl ? (
                 <img src={hiResArtwork(episode.artworkUrl, 240)} alt="" className="size-full object-cover" />
               ) : null}
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-semibold leading-snug sm:text-lg">{episode.title}</h1>
-              <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
+              <h1 className="line-clamp-2 text-base font-semibold leading-snug sm:text-lg">{episode.title}</h1>
+              <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground sm:text-sm">
                 {meta.map((m, i) => (
                   <span key={i} className="flex items-center gap-1.5">
                     {i > 0 && <span aria-hidden>·</span>}
