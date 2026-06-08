@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { ArrowDown, Loader2, Square } from "lucide-react"
+import { ArrowDown, ArrowUp, Square } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
@@ -69,25 +69,16 @@ export function ConversationView({
         </div>
       )}
 
-      <div className="mx-auto w-full max-w-3xl space-y-2">
-        {busy && (
-          <button
-            type="button"
-            onClick={stop}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <Square className="size-3" /> Stop
-          </button>
-        )}
-        <div className="flex items-end gap-2">
+      <div className="mx-auto w-full max-w-3xl">
+        <div className="relative rounded-2xl border bg-background shadow-sm transition-colors focus-within:border-foreground/20 focus-within:ring-1 focus-within:ring-ring/30">
           <Textarea
             ref={taRef}
             rows={1}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="What did they say about…?"
+            placeholder="Ask anything…"
             disabled={disabled}
-            className="max-h-[200px] min-h-9 resize-none"
+            className="max-h-[220px] min-h-[52px] resize-none border-0 bg-transparent px-4 py-3.5 pr-14 text-base shadow-none focus-visible:ring-0 dark:bg-transparent"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault()
@@ -95,9 +86,26 @@ export function ConversationView({
               }
             }}
           />
-          <Button onClick={submit} disabled={busy || !draft.trim() || disabled}>
-            {busy ? <Loader2 className="size-4 animate-spin" /> : "Ask"}
-          </Button>
+          {busy ? (
+            <Button
+              size="icon"
+              onClick={stop}
+              aria-label="Stop"
+              className="absolute bottom-2.5 right-2.5 size-9 rounded-full"
+            >
+              <Square className="size-4 fill-current" />
+            </Button>
+          ) : (
+            <Button
+              size="icon"
+              onClick={submit}
+              disabled={!draft.trim() || disabled}
+              aria-label="Send"
+              className="absolute bottom-2.5 right-2.5 size-9 rounded-full"
+            >
+              <ArrowUp className="size-4" />
+            </Button>
+          )}
         </div>
       </div>
     </div>
