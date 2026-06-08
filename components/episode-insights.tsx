@@ -23,17 +23,35 @@ const ENTITY_GROUPS: { type: string; label: string }[] = [
   { type: "other", label: "Also mentioned" },
 ]
 
+export type InsightSection = { id: string; label: string }
+
+// The sections present for a given insights object, in render order — drives the
+// on-this-page nav. Ids match the anchor ids rendered below.
+export function insightSections(insights: InsightsData): InsightSection[] {
+  if (!insights) return []
+  const out: InsightSection[] = []
+  if (insights.summary) out.push({ id: "summary", label: "Overview" })
+  if (insights.chapters?.length) out.push({ id: "chapters", label: "Chapters" })
+  if (insights.takeaways?.length) out.push({ id: "takeaways", label: "Key takeaways" })
+  if (insights.quotes?.length) out.push({ id: "quotes", label: "Notable quotes" })
+  if (insights.topics?.length) out.push({ id: "topics", label: "Topics" })
+  if (insights.entities?.length) out.push({ id: "mentioned", label: "Mentioned" })
+  return out
+}
+
 function Section({
+  id,
   icon,
   title,
   children,
 }: {
+  id: string
   icon: React.ReactNode
   title: string
   children: React.ReactNode
 }) {
   return (
-    <section className="space-y-4">
+    <section id={id} className="scroll-mt-20 space-y-4">
       <h3 className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {icon}
         {title}
@@ -61,11 +79,13 @@ export function EpisodeInsights({
   return (
     <div className="space-y-10">
       {insights.summary && (
-        <p className="font-serif text-xl leading-relaxed text-foreground">{insights.summary}</p>
+        <section id="summary" className="scroll-mt-20">
+          <p className="font-serif text-xl leading-relaxed text-foreground">{insights.summary}</p>
+        </section>
       )}
 
       {chapters.length > 0 && (
-        <Section icon={<ListOrdered className="size-3.5" />} title="Chapters">
+        <Section id="chapters" icon={<ListOrdered className="size-3.5" />} title="Chapters">
           <ol className="overflow-hidden rounded-lg border">
             {chapters.map((c, i) => (
               <li key={i} className="border-b last:border-b-0">
@@ -86,7 +106,7 @@ export function EpisodeInsights({
       )}
 
       {takeaways.length > 0 && (
-        <Section icon={<Lightbulb className="size-3.5" />} title="Key takeaways">
+        <Section id="takeaways" icon={<Lightbulb className="size-3.5" />} title="Key takeaways">
           <ul className="space-y-4">
             {takeaways.map((t, i) => (
               <li key={i} className="flex gap-3 font-serif text-lg leading-relaxed">
@@ -99,7 +119,7 @@ export function EpisodeInsights({
       )}
 
       {quotes.length > 0 && (
-        <Section icon={<Quote className="size-3.5" />} title="Notable quotes">
+        <Section id="quotes" icon={<Quote className="size-3.5" />} title="Notable quotes">
           <div className="space-y-5">
             {quotes.map((q, i) => (
               <blockquote
@@ -121,7 +141,7 @@ export function EpisodeInsights({
       )}
 
       {topics.length > 0 && (
-        <Section icon={<Hash className="size-3.5" />} title="Topics">
+        <Section id="topics" icon={<Hash className="size-3.5" />} title="Topics">
           <div className="flex flex-wrap gap-1.5">
             {topics.map((t, i) => (
               <Link key={i} href={`/topics/${encodeURIComponent(t)}`}>
@@ -135,7 +155,7 @@ export function EpisodeInsights({
       )}
 
       {entities.length > 0 && (
-        <Section icon={<Users className="size-3.5" />} title="Mentioned">
+        <Section id="mentioned" icon={<Users className="size-3.5" />} title="Mentioned">
           <div className="space-y-4">
             {ENTITY_GROUPS.map(({ type, label }) => {
               const items = entities.filter((e) => (e.type ?? "other") === type)

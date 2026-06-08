@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Play, Sparkles } from "lucide-react"
@@ -12,7 +12,8 @@ import { usePlayer, type AudioMarker, type Track } from "@/components/player-con
 import { hiResArtwork } from "@/lib/artwork"
 import { formatRelativeDate, formatTimestamp } from "@/lib/format"
 import { EpisodeActions } from "@/components/episode-actions"
-import { EpisodeInsights } from "@/components/episode-insights"
+import { EpisodeInsights, insightSections } from "@/components/episode-insights"
+import { InsightsNav } from "@/components/insights-nav"
 
 type Segment = { start: number; end: number; text: string }
 type Insights = {
@@ -67,6 +68,10 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
   const seek = (sec: number) => {
     if (track) player.cue(track, sec)
   }
+  const [tab, setTab] = useState("insights")
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const sections = insightSections(insights)
+
   // Deep-link: /episodes/[id]?t=<sec> cues the player to that moment on load.
   const searchParams = useSearchParams()
   const tParam = searchParams.get("t")
@@ -125,8 +130,9 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
         }
       />
       {/* One natural scroll region under the pinned breadcrumb. */}
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-4xl px-4 py-4 md:px-6 md:py-6">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-5xl gap-10 px-4 py-4 md:px-6 md:py-6">
+          <div className="min-w-0 flex-1">
           {/* Episode header — one compact row on every breakpoint */}
           <header className="flex items-start gap-3 pb-5 sm:gap-4">
             <div className="size-12 shrink-0 overflow-hidden rounded-md bg-muted sm:size-14">
@@ -164,7 +170,7 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
           ) : !transcript ? (
             <div className="text-sm text-muted-foreground">Processing… this page updates automatically.</div>
           ) : (
-            <Tabs defaultValue="insights">
+            <Tabs value={tab} onValueChange={setTab}>
               {/* Tab bar sticks just under the breadcrumb while content scrolls. */}
               <div className="sticky top-0 z-10 -mx-4 mb-2 bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:-mx-6 md:px-6">
                 <TabsList>
@@ -194,6 +200,13 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
                 </div>
               </TabsContent>
             </Tabs>
+          )}
+          </div>
+
+          {transcript && tab === "insights" && sections.length > 0 && (
+            <aside className="hidden w-44 shrink-0 lg:block">
+              <InsightsNav sections={sections} scrollRef={scrollRef} />
+            </aside>
           )}
         </div>
       </div>
