@@ -195,7 +195,11 @@ export function AddCommand() {
     const atEnd = isInput && el.selectionStart === el.value.length && el.selectionStart === el.selectionEnd
     const atStart = isInput && el.selectionStart === 0 && el.selectionEnd === 0
     if (mode === "search" && e.key === "ArrowRight" && atEnd) {
-      const show = shows.find((s) => `show-${s.collectionId}` === active)
+      // Read the currently-highlighted item straight from cmdk's DOM so this
+      // works no matter where the show sits among library/moment results.
+      const selected = document.querySelector<HTMLElement>('[cmdk-item][aria-selected="true"]')
+      const value = selected?.getAttribute("data-value") ?? active
+      const show = shows.find((s) => `show-${s.collectionId}` === value)
       if (show?.feedUrl) {
         e.preventDefault()
         loadShowEpisodes(show.feedUrl, { name: show.name, artworkUrl: show.artworkUrl })

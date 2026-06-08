@@ -85,17 +85,17 @@ export function EpisodeActions({
             <MoreVertical className="size-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={copy}>
+        <DropdownMenuContent align="end" className="min-w-44">
+          <DropdownMenuItem onClick={copy} className="whitespace-nowrap">
             <Copy className="size-4" /> Copy markdown
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={download}>
+          <DropdownMenuItem onClick={download} className="whitespace-nowrap">
             <Download className="size-4" /> Download .md
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={() => setConfirmOpen(true)}
-            className="text-destructive focus:text-destructive"
+            className="whitespace-nowrap text-destructive focus:text-destructive"
           >
             <Trash2 className="size-4" /> Delete
           </DropdownMenuItem>
