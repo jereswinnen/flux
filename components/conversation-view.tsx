@@ -129,20 +129,20 @@ export function ConversationView({
 
       <div className="mx-auto w-full max-w-3xl">
         <div className="relative rounded-2xl border bg-background shadow-sm transition-colors focus-within:border-foreground/20 focus-within:ring-1 focus-within:ring-ring/30">
-          {/* @-mention episode picker */}
+          {/* @-mention episode picker — styled like the sidebar nav */}
           {mention !== null && matches.length > 0 && (
-            <div className="absolute bottom-full left-0 z-20 mb-2 w-full overflow-hidden rounded-xl border bg-popover py-1 shadow-md">
+            <div className="absolute bottom-full left-0 z-20 mb-2 w-72 max-w-full overflow-hidden rounded-xl border bg-popover p-1 shadow-md">
               {matches.map((e, idx) => (
                 <button
                   key={e.id}
                   type="button"
                   onClick={() => attachEpisode(e)}
                   onMouseEnter={() => setHighlight(idx)}
-                  className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm ${
-                    idx === highlight ? "bg-muted" : ""
+                  className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm ${
+                    idx === highlight ? "bg-accent text-accent-foreground" : ""
                   }`}
                 >
-                  <div className="size-6 shrink-0 overflow-hidden rounded bg-muted">
+                  <div className="size-7 shrink-0 overflow-hidden rounded-md bg-muted">
                     {e.artworkUrl ? (
                       <img src={hiResArtwork(e.artworkUrl, 80)} alt="" className="size-full object-cover" />
                     ) : null}
