@@ -9,7 +9,14 @@ test("generateInsights returns a structured object validated by the schema", asy
     topics: ["x"],
     chapters: [{ title: "Intro", startSec: 0 }],
     quotes: [{ text: "quote", approxTimestampSec: 12 }],
-    entities: [{ name: "Jane", type: "person" }],
+    entities: [
+      {
+        name: "Jane",
+        type: "person",
+        context: "guest, talked about compilers",
+        approxTimestampSec: 30,
+      },
+    ],
   }
   const model = new MockLanguageModelV3({
     doGenerate: async () => ({

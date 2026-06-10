@@ -21,6 +21,12 @@ export const insightsSchema = z.object({
         name: z.string(),
         // Categorize so the UI can group: people, companies, books, etc.
         type: z.enum(["person", "company", "book", "product", "place", "other"]),
+        context: z
+          .string()
+          .describe("short phrase: how/why it was mentioned, e.g. 'author of Sapiens, discussed re: AI'"),
+        approxTimestampSec: z
+          .number()
+          .describe("approximate second of the first/main mention, from the nearest [m:ss] marker"),
       }),
     )
     .describe("people, companies, books, products, and places mentioned"),
@@ -86,7 +92,9 @@ export async function generateInsights(
       "descriptive title and the startSec (in seconds) taken from the nearest preceding [m:ss] marker.\n" +
       "- quotes: a few genuinely memorable quotes, each with approxTimestampSec from its marker.\n" +
       "- topics: concise themes (1-3 words each).\n" +
-      "- entities: notable people, companies, books, products, and places mentioned, each typed.\n\n" +
+      "- entities: notable people, companies, books, products, and places mentioned, each typed, " +
+      "with a short context phrase describing how it came up and the approxTimestampSec of its " +
+      "first/main mention taken from the nearest preceding [m:ss] marker.\n\n" +
       "Transcript:\n" +
       body,
   })
