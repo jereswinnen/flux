@@ -48,6 +48,6 @@ export async function verifyCandidate(
       "mention, or -1 if none clearly do. Prefer -1 over guessing.",
   })
 
-  const idx = Math.trunc(object.candidateIndex)
-  return idx >= 0 && idx < candidates.length ? idx : -1
+  const idx = object.candidateIndex
+  return Number.isInteger(idx) && idx >= 0 && idx < candidates.length ? idx : -1
 }
