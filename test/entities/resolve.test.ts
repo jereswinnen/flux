@@ -91,11 +91,48 @@ test("existing entity is reused: no candidate search, no verify, just a link", a
 
   const d2 = deps()
   // Different casing must still match.
-  await resolveEpisodeEntities(ep2.id, [{ name: "steve jobs", type: "person" }], d2)
+  await resolveEpisodeEntities(
+    ep2.id,
+    [{ name: "steve jobs", type: "person", context: "hiring philosophy" }],
+    d2,
+  )
 
   expect(d2.searchCandidates).not.toHaveBeenCalled()
   expect(d2.verifyCandidate).not.toHaveBeenCalled()
   expect(await db.select().from(schema.entities)).toHaveLength(1)
+  expect(await db.select().from(schema.episodeEntities)).toHaveLength(2)
+
+  // The second episode still gets its own entity chunk, built from the stored
+  // description plus this episode's mention context.
+  const chunks = await db.select().from(schema.chunks)
+  expect(chunks).toHaveLength(2)
+  const ep2Chunk = chunks.find((c) => c.episodeId === ep2.id)
+  expect(ep2Chunk?.content).toContain("American businessman")
+  expect(ep2Chunk?.content).toContain("hiring philosophy")
+}, 30_000)
+
+test("a failed entity is re-enriched on next encounter", async () => {
+  const ep1 = await repo.create({ title: "E1", audioUrl: "https://a/1.mp3" })
+  const ep2 = await repo.create({ title: "E2", audioUrl: "https://a/2.mp3" })
+
+  const d1 = deps({ searchCandidates: vi.fn().mockRejectedValue(new Error("boom")) })
+  await resolveEpisodeEntities(ep1.id, [{ name: "Steve Jobs", type: "person" }], d1)
+
+  const [failed] = await db.select().from(schema.entities)
+  expect(failed.enrichmentStatus).toBe("failed")
+
+  const d2 = deps()
+  await resolveEpisodeEntities(ep2.id, [{ name: "Steve Jobs", type: "person" }], d2)
+
+  expect(d2.searchCandidates).toHaveBeenCalled()
+  const rows = await db.select().from(schema.entities)
+  expect(rows).toHaveLength(1)
+  expect(rows[0]).toMatchObject({
+    id: failed.id,
+    slug: failed.slug,
+    enrichmentStatus: "enriched",
+    description: "American businessman (1955–2011)",
+  })
   expect(await db.select().from(schema.episodeEntities)).toHaveLength(2)
 }, 30_000)
 
@@ -147,6 +184,31 @@ test("duplicate mentions in one episode create a single link", async () => {
   )
   expect(await db.select().from(schema.entities)).toHaveLength(1)
   expect(await db.select().from(schema.episodeEntities)).toHaveLength(1)
+}, 30_000)
+
+test("empty extracted array does nothing", async () => {
+  const ep = await repo.create({ title: "E1", audioUrl: "https://a/1.mp3" })
+  const d = deps()
+
+  await resolveEpisodeEntities(ep.id, [], d)
+
+  expect(await db.select().from(schema.entities)).toHaveLength(0)
+  expect(await db.select().from(schema.episodeEntities)).toHaveLength(0)
+  expect(d.embedTexts).not.toHaveBeenCalled()
+}, 30_000)
+
+test("no-signal mention skips the chunk", async () => {
+  const ep = await repo.create({ title: "E1", audioUrl: "https://a/1.mp3" })
+  const d = deps({ verifyCandidate: vi.fn(async () => -1) })
+
+  await resolveEpisodeEntities(ep.id, [{ name: "Obscure Startup", type: "company" }], d)
+
+  const [entity] = await db.select().from(schema.entities)
+  expect(entity.enrichmentStatus).toBe("unmatched")
+  expect(await db.select().from(schema.episodeEntities)).toHaveLength(1)
+  expect(
+    await db.select().from(schema.chunks).where(eq(schema.chunks.entityId, entity.id)),
+  ).toHaveLength(0)
 }, 30_000)
 
 test("slug collisions get a numeric suffix", async () => {

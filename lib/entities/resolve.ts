@@ -60,6 +60,29 @@ function entityValues(
   }
 }
 
+// Search -> verify -> values. Returns null when search/verify threw, so the
+// caller decides between a failed insert and leaving an existing row as-is.
+async function enrichmentValues(
+  name: string,
+  type: schema.EntityType,
+  mention: ExtractedEntity,
+  opts: { episodeTitle?: string },
+  search: typeof defaultSearchCandidates,
+  verify: typeof defaultVerifyCandidate,
+): Promise<Omit<typeof schema.entities.$inferInsert, "slug"> | null> {
+  try {
+    const candidates = await search(name, type)
+    const idx =
+      candidates.length > 0
+        ? await verify({ name, type, context: mention.context }, candidates, opts)
+        : -1
+    return entityValues(name, type, idx >= 0 ? (candidates[idx] ?? null) : null)
+  } catch (e) {
+    console.warn(`entity enrichment failed for "${name}" (${type}):`, e)
+    return null
+  }
+}
+
 // The text embedded for Ask: entity identity + this episode's mention context.
 function entityChunkText(
   entity: { name: string; type: string; description: string | null },
@@ -87,7 +110,7 @@ export async function resolveEpisodeEntities(
   const chunkQueue: { entityId: string; content: string; startSec: number }[] = []
 
   for (const mention of extracted) {
-    const name = mention.name.trim()
+    const name = mention.name.replace(/\s+/g, " ").trim()
     if (!name) continue
     const type = (ENTITY_TYPES as string[]).includes(mention.type)
       ? (mention.type as schema.EntityType)
@@ -105,21 +128,37 @@ export async function resolveEpisodeEntities(
       )
       .limit(1)
 
-    // 2. New entity: enrich, degrading to unmatched/failed instead of throwing.
-    if (!entity) {
-      let values: Omit<typeof schema.entities.$inferInsert, "slug">
-      try {
-        const candidates = await search(name, type)
-        const idx =
-          candidates.length > 0
-            ? await verify({ name, type, context: mention.context }, candidates, {
-                episodeTitle: opts.episodeTitle,
-              })
-            : -1
-        values = entityValues(name, type, idx >= 0 ? candidates[idx] : null)
-      } catch {
-        values = { name, type, enrichmentStatus: "failed" }
+    // 2a. Existing row whose enrichment never completed: retry in place,
+    // keeping id and slug. A transient API failure must not doom the name.
+    if (entity && (entity.enrichmentStatus === "failed" || entity.enrichmentStatus === "pending")) {
+      const values = await enrichmentValues(
+        name,
+        type,
+        mention,
+        { episodeTitle: opts.episodeTitle },
+        search,
+        verify,
+      )
+      if (values) {
+        ;[entity] = await db
+          .update(schema.entities)
+          .set({ ...values, updatedAt: new Date() })
+          .where(eq(schema.entities.id, entity.id))
+          .returning()
       }
+      // If enrichment threw again, leave the row untouched and just link.
+    }
+
+    // 2b. New entity: enrich, degrading to unmatched/failed instead of throwing.
+    if (!entity) {
+      const values = (await enrichmentValues(
+        name,
+        type,
+        mention,
+        { episodeTitle: opts.episodeTitle },
+        search,
+        verify,
+      )) ?? { name, type, enrichmentStatus: "failed" as const }
       ;[entity] = await db
         .insert(schema.entities)
         .values({ ...values, slug: await uniqueSlug(db, name) })
@@ -140,7 +179,9 @@ export async function resolveEpisodeEntities(
       .returning()
 
     // 4. One entity chunk per link, embedded in a single batch below.
-    if (inserted.length > 0) {
+    // Skip zero-signal mentions (no description, no context): the text would
+    // be pure filler with no retrieval value.
+    if (inserted.length > 0 && (entity.description || mention.context)) {
       chunkQueue.push({
         entityId: entity.id,
         content: entityChunkText(entity, mention.context),
