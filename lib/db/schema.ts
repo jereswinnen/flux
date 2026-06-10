@@ -4,6 +4,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uuid,
@@ -53,8 +54,59 @@ export const insights = pgTable("insights", {
   topics: jsonb("topics").$type<string[]>(),
   chapters: jsonb("chapters").$type<{ title: string; startSec: number }[]>(),
   quotes: jsonb("quotes").$type<{ text: string; approxTimestampSec: number }[]>(),
-  entities: jsonb("entities").$type<{ name: string; type: string }[]>(),
+  entities: jsonb("entities").$type<
+    { name: string; type: string; context?: string; approxTimestampSec?: number }[]
+  >(),
 })
+
+export type EntityType = "person" | "company" | "book" | "product" | "place" | "other"
+export type EnrichmentStatus = "pending" | "enriched" | "unmatched" | "failed"
+
+export const entities = pgTable(
+  "entities",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull().unique(),
+    type: text("type").$type<EntityType>().notNull(),
+    description: text("description"),
+    summary: text("summary"),
+    imageUrl: text("image_url"),
+    wikipediaUrl: text("wikipedia_url"),
+    wikidataId: text("wikidata_id"),
+    externalIds: jsonb("external_ids").$type<{
+      itunesId?: number
+      isbn?: string
+      googleBooksId?: string
+    }>(),
+    metadata: jsonb("metadata").$type<{ author?: string; publishedYear?: number }>(),
+    enrichmentStatus: text("enrichment_status")
+      .$type<EnrichmentStatus>()
+      .notNull()
+      .default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("entities_name_idx").on(t.name)],
+)
+
+export const episodeEntities = pgTable(
+  "episode_entities",
+  {
+    episodeId: uuid("episode_id")
+      .notNull()
+      .references(() => episodes.id, { onDelete: "cascade" }),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    context: text("context"),
+    approxTimestampSec: integer("approx_timestamp_sec"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.episodeId, t.entityId] }),
+    index("episode_entities_entity_idx").on(t.entityId),
+  ],
+)
 
 export const chunks = pgTable(
   "chunks",
@@ -63,6 +115,9 @@ export const chunks = pgTable(
     episodeId: uuid("episode_id")
       .notNull()
       .references(() => episodes.id, { onDelete: "cascade" }),
+    // Entity-derived chunks (one per episode_entities link) carry the entity id;
+    // transcript chunks leave it null.
+    entityId: uuid("entity_id").references(() => entities.id, { onDelete: "cascade" }),
     content: text("content").notNull(),
     startSec: integer("start_sec").notNull(),
     endSec: integer("end_sec").notNull(),
