@@ -5,9 +5,15 @@ import * as schema from "./schema"
 
 type DB = PostgresJsDatabase<typeof schema>
 
-const mentionCount = sql<number>`(
-  select count(*) from ${episodeEntities} ee where ee.entity_id = ${entities.id}
-)`.as("mention_count")
+// Correlation is hard-qualified ("entities"."id") because drizzle renders
+// single-table selects with unqualified columns, which would otherwise rely on
+// episode_entities never gaining an `id` column. count(*) comes back from
+// postgres-js as a bigint string, hence mapWith(Number).
+const mentionCount = sql`(
+  select count(*) from ${episodeEntities} ee where ee.entity_id = "entities"."id"
+)`
+  .mapWith(Number)
+  .as("mention_count")
 
 export async function getEntityBySlug(db: DB, slug: string) {
   const rows = await db.select().from(entities).where(eq(entities.slug, slug)).limit(1)
@@ -69,15 +75,18 @@ export async function coMentionedEntities(db: DB, entityId: string, limit = 8) {
     order by count(*) desc
     limit ${limit}
   `)
-  const rows = Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
-  return rows as {
+  const rows = (
+    Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
+  ) as {
     id: string
     name: string
     slug: string
     type: string
     imageUrl: string | null
-    sharedEpisodes: number
+    sharedEpisodes: number | string
   }[]
+  // postgres-js returns count(*) as a bigint string; normalize for callers.
+  return rows.map((r) => ({ ...r, sharedEpisodes: Number(r.sharedEpisodes) }))
 }
 
 // Entity cards for /search: simple ILIKE on name/description, most-mentioned first.
