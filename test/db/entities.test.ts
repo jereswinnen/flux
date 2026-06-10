@@ -73,4 +73,9 @@ test("entities + episode_entities round-trip, and chunks accept an entityId", as
     .from(schema.episodeEntities)
     .where(eq(schema.episodeEntities.entityId, entity.id))
   expect(after).toHaveLength(0)
+  const chunksAfter = await db
+    .select()
+    .from(schema.chunks)
+    .where(eq(schema.chunks.episodeId, ep.id))
+  expect(chunksAfter).toHaveLength(0)
 }, 30_000)

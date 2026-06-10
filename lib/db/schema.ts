@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm"
 import {
   bigint,
   index,
@@ -87,7 +88,7 @@ export const entities = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [index("entities_name_idx").on(t.name)],
+  (t) => [index("entities_lower_name_type_idx").on(sql`lower(${t.name})`, t.type)],
 )
 
 export const episodeEntities = pgTable(
@@ -128,6 +129,7 @@ export const chunks = pgTable(
       "hnsw",
       t.embedding.op("vector_cosine_ops"),
     ),
+    index("chunks_entity_idx").on(t.entityId),
   ],
 )
 
