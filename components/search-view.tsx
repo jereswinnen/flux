@@ -21,6 +21,16 @@ type Source = {
   endSec: number
 }
 
+type EntityHit = {
+  id: string
+  name: string
+  slug: string
+  type: string
+  description: string | null
+  imageUrl: string | null
+  mentionCount: number
+}
+
 type Group = {
   episodeId: string
   episodeTitle: string
@@ -97,6 +107,7 @@ export function SearchView({ query }: { query: string }) {
   const [loading, setLoading] = useState(false)
   const [answer, setAnswer] = useState<string | null>(null)
   const [sources, setSources] = useState<Source[]>([])
+  const [entities, setEntities] = useState<EntityHit[]>([])
   const seq = useRef(0)
 
   useEffect(() => {
@@ -105,6 +116,7 @@ export function SearchView({ query }: { query: string }) {
     if (q.length < 2) {
       setAnswer(null)
       setSources([])
+      setEntities([])
       return
     }
     const mySeq = ++seq.current
@@ -120,6 +132,7 @@ export function SearchView({ query }: { query: string }) {
         if (mySeq !== seq.current) return
         setAnswer(d.answer ?? null)
         setSources(d.sources ?? [])
+        setEntities(d.entities ?? [])
       })
       .catch(() => {})
       .finally(() => {
@@ -156,6 +169,36 @@ export function SearchView({ query }: { query: string }) {
 
       {!loading && query.trim().length >= 2 && (
         <>
+          {entities.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                In your knowledge base
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {entities.map((e) => (
+                  <Link
+                    key={e.id}
+                    href={`/entities/${e.slug}`}
+                    className="flex min-w-0 max-w-xs items-center gap-2.5 rounded-lg border p-2.5 pr-4 transition-colors hover:bg-muted"
+                  >
+                    <div className="size-9 shrink-0 overflow-hidden rounded-full bg-muted">
+                      {e.imageUrl ? (
+                        <img src={e.imageUrl} alt="" className="size-full object-cover" />
+                      ) : null}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium">{e.name}</div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {e.description ??
+                          `Mentioned in ${e.mentionCount} episode${e.mentionCount === 1 ? "" : "s"}`}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
           {answer ? (
             <section className="space-y-3">
               <h2 className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -164,9 +207,11 @@ export function SearchView({ query }: { query: string }) {
               <Answer text={answer} sources={sources} />
             </section>
           ) : (
-            <p className="text-muted-foreground">
-              Nothing in your library covers that yet.
-            </p>
+            entities.length === 0 && (
+              <p className="text-muted-foreground">
+                Nothing in your library covers that yet.
+              </p>
+            )
           )}
 
           {groups.length > 0 && (

@@ -3,6 +3,7 @@ import { generateText } from "ai"
 import { db } from "@/lib/db"
 import { embedQuery } from "@/lib/ai/embeddings"
 import { hybridSearch, refineHitTimestamps } from "@/lib/db/search"
+import { searchEntities } from "@/lib/db/entities"
 import { formatTimestamp } from "@/lib/format"
 
 // One-shot "smart search": synthesize a cited answer from the best transcript
@@ -11,10 +12,13 @@ import { formatTimestamp } from "@/lib/format"
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null)
   const query = typeof body?.query === "string" ? body.query.trim() : ""
-  if (query.length < 2) return Response.json({ answer: null, sources: [] })
+  if (query.length < 2) return Response.json({ answer: null, sources: [], entities: [] })
 
-  const rawSources = await hybridSearch(db, await embedQuery(query), query, { limit: 10 })
-  if (rawSources.length === 0) return Response.json({ answer: null, sources: [] })
+  const [rawSources, entities] = await Promise.all([
+    hybridSearch(db, await embedQuery(query), query, { limit: 10 }),
+    searchEntities(db, query, 5).catch(() => []),
+  ])
+  if (rawSources.length === 0) return Response.json({ answer: null, sources: [], entities })
   const sources = await refineHitTimestamps(db, rawSources, query)
 
   const numbered = sources
@@ -32,5 +36,5 @@ export async function POST(request: Request) {
     prompt: `Question: ${query}\n\nSources:\n${numbered}`,
   })
 
-  return Response.json({ answer: text, sources })
+  return Response.json({ answer: text, sources, entities })
 }
