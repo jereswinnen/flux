@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation"
 import { eq } from "drizzle-orm"
 import { db } from "@/lib/db"
+import { entitiesForEpisode } from "@/lib/db/entities"
 import { episodeRepo } from "@/lib/db/episodes"
 import { insights as insightsTable, transcripts as transcriptsTable } from "@/lib/db/schema"
 import { EpisodeView } from "@/components/episode-view"
@@ -14,6 +15,7 @@ export default async function EpisodePage({ params }: { params: Promise<{ id: st
 
   const [transcript] = await db.select().from(transcriptsTable).where(eq(transcriptsTable.episodeId, id)).limit(1)
   const [insight] = await db.select().from(insightsTable).where(eq(insightsTable.episodeId, id)).limit(1)
+  const entities = await entitiesForEpisode(db, id)
 
   return (
     <>
@@ -32,6 +34,7 @@ export default async function EpisodePage({ params }: { params: Promise<{ id: st
         }}
         transcript={transcript ? { fullText: transcript.fullText, segments: transcript.segments ?? [] } : null}
         insights={insight ?? null}
+        entities={entities}
       />
     </>
   )

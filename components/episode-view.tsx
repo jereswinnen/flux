@@ -12,7 +12,7 @@ import { usePlayer, type AudioMarker, type Track } from "@/components/player-con
 import { hiResArtwork } from "@/lib/artwork"
 import { formatRelativeDate, formatTimestamp } from "@/lib/format"
 import { EpisodeActions } from "@/components/episode-actions"
-import { EpisodeInsights, insightSections } from "@/components/episode-insights"
+import { EpisodeInsights, insightSections, type MentionedEntity } from "@/components/episode-insights"
 import { InsightsNav } from "@/components/insights-nav"
 
 type Segment = { start: number; end: number; text: string }
@@ -40,6 +40,7 @@ export type EpisodeViewProps = {
   }
   transcript: { fullText: string; segments: Segment[] } | null
   insights: Insights
+  entities?: MentionedEntity[]
 }
 
 function statusVariant(status: string): "default" | "secondary" | "destructive" {
@@ -48,7 +49,7 @@ function statusVariant(status: string): "default" | "secondary" | "destructive" 
   return "secondary"
 }
 
-export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps) {
+export function EpisodeView({ episode, transcript, insights, entities = [] }: EpisodeViewProps) {
   const router = useRouter()
   const inFlight = !["ready", "failed"].includes(episode.status)
   const player = usePlayer()
@@ -70,7 +71,7 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
   }
   const [tab, setTab] = useState("insights")
   const scrollRef = useRef<HTMLDivElement>(null)
-  const sections = insightSections(insights)
+  const sections = insightSections(insights, entities.length > 0)
 
   // Deep-link: /episodes/[id]?t=<sec> cues the player to that moment on load.
   const searchParams = useSearchParams()
@@ -179,7 +180,7 @@ export function EpisodeView({ episode, transcript, insights }: EpisodeViewProps)
               </div>
 
               <TabsContent value="insights" className="pb-10 pt-2">
-                <EpisodeInsights insights={insights} onSeek={seek} />
+                <EpisodeInsights insights={insights} entities={entities} onSeek={seek} />
               </TabsContent>
 
               <TabsContent value="transcript" className="pb-10 pt-2">
