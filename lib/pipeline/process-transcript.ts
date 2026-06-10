@@ -8,6 +8,7 @@ import {
 } from "@/lib/ai/insights"
 import { makeEpisodeRepo } from "@/lib/db/episodes"
 import * as schema from "@/lib/db/schema"
+import { resolveEpisodeEntities, type ExtractedEntity } from "@/lib/entities/resolve"
 
 export interface TranscriptResult {
   episodeId: string
@@ -19,6 +20,11 @@ export interface PipelineDeps {
   db: PostgresJsDatabase<typeof schema>
   generateInsights?: (transcript: string, segments: Segment[]) => Promise<Insights>
   embedTexts?: (texts: string[]) => Promise<number[][]>
+  resolveEntities?: (
+    episodeId: string,
+    extracted: ExtractedEntity[],
+    opts: { episodeTitle?: string },
+  ) => Promise<void>
 }
 
 export async function processTranscript(result: TranscriptResult, deps: PipelineDeps) {
@@ -27,11 +33,18 @@ export async function processTranscript(result: TranscriptResult, deps: Pipeline
   const genInsights =
     deps.generateInsights ?? ((t: string, s: Segment[]) => defaultGenerateInsights(t, { segments: s }))
   const embed = deps.embedTexts ?? ((t: string[]) => defaultEmbedTexts(t))
+  const resolveEntities =
+    deps.resolveEntities ??
+    ((episodeId: string, extracted: ExtractedEntity[], opts: { episodeTitle?: string }) =>
+      resolveEpisodeEntities(episodeId, extracted, { db, embedTexts: embed }, opts))
 
   try {
     // 0. Make re-processing idempotent (retry, or a duplicate Modal callback).
     await db.delete(schema.insights).where(eq(schema.insights.episodeId, result.episodeId))
     await db.delete(schema.chunks).where(eq(schema.chunks.episodeId, result.episodeId))
+    await db
+      .delete(schema.episodeEntities)
+      .where(eq(schema.episodeEntities.episodeId, result.episodeId))
     await db.delete(schema.transcripts).where(eq(schema.transcripts.episodeId, result.episodeId))
 
     // 1. Store transcript
@@ -67,6 +80,17 @@ export async function processTranscript(result: TranscriptResult, deps: Pipeline
           embedding: vectors[i],
         })),
       )
+    }
+
+    // 3.5. Canonical entities — best-effort: enrichment failures must not
+    // block the episode from reaching "ready".
+    try {
+      const episode = await repo.getById(result.episodeId)
+      await resolveEntities(result.episodeId, insights.entities ?? [], {
+        episodeTitle: episode?.title,
+      })
+    } catch (e) {
+      console.error(`entity resolution failed for episode ${result.episodeId}`, e)
     }
 
     // 4. Ready
