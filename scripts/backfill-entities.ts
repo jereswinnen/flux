@@ -38,10 +38,14 @@ async function main() {
       continue
     }
     // Old insights rows predate per-entity context; the verifier falls back to
-    // the episode title.
-    await resolveEpisodeEntities(row.episodeId, extracted, { db }, { episodeTitle: row.title })
-    done++
-    console.log(`done  ${row.title} (${extracted.length} entities)`)
+    // the episode title. One bad episode shouldn't abandon the rest of the queue.
+    try {
+      await resolveEpisodeEntities(row.episodeId, extracted, { db }, { episodeTitle: row.title })
+      done++
+      console.log(`done  ${row.title} (${extracted.length} entities)`)
+    } catch (e) {
+      console.error(`error ${row.title}`, e)
+    }
   }
 
   console.log(`backfilled ${done}/${rows.length} episodes`)
