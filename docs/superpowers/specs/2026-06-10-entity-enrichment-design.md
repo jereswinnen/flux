@@ -68,6 +68,8 @@ For each extracted entity:
 
 **Backfill:** `scripts/backfill-entities.ts` runs all existing `insights` rows through the same resolver. Existing rows lack `context`/`approxTimestampSec`; backfilled links store null timestamp and the verifier works from name + episode title/summary instead.
 
+**Cost/freshness model:** extraction runs once per episode (existing behavior); candidate search + verification run once per *unique* entity across the library — subsequent mentions just insert a link row. Enrichment data is a snapshot at enrichment time; the resolver is idempotent, so a periodic refresh script is a possible follow-up but not in scope.
+
 ## Entity Pages
 
 New route `app/entities/[slug]/page.tsx`. (`/topics/[slug]` remains unchanged for topic strings.)
@@ -87,6 +89,18 @@ In `components/episode-insights.tsx`:
 - Each badge gets a shadcn `HoverCard`: thumbnail, one-line description, "mentioned in N episodes".
 - The **Books** group renders as a horizontal cover-art row (cover, title, author) instead of badges.
 
+## Search & Ask Integration
+
+### `/search`: entity results
+
+Match the query against `entities.name` and `entities.description` (case-insensitive `ILIKE`; no embeddings needed). Matching entities render as compact entity cards (thumbnail, name, type, one-liner, mention count) above the existing episode/chunk results, linking to `/entities/[slug]`.
+
+### Ask: entity context chunks
+
+For each `episode_entities` link, embed a small text unit — `"{entity.name} ({type}): {entity.description}. Mentioned in this episode: {context}"` — into the existing `chunks` table, tagged as entity-derived (new nullable `entityId` column on `chunks`, plus the episode's `startSec` from `approxTimestampSec` when present). These flow through the existing vector/hybrid retrieval in `lib/db/search.ts`, so Ask can retrieve them and cite the episode + timestamp like any other chunk. Entity chunks are written by the same resolver step (and the backfill), and deleted/re-created if a link is reprocessed.
+
+This means questions like "which books came up about habit formation?" retrieve the per-mention context lines directly instead of relying on raw transcript chunks.
+
 ## Error Handling
 
 - Enrichment runs per entity; one failure doesn't affect others. Failures set `enrichmentStatus = failed` and are retryable (status-driven, idempotent resolver).
@@ -96,6 +110,7 @@ In `components/episode-insights.tsx`:
 ## Testing
 
 - Unit tests for the resolver: existing-match path, candidate selection per type, verifier accept/reject handling, unmatched fallback — external APIs and LLM mocked.
+- Unit test for entity-chunk text construction; search query test for entity `ILIKE` matching.
 - Schema/migration verified locally.
 - Manual end-to-end check: run the backfill on the existing library, inspect entity pages and the Mentioned section.
 
@@ -105,3 +120,4 @@ In `components/episode-insights.tsx`:
 - Library-wide `/books` reading-list page
 - Alias merging / manual entity-merge admin UI
 - Co-mention graph visualizations
+- Periodic refresh of enrichment snapshots
