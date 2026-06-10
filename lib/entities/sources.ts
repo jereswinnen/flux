@@ -23,7 +23,10 @@ const TTL_MS = 60 * 60_000
 async function getJson(url: string): Promise<unknown> {
   const hit = cache.get(url)
   const now = Date.now()
-  if (hit && now - hit.at < TTL_MS) return hit.data
+  if (hit) {
+    if (now - hit.at < TTL_MS) return hit.data
+    cache.delete(url)
+  }
   const res = await fetch(url, { headers: HEADERS })
   if (!res.ok) throw new Error(`entity source request failed: ${res.status} ${url}`)
   const data: unknown = await res.json()
@@ -52,23 +55,26 @@ async function wikipediaCandidates(name: string): Promise<Candidate[]> {
   const search = (await getJson(
     `https://en.wikipedia.org/w/rest.php/v1/search/title?q=${encodeURIComponent(name)}&limit=3`,
   )) as WikiSearchResult
-  const pages = search.pages ?? []
-  const out: Candidate[] = []
-  for (const page of pages) {
-    const s = (await getJson(
-      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(page.key)}`,
-    )) as WikiSummary
-    out.push({
-      source: "wikipedia",
-      title: s.title ?? name,
-      description: s.description ?? undefined,
-      summary: s.extract ?? undefined,
-      imageUrl: s.thumbnail?.source ?? undefined,
-      url: s.content_urls?.desktop?.page ?? undefined,
-      wikidataId: s.wikibase_item ?? undefined,
+  const pages = (search.pages ?? []).filter((p) => typeof p.key === "string")
+  const settled = await Promise.allSettled(
+    pages.map((page) =>
+      getJson(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(page.key)}`),
+    ),
+  )
+  return settled
+    .filter((s): s is PromiseFulfilledResult<unknown> => s.status === "fulfilled")
+    .map((s) => {
+      const summary = s.value as WikiSummary
+      return {
+        source: "wikipedia" as const,
+        title: summary.title ?? name,
+        description: summary.description ?? undefined,
+        summary: summary.extract ?? undefined,
+        imageUrl: summary.thumbnail?.source ?? undefined,
+        url: summary.content_urls?.desktop?.page ?? undefined,
+        wikidataId: summary.wikibase_item ?? undefined,
+      }
     })
-  }
-  return out
 }
 
 interface BookIdentifier {
@@ -107,6 +113,8 @@ async function googleBooksCandidates(name: string): Promise<Candidate[]> {
       (i) => i.type === "ISBN_13" || i.type === "ISBN_10",
     )?.identifier
     const year = v.publishedDate ? Number(String(v.publishedDate).slice(0, 4)) : undefined
+    const externalIds =
+      isbn !== undefined || item.id !== undefined ? { isbn, googleBooksId: item.id } : undefined
     return {
       source: "googleBooks" as const,
       title: v.title ?? name,
@@ -114,7 +122,7 @@ async function googleBooksCandidates(name: string): Promise<Candidate[]> {
       summary: v.description ?? undefined,
       imageUrl: v.imageLinks?.thumbnail?.replace(/^http:/, "https:") ?? undefined,
       url: v.canonicalVolumeLink ?? v.infoLink ?? undefined,
-      externalIds: { isbn, googleBooksId: item.id },
+      externalIds,
       metadata: {
         author: v.authors?.[0],
         publishedYear: Number.isFinite(year) ? year : undefined,
@@ -148,22 +156,35 @@ async function itunesProductCandidates(name: string): Promise<Candidate[]> {
     summary: typeof r.description === "string" ? r.description.slice(0, 400) : undefined,
     imageUrl: r.artworkUrl100 ?? undefined,
     url: r.trackViewUrl ?? undefined,
-    externalIds: { itunesId: r.trackId },
+    externalIds: r.trackId !== undefined ? { itunesId: r.trackId } : undefined,
   }))
 }
 
-const safe = (p: Promise<Candidate[]>) => p.catch(() => [] as Candidate[])
+type SourceOutcome = { candidates: Candidate[]; errored: boolean }
+
+const attempt = async (p: Promise<Candidate[]>): Promise<SourceOutcome> => {
+  try {
+    return { candidates: await p, errored: false }
+  } catch {
+    return { candidates: [], errored: true }
+  }
+}
 
 // Top external candidates for an extracted entity, routed by type. Per-source
-// failures degrade to [] so enrichment never blocks the pipeline.
+// failures degrade to [] so enrichment never blocks the pipeline. However,
+// searchCandidates throws when ALL sources errored with no candidates, so
+// callers can mark the entity retryably failed.
 export async function searchCandidates(name: string, type: EntityType): Promise<Candidate[]> {
-  if (type === "book") return safe(googleBooksCandidates(name))
-  if (type === "product") {
-    const [wiki, itunes] = await Promise.all([
-      safe(wikipediaCandidates(name)),
-      safe(itunesProductCandidates(name)),
-    ])
-    return [...wiki, ...itunes]
+  const sources =
+    type === "book"
+      ? [googleBooksCandidates(name)]
+      : type === "product"
+        ? [wikipediaCandidates(name), itunesProductCandidates(name)]
+        : [wikipediaCandidates(name)]
+  const outcomes = await Promise.all(sources.map(attempt))
+  const candidates = outcomes.flatMap((o) => o.candidates)
+  if (candidates.length === 0 && outcomes.every((o) => o.errored)) {
+    throw new Error(`all candidate sources failed for "${name}" (${type})`)
   }
-  return safe(wikipediaCandidates(name))
+  return candidates
 }

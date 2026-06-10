@@ -1,7 +1,7 @@
 import { afterEach, expect, test, vi } from "vitest"
 import { searchCandidates } from "@/lib/entities/sources"
 
-afterEach(() => vi.restoreAllMocks())
+afterEach(() => vi.unstubAllGlobals())
 
 const wikiSearchBody = {
   pages: [
@@ -74,7 +74,65 @@ test("book → Google Books candidates with ISBN and author", async () => {
   })
 })
 
-test("source failure degrades to empty array, not a throw", async () => {
+test("all sources errored → rejects (total outage)", async () => {
   vi.stubGlobal("fetch", vi.fn(async () => new Response("nope", { status: 500 })))
-  await expect(searchCandidates("Anything", "person")).resolves.toEqual([])
+  await expect(searchCandidates("UniqueName_TotalOutage_9876", "person")).rejects.toThrow()
+})
+
+test("summary failure drops only that candidate", async () => {
+  const searchResult = {
+    pages: [
+      { id: 2, key: "Steve_Wozniak_A", title: "Steve Wozniak A" },
+      { id: 3, key: "Steve_Wozniak_B", title: "Steve Wozniak B" },
+    ],
+  }
+  const summaryB = {
+    title: "Steve Wozniak B",
+    description: "Co-founder of Apple",
+    extract: "Steve Wozniak B extract",
+    thumbnail: { source: "https://example.com/woz.jpg" },
+    content_urls: { desktop: { page: "https://en.wikipedia.org/wiki/Steve_Wozniak_B" } },
+    wikibase_item: "Q12345",
+  }
+  const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
+    if (url.includes("/v1/search/title")) return new Response(JSON.stringify(searchResult))
+    if (url.includes("Steve_Wozniak_A")) return new Response("error", { status: 500 })
+    if (url.includes("Steve_Wozniak_B")) return new Response(JSON.stringify(summaryB))
+    throw new Error(`unexpected url ${url}`)
+  })
+  vi.stubGlobal("fetch", fetchMock)
+
+  const out = await searchCandidates("SteveWozniakUnique7742", "person")
+  expect(out).toHaveLength(1)
+  expect(out[0]).toMatchObject({ title: "Steve Wozniak B" })
+})
+
+test("product routing: wiki fails, iTunes succeeds → iTunes candidate only (no throw)", async () => {
+  const itunesBody = {
+    results: [
+      {
+        trackId: 98765,
+        trackName: "UniqueApp_ProductTest_4321",
+        sellerName: "Test Corp",
+        artworkUrl100: "https://example.com/app.jpg",
+        trackViewUrl: "https://apps.apple.com/app/unique-app",
+      },
+    ],
+  }
+  const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
+    if (url.includes("en.wikipedia.org")) return new Response("error", { status: 500 })
+    if (url.includes("itunes.apple.com")) return new Response(JSON.stringify(itunesBody))
+    throw new Error(`unexpected url ${url}`)
+  })
+  vi.stubGlobal("fetch", fetchMock)
+
+  const out = await searchCandidates("UniqueApp_ProductTest_4321", "product")
+  expect(out).toHaveLength(1)
+  expect(out[0]).toMatchObject({ source: "itunes", title: "UniqueApp_ProductTest_4321" })
+})
+
+test("no-results: empty wiki pages → resolves []", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ pages: [] }))))
+  const out = await searchCandidates("Xyzzy_NoResults_Unique_8899", "person")
+  expect(out).toEqual([])
 })
