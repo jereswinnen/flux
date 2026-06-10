@@ -110,97 +110,113 @@ export async function resolveEpisodeEntities(
   const chunkQueue: { entityId: string; content: string; startSec: number }[] = []
 
   for (const mention of extracted) {
-    const name = mention.name.replace(/\s+/g, " ").trim()
-    if (!name) continue
-    const type = (ENTITY_TYPES as string[]).includes(mention.type)
-      ? (mention.type as schema.EntityType)
-      : "other"
+    // One mention's failure (e.g. a slug race on insert) must not abort the
+    // remaining mentions of the episode.
+    try {
+      const name = mention.name.replace(/\s+/g, " ").trim()
+      if (!name) continue
+      const type = (ENTITY_TYPES as string[]).includes(mention.type)
+        ? (mention.type as schema.EntityType)
+        : "other"
 
-    // 1. Reuse an existing canonical entity (no API or LLM cost).
-    let [entity] = await db
-      .select()
-      .from(schema.entities)
-      .where(
-        and(
-          sql`lower(${schema.entities.name}) = ${name.toLowerCase()}`,
-          eq(schema.entities.type, type),
-        ),
-      )
-      .limit(1)
+      // 1. Reuse an existing canonical entity (no API or LLM cost).
+      let [entity] = await db
+        .select()
+        .from(schema.entities)
+        .where(
+          and(
+            sql`lower(${schema.entities.name}) = ${name.toLowerCase()}`,
+            eq(schema.entities.type, type),
+          ),
+        )
+        .limit(1)
 
-    // 2a. Existing row whose enrichment never completed: retry in place,
-    // keeping id and slug. A transient API failure must not doom the name.
-    if (entity && (entity.enrichmentStatus === "failed" || entity.enrichmentStatus === "pending")) {
-      const values = await enrichmentValues(
-        name,
-        type,
-        mention,
-        { episodeTitle: opts.episodeTitle },
-        search,
-        verify,
-      )
-      if (values) {
+      // 2a. Existing row whose enrichment never completed: retry in place,
+      // keeping id and slug. A transient API failure must not doom the name.
+      if (
+        entity &&
+        (entity.enrichmentStatus === "failed" || entity.enrichmentStatus === "pending")
+      ) {
+        const values = await enrichmentValues(
+          name,
+          type,
+          mention,
+          { episodeTitle: opts.episodeTitle },
+          search,
+          verify,
+        )
+        if (values) {
+          ;[entity] = await db
+            .update(schema.entities)
+            .set({ ...values, updatedAt: new Date() })
+            .where(eq(schema.entities.id, entity.id))
+            .returning()
+        }
+        // If enrichment threw again, leave the row untouched and just link.
+      }
+
+      // 2b. New entity: enrich, degrading to unmatched/failed instead of throwing.
+      if (!entity) {
+        const values = (await enrichmentValues(
+          name,
+          type,
+          mention,
+          { episodeTitle: opts.episodeTitle },
+          search,
+          verify,
+        )) ?? { name, type, enrichmentStatus: "failed" as const }
         ;[entity] = await db
-          .update(schema.entities)
-          .set({ ...values, updatedAt: new Date() })
-          .where(eq(schema.entities.id, entity.id))
+          .insert(schema.entities)
+          .values({ ...values, slug: await uniqueSlug(db, name) })
           .returning()
       }
-      // If enrichment threw again, leave the row untouched and just link.
-    }
 
-    // 2b. New entity: enrich, degrading to unmatched/failed instead of throwing.
-    if (!entity) {
-      const values = (await enrichmentValues(
-        name,
-        type,
-        mention,
-        { episodeTitle: opts.episodeTitle },
-        search,
-        verify,
-      )) ?? { name, type, enrichmentStatus: "failed" as const }
-      ;[entity] = await db
-        .insert(schema.entities)
-        .values({ ...values, slug: await uniqueSlug(db, name) })
+      // 3. Link (duplicate mentions in one episode collapse onto the PK).
+      const inserted = await db
+        .insert(schema.episodeEntities)
+        .values({
+          episodeId,
+          entityId: entity.id,
+          context: mention.context ?? null,
+          approxTimestampSec:
+            mention.approxTimestampSec != null ? Math.floor(mention.approxTimestampSec) : null,
+        })
+        .onConflictDoNothing()
         .returning()
-    }
 
-    // 3. Link (duplicate mentions in one episode collapse onto the PK).
-    const inserted = await db
-      .insert(schema.episodeEntities)
-      .values({
-        episodeId,
-        entityId: entity.id,
-        context: mention.context ?? null,
-        approxTimestampSec:
-          mention.approxTimestampSec != null ? Math.floor(mention.approxTimestampSec) : null,
-      })
-      .onConflictDoNothing()
-      .returning()
-
-    // 4. One entity chunk per link, embedded in a single batch below.
-    // Skip zero-signal mentions (no description, no context): the text would
-    // be pure filler with no retrieval value.
-    if (inserted.length > 0 && (entity.description || mention.context)) {
-      chunkQueue.push({
-        entityId: entity.id,
-        content: entityChunkText(entity, mention.context),
-        startSec: Math.floor(mention.approxTimestampSec ?? 0),
-      })
+      // 4. One entity chunk per link, embedded in a single batch below.
+      // Skip zero-signal mentions (no description, no context): the text would
+      // be pure filler with no retrieval value.
+      if (inserted.length > 0 && (entity.description || mention.context)) {
+        chunkQueue.push({
+          entityId: entity.id,
+          content: entityChunkText(entity, mention.context),
+          startSec: Math.floor(mention.approxTimestampSec ?? 0),
+        })
+      }
+    } catch (e) {
+      console.warn(`entity resolution failed for mention "${mention.name}":`, e)
+      continue
     }
   }
 
   if (chunkQueue.length > 0) {
-    const vectors = await embed(chunkQueue.map((c) => c.content))
-    await db.insert(schema.chunks).values(
-      chunkQueue.map((c, i) => ({
-        episodeId,
-        entityId: c.entityId,
-        content: c.content,
-        startSec: c.startSec,
-        endSec: c.startSec,
-        embedding: vectors[i],
-      })),
-    )
+    try {
+      const vectors = await embed(chunkQueue.map((c) => c.content))
+      await db.insert(schema.chunks).values(
+        chunkQueue.map((c, i) => ({
+          episodeId,
+          entityId: c.entityId,
+          content: c.content,
+          startSec: c.startSec,
+          endSec: c.startSec,
+          embedding: vectors[i],
+        })),
+      )
+    } catch (e) {
+      // Entities and links are already persisted; reprocessing the episode
+      // rebuilds entity chunks, so don't fail the pipeline over embeddings.
+      console.error(`entity chunk embedding failed for episode ${episodeId}:`, e)
+    }
   }
 }

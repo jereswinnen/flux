@@ -211,6 +211,23 @@ test("no-signal mention skips the chunk", async () => {
   ).toHaveLength(0)
 }, 30_000)
 
+test("embedTexts failure does not throw: links persist, no chunks written", async () => {
+  const ep = await repo.create({ title: "E1", audioUrl: "https://a/1.mp3" })
+  const d = deps({ embedTexts: vi.fn().mockRejectedValue(new Error("embed outage")) })
+
+  await expect(
+    resolveEpisodeEntities(
+      ep.id,
+      [{ name: "Steve Jobs", type: "person", context: "discussed re: design" }],
+      d,
+    ),
+  ).resolves.toBeUndefined()
+
+  expect(await db.select().from(schema.entities)).toHaveLength(1)
+  expect(await db.select().from(schema.episodeEntities)).toHaveLength(1)
+  expect(await db.select().from(schema.chunks)).toHaveLength(0)
+}, 30_000)
+
 test("slug collisions get a numeric suffix", async () => {
   const ep = await repo.create({ title: "E1", audioUrl: "https://a/1.mp3" })
   await db.insert(schema.entities).values({

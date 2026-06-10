@@ -135,7 +135,9 @@ interface ItunesResult {
   trackId?: number
   trackName?: string
   sellerName?: string
+  artistName?: string
   description?: string
+  releaseDate?: string
   artworkUrl100?: string
   trackViewUrl?: string
 }
@@ -160,6 +162,33 @@ async function itunesProductCandidates(name: string): Promise<Candidate[]> {
   }))
 }
 
+async function itunesBookCandidates(name: string): Promise<Candidate[]> {
+  const data = (await getJson(
+    `https://itunes.apple.com/search?media=ebook&limit=3&term=${encodeURIComponent(name)}`,
+  )) as ItunesSearchResult
+  const results = data.results ?? []
+  return results.map((r) => {
+    const year = r.releaseDate ? Number(String(r.releaseDate).slice(0, 4)) : undefined
+    return {
+      source: "itunes" as const,
+      title: r.trackName ?? name,
+      description: r.artistName ? `Book by ${r.artistName}` : "Book",
+      // iTunes ebook descriptions are HTML; strip tags before truncating.
+      summary:
+        typeof r.description === "string"
+          ? r.description.replace(/<[^>]+>/g, " ").slice(0, 400)
+          : undefined,
+      imageUrl: r.artworkUrl100 ?? undefined,
+      url: r.trackViewUrl ?? undefined,
+      externalIds: r.trackId !== undefined ? { itunesId: r.trackId } : undefined,
+      metadata: {
+        author: r.artistName,
+        publishedYear: Number.isFinite(year) ? year : undefined,
+      },
+    }
+  })
+}
+
 type SourceOutcome = { candidates: Candidate[]; errored: boolean }
 
 const attempt = async (p: Promise<Candidate[]>): Promise<SourceOutcome> => {
@@ -177,7 +206,7 @@ const attempt = async (p: Promise<Candidate[]>): Promise<SourceOutcome> => {
 export async function searchCandidates(name: string, type: EntityType): Promise<Candidate[]> {
   const sources =
     type === "book"
-      ? [googleBooksCandidates(name)]
+      ? [googleBooksCandidates(name), itunesBookCandidates(name)]
       : type === "product"
         ? [wikipediaCandidates(name), itunesProductCandidates(name)]
         : [wikipediaCandidates(name)]

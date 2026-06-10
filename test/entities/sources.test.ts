@@ -46,8 +46,8 @@ test("person → Wikipedia search + summary candidates", async () => {
   expect((init?.headers as Record<string, string>)["User-Agent"]).toContain("flux")
 })
 
-test("book → Google Books candidates with ISBN and author", async () => {
-  const body = {
+test("book → Google Books candidates first when both sources succeed", async () => {
+  const googleBody = {
     items: [
       {
         id: "abc123",
@@ -63,15 +63,77 @@ test("book → Google Books candidates with ISBN and author", async () => {
       },
     ],
   }
-  vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(body))))
+  const itunesBody = {
+    results: [
+      {
+        trackId: 555111,
+        trackName: "Sapiens",
+        artistName: "Yuval Noah Harari",
+        description: "<p>A brief history of <b>humankind</b>.</p>",
+        releaseDate: "2011-06-04T07:00:00Z",
+        artworkUrl100: "https://example.com/sapiens.jpg",
+        trackViewUrl: "https://books.apple.com/book/sapiens/id555111",
+      },
+    ],
+  }
+  const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
+    if (url.includes("googleapis.com/books")) return new Response(JSON.stringify(googleBody))
+    if (url.includes("itunes.apple.com")) return new Response(JSON.stringify(itunesBody))
+    throw new Error(`unexpected url ${url}`)
+  })
+  vi.stubGlobal("fetch", fetchMock)
 
   const out = await searchCandidates("Sapiens", "book")
+  expect(out).toHaveLength(2)
+  // Google Books candidates come first when both sources succeed.
   expect(out[0]).toMatchObject({
     source: "googleBooks",
     title: "Sapiens",
     externalIds: { isbn: "9780062316097", googleBooksId: "abc123" },
     metadata: { author: "Yuval Noah Harari", publishedYear: 2011 },
   })
+  expect(out[1]).toMatchObject({
+    source: "itunes",
+    title: "Sapiens",
+    description: "Book by Yuval Noah Harari",
+    externalIds: { itunesId: 555111 },
+    metadata: { author: "Yuval Noah Harari", publishedYear: 2011 },
+  })
+})
+
+test("book routing: Google Books 429 + iTunes success → iTunes candidates (no throw)", async () => {
+  const itunesBody = {
+    results: [
+      {
+        trackId: 777999,
+        trackName: "UniqueBook_QuotaTest_5510",
+        artistName: "Quota Author",
+        description: "<p>An ebook <em>description</em> with markup.</p>",
+        releaseDate: "2019-03-12T07:00:00Z",
+        artworkUrl100: "https://example.com/book.jpg",
+        trackViewUrl: "https://books.apple.com/book/unique/id777999",
+      },
+    ],
+  }
+  const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
+    if (url.includes("googleapis.com/books")) return new Response("quota", { status: 429 })
+    if (url.includes("itunes.apple.com")) return new Response(JSON.stringify(itunesBody))
+    throw new Error(`unexpected url ${url}`)
+  })
+  vi.stubGlobal("fetch", fetchMock)
+
+  const out = await searchCandidates("UniqueBook_QuotaTest_5510", "book")
+  expect(out).toHaveLength(1)
+  expect(out[0]).toMatchObject({
+    source: "itunes",
+    title: "UniqueBook_QuotaTest_5510",
+    description: "Book by Quota Author",
+    externalIds: { itunesId: 777999 },
+    metadata: { author: "Quota Author", publishedYear: 2019 },
+  })
+  // HTML tags are stripped from the iTunes summary.
+  expect(out[0].summary).not.toContain("<")
+  expect(out[0].summary).toContain("ebook")
 })
 
 test("all sources errored → rejects (total outage)", async () => {

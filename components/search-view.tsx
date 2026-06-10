@@ -31,6 +31,15 @@ type EntityHit = {
   mentionCount: number
 }
 
+const TYPE_LABELS: Record<string, string> = {
+  person: "Person",
+  company: "Company",
+  book: "Book",
+  product: "Product",
+  place: "Place",
+  other: "Mention",
+}
+
 type Group = {
   episodeId: string
   episodeTitle: string
@@ -189,6 +198,7 @@ export function SearchView({ query }: { query: string }) {
                     <div className="min-w-0">
                       <div className="truncate text-sm font-medium">{e.name}</div>
                       <div className="truncate text-xs text-muted-foreground">
+                        {TYPE_LABELS[e.type] ?? e.type} ·{" "}
                         {e.description ??
                           `Mentioned in ${e.mentionCount} episode${e.mentionCount === 1 ? "" : "s"}`}
                       </div>

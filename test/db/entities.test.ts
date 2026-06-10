@@ -155,3 +155,18 @@ test("searchEntities matches name or description, case-insensitively", async () 
   const byDescription = await searchEntities(db, "electronics", 5)
   expect(byDescription.map((e) => e.slug)).toContain("apple")
 }, 30_000)
+
+test("searchEntities hides entities with zero mentions", async () => {
+  await seedKnowledgeBase()
+  await db.insert(schema.entities).values({
+    name: "Steve Orphan",
+    slug: "steve-orphan",
+    type: "person",
+    description: "No longer mentioned anywhere",
+    enrichmentStatus: "enriched",
+  })
+
+  const out = await searchEntities(db, "steve", 5)
+  expect(out.map((e) => e.slug)).toContain("steve-jobs")
+  expect(out.map((e) => e.slug)).not.toContain("steve-orphan")
+}, 30_000)

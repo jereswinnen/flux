@@ -1,4 +1,4 @@
-import { desc, eq, ilike, or, sql } from "drizzle-orm"
+import { and, desc, eq, ilike, or, sql } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { entities, episodeEntities, episodes } from "./schema"
 import * as schema from "./schema"
@@ -103,7 +103,14 @@ export async function searchEntities(db: DB, query: string, limit = 5) {
       mentionCount,
     })
     .from(entities)
-    .where(or(ilike(entities.name, term), ilike(entities.description, term)))
+    .where(
+      and(
+        or(ilike(entities.name, term), ilike(entities.description, term)),
+        // Hide orphans: entities whose mentions were all deleted shouldn't
+        // surface in search.
+        sql`(select count(*) from ${episodeEntities} ee where ee.entity_id = "entities"."id") > 0`,
+      ),
+    )
     .orderBy(desc(sql`mention_count`))
     .limit(limit)
 }

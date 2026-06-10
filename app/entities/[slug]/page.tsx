@@ -37,7 +37,17 @@ export default async function EntityPage({ params }: { params: Promise<{ slug: s
     entity.wikipediaUrl ??
     (entity.externalIds?.googleBooksId
       ? `https://books.google.com/books?id=${entity.externalIds.googleBooksId}`
+      : null) ??
+    (entity.externalIds?.itunesId
+      ? `https://apps.apple.com/app/id${entity.externalIds.itunesId}`
       : null)
+  const externalLabel = entity.wikipediaUrl
+    ? "Wikipedia"
+    : entity.externalIds?.googleBooksId
+      ? "Google Books"
+      : entity.type === "book"
+        ? "Apple Books"
+        : "App Store"
   const bookMeta = [entity.metadata?.author, entity.metadata?.publishedYear]
     .filter(Boolean)
     .join(" · ")
@@ -75,7 +85,7 @@ export default async function EntityPage({ params }: { params: Promise<{ slug: s
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
                 >
-                  {entity.wikipediaUrl ? "Wikipedia" : "Google Books"}
+                  {externalLabel}
                   <ExternalLink className="size-3.5" />
                 </a>
               )}
