@@ -108,7 +108,8 @@ test("book routing: Google Books 429 + iTunes success → iTunes candidates (no 
         trackId: 777999,
         trackName: "UniqueBook_QuotaTest_5510",
         artistName: "Quota Author",
-        description: "<p>An ebook <em>description</em> with markup.</p>",
+        description:
+          "<p>An adulating&#xa0;biography &#8212; an ebook <em>description</em> with &quot;markup&quot; &amp; entities.</p>",
         releaseDate: "2019-03-12T07:00:00Z",
         artworkUrl100: "https://example.com/book.jpg",
         trackViewUrl: "https://books.apple.com/book/unique/id777999",
@@ -131,9 +132,11 @@ test("book routing: Google Books 429 + iTunes success → iTunes candidates (no 
     externalIds: { itunesId: 777999 },
     metadata: { author: "Quota Author", publishedYear: 2019 },
   })
-  // HTML tags are stripped from the iTunes summary.
+  // HTML tags are stripped and entities decoded in the iTunes summary.
   expect(out[0].summary).not.toContain("<")
-  expect(out[0].summary).toContain("ebook")
+  expect(out[0].summary).not.toContain("&#")
+  expect(out[0].summary).not.toContain("&quot;")
+  expect(out[0].summary).toContain('adulating biography — an ebook description with "markup" & entities.')
 })
 
 test("all sources errored → rejects (total outage)", async () => {

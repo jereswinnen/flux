@@ -15,6 +15,29 @@ export interface Candidate {
 // Wikimedia asks API clients to identify themselves.
 const HEADERS = { "User-Agent": "flux-podcast-kb/0.1 (hey@jeremys.be)" }
 
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+}
+
+// Store descriptions arrive as HTML (iTunes ebooks, some Google Books volumes):
+// strip tags, decode entities (&#xa0; etc.), collapse whitespace.
+function cleanHtmlText(html: string, maxLen: number): string {
+  return html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
+    .replace(/&([a-zA-Z]+);/g, (m, name) => NAMED_ENTITIES[name.toLowerCase()] ?? m)
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLen)
+}
+
 // Light in-memory TTL cache (same pattern as lib/itunes/client.ts). Entity
 // lookups repeat across episodes within a process lifetime.
 const cache = new Map<string, { at: number; data: unknown }>()
@@ -119,7 +142,7 @@ async function googleBooksCandidates(name: string): Promise<Candidate[]> {
       source: "googleBooks" as const,
       title: v.title ?? name,
       description: v.authors?.length ? `Book by ${v.authors.join(", ")}` : "Book",
-      summary: v.description ?? undefined,
+      summary: v.description ? cleanHtmlText(v.description, 400) : undefined,
       imageUrl: v.imageLinks?.thumbnail?.replace(/^http:/, "https:") ?? undefined,
       url: v.canonicalVolumeLink ?? v.infoLink ?? undefined,
       externalIds,
@@ -155,7 +178,7 @@ async function itunesProductCandidates(name: string): Promise<Candidate[]> {
     source: "itunes" as const,
     title: r.trackName ?? name,
     description: r.sellerName ? `App by ${r.sellerName}` : "App",
-    summary: typeof r.description === "string" ? r.description.slice(0, 400) : undefined,
+    summary: typeof r.description === "string" ? cleanHtmlText(r.description, 400) : undefined,
     imageUrl: r.artworkUrl100 ?? undefined,
     url: r.trackViewUrl ?? undefined,
     externalIds: r.trackId !== undefined ? { itunesId: r.trackId } : undefined,
@@ -173,11 +196,7 @@ async function itunesBookCandidates(name: string): Promise<Candidate[]> {
       source: "itunes" as const,
       title: r.trackName ?? name,
       description: r.artistName ? `Book by ${r.artistName}` : "Book",
-      // iTunes ebook descriptions are HTML; strip tags before truncating.
-      summary:
-        typeof r.description === "string"
-          ? r.description.replace(/<[^>]+>/g, " ").slice(0, 400)
-          : undefined,
+      summary: typeof r.description === "string" ? cleanHtmlText(r.description, 400) : undefined,
       imageUrl: r.artworkUrl100 ?? undefined,
       url: r.trackViewUrl ?? undefined,
       externalIds: r.trackId !== undefined ? { itunesId: r.trackId } : undefined,
