@@ -14,6 +14,8 @@ import { formatRelativeDate, formatTimestamp } from "@/lib/format"
 import { EpisodeActions } from "@/components/episode-actions"
 import { EpisodeInsights, insightSections, type MentionedEntity } from "@/components/episode-insights"
 import { InsightsNav } from "@/components/insights-nav"
+import { YouTubePlayerProvider, useYouTubePlayer } from "@/components/youtube-player"
+import { LiveTranscript } from "@/components/live-transcript"
 
 type Segment = { start: number; end: number; text: string }
 type Insights = {
@@ -37,10 +39,54 @@ export type EpisodeViewProps = {
     durationSec: number | null
     audioUrl: string | null
     sourceUrl: string | null
+    type: string
+    videoId: string | null
   }
   transcript: { fullText: string; segments: Segment[] } | null
   insights: Insights
   entities?: MentionedEntity[]
+}
+
+function YouTubeBody({
+  videoId,
+  transcript,
+  insights,
+  entities,
+}: {
+  videoId: string
+  transcript: { segments: Segment[] }
+  insights: Insights
+  entities: MentionedEntity[]
+}) {
+  const [tab, setTab] = useState("transcript")
+  return (
+    <YouTubePlayerProvider videoId={videoId}>
+      <Tabs value={tab} onValueChange={setTab}>
+        <div className="sticky top-0 z-10 -mx-4 mb-2 bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:-mx-6 md:px-6">
+          <TabsList>
+            <TabsTrigger value="transcript">Live Transcript</TabsTrigger>
+            <TabsTrigger value="insights">Insights</TabsTrigger>
+          </TabsList>
+        </div>
+        <TabsContent value="transcript" className="pb-10 pt-2">
+          <LiveTranscriptBound segments={transcript.segments} />
+        </TabsContent>
+        <TabsContent value="insights" className="pb-10 pt-2">
+          <EpisodeInsightsBound insights={insights} entities={entities} />
+        </TabsContent>
+      </Tabs>
+    </YouTubePlayerProvider>
+  )
+}
+
+function LiveTranscriptBound({ segments }: { segments: Segment[] }) {
+  const { currentSec, seekTo } = useYouTubePlayer()
+  return <LiveTranscript segments={segments} currentSec={currentSec} onSeek={seekTo} />
+}
+
+function EpisodeInsightsBound({ insights, entities }: { insights: Insights; entities: MentionedEntity[] }) {
+  const { seekTo } = useYouTubePlayer()
+  return <EpisodeInsights insights={insights} entities={entities} onSeek={seekTo} />
 }
 
 function statusVariant(status: string): "default" | "secondary" | "destructive" {
@@ -69,6 +115,7 @@ export function EpisodeView({ episode, transcript, insights, entities = [] }: Ep
   const seek = (sec: number) => {
     if (track) player.cue(track, sec)
   }
+  const isYouTube = episode.type === "youtube" && !!episode.videoId
   const [tab, setTab] = useState("insights")
   const scrollRef = useRef<HTMLDivElement>(null)
   const sections = insightSections(insights, entities.length > 0)
@@ -169,6 +216,13 @@ export function EpisodeView({ episode, transcript, insights, entities = [] }: Ep
             </div>
           ) : !transcript ? (
             <div className="text-sm text-muted-foreground">Processing… this page updates automatically.</div>
+          ) : isYouTube && episode.videoId ? (
+            <YouTubeBody
+              videoId={episode.videoId}
+              transcript={transcript}
+              insights={insights}
+              entities={entities}
+            />
           ) : (
             <Tabs value={tab} onValueChange={setTab}>
               {/* Tab bar sticks just under the breadcrumb while content scrolls. */}
