@@ -59,7 +59,7 @@ export function EpisodeView({ episode, transcript, insights, entities = [] }: Ep
   }))
   const track: Track | null = episode.audioUrl
     ? {
-        episodeId: episode.id,
+        itemId: episode.id,
         audioUrl: episode.audioUrl,
         title: episode.title,
         artworkUrl: episode.artworkUrl,
@@ -116,7 +116,7 @@ export function EpisodeView({ episode, transcript, insights, entities = [] }: Ep
               </Button>
             )}
             <EpisodeActions
-              episodeId={episode.id}
+              itemId={episode.id}
               episode={{
                 title: episode.title,
                 podcastName: episode.podcastName,

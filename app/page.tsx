@@ -1,4 +1,4 @@
-import { episodeRepo } from "@/lib/db/episodes"
+import { itemRepo } from "@/lib/db/items"
 import { AppHeader } from "@/components/app-header"
 import { Library } from "@/components/library"
 import type { LibEpisode } from "@/components/episode-card"
@@ -6,7 +6,7 @@ import type { LibEpisode } from "@/components/episode-card"
 export const dynamic = "force-dynamic"
 
 export default async function Page() {
-  const rows = await episodeRepo.list()
+  const rows = await itemRepo.list()
   const episodes: LibEpisode[] = rows.map((e) => ({
     id: e.id,
     title: e.title,

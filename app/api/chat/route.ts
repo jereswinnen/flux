@@ -48,27 +48,27 @@ export async function POST(request: Request) {
   // Episode scope is per-message: an episode can be "attached" to a single
   // question (the `@` mention in the composer). Fall back to a legacy
   // episode-scoped conversation if one exists.
-  const attachedEpisodeId =
-    typeof body.episodeId === "string" && body.episodeId ? body.episodeId : undefined
-  const episodeId = attachedEpisodeId ?? data.conversation.episodeId
+  const attachedItemId =
+    typeof body.itemId === "string" && body.itemId ? body.itemId : undefined
+  const itemId = attachedItemId ?? data.conversation.itemId
   const messages: ModelMessage[] = data.messages.map((m) => ({ role: m.role, content: m.content }))
   const priorTurns = data.messages.slice(0, -1).map((m) => ({ role: m.role, content: m.content }))
 
-  const libraryWide = !episodeId
+  const libraryWide = !itemId
   let context = ""
   let sources: ChatSource[] = []
 
-  if (episodeId) {
-    const [t] = await db.select().from(transcripts).where(eq(transcripts.episodeId, episodeId)).limit(1)
+  if (itemId) {
+    const [t] = await db.select().from(transcripts).where(eq(transcripts.itemId, itemId)).limit(1)
     const full = t?.segments ? buildTranscriptContext(t.segments) : ""
     if (full && estimateTokens(full) <= MAX_TRANSCRIPT_TOKENS) {
       context = full
     } else {
-      const hits = await searchChunks(db, await embedQuery(content), { limit: 10, episodeId })
+      const hits = await searchChunks(db, await embedQuery(content), { limit: 10, itemId })
       context = hits.map((h) => `[${formatTimestamp(h.startSec)}] ${h.content}`).join("\n\n")
       sources = hits.map((h) => ({
-        episodeId: h.episodeId,
-        episodeTitle: h.episodeTitle,
+        itemId: h.itemId,
+        itemTitle: h.itemTitle,
         startSec: h.startSec,
         podcastName: h.podcastName,
         artworkUrl: h.artworkUrl,
@@ -80,11 +80,11 @@ export async function POST(request: Request) {
     const rawHits = await hybridSearch(db, await embedQuery(searchQuery), searchQuery, { limit: 8 })
     const hits = await refineHitTimestamps(db, rawHits, searchQuery)
     context = hits
-      .map((h, i) => `[${i + 1}] (${h.episodeTitle} — ${formatTimestamp(h.startSec)}) ${h.content}`)
+      .map((h, i) => `[${i + 1}] (${h.itemTitle} — ${formatTimestamp(h.startSec)}) ${h.content}`)
       .join("\n\n")
     sources = hits.map((h) => ({
-      episodeId: h.episodeId,
-      episodeTitle: h.episodeTitle,
+      itemId: h.itemId,
+      itemTitle: h.itemTitle,
       startSec: h.startSec,
       podcastName: h.podcastName,
       artworkUrl: h.artworkUrl,

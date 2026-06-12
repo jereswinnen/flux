@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm"
 import postgres from "postgres"
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest"
 import * as schema from "@/lib/db/schema"
-import { makeEpisodeRepo } from "@/lib/db/episodes"
+import { makeItemRepo } from "@/lib/db/items"
 import {
   coMentionedEntities,
   entitiesForEpisode,
@@ -18,13 +18,13 @@ import {
 
 const client = postgres(process.env.TEST_DATABASE_URL!, { max: 1 })
 const db = drizzle(client, { schema })
-const repo = makeEpisodeRepo(db)
+const repo = makeItemRepo(db)
 
 beforeAll(async () => {
   await migrate(db, { migrationsFolder: "./lib/db/migrations" })
 })
 beforeEach(async () => {
-  await db.delete(schema.episodes)
+  await db.delete(schema.items)
   await db.delete(schema.entities)
 })
 afterAll(async () => {
@@ -32,7 +32,7 @@ afterAll(async () => {
 })
 
 test("entities + episode_entities round-trip, and chunks accept an entityId", async () => {
-  const ep = await repo.create({ title: "E1", audioUrl: "https://a/1.mp3" })
+  const ep = await repo.create({ type: "podcast", title: "E1", audioUrl: "https://a/1.mp3" })
 
   const [entity] = await db
     .insert(schema.entities)
@@ -46,21 +46,21 @@ test("entities + episode_entities round-trip, and chunks accept an entityId", as
     .returning()
   expect(entity.slug).toBe("steve-jobs")
 
-  await db.insert(schema.episodeEntities).values({
-    episodeId: ep.id,
+  await db.insert(schema.itemEntities).values({
+    itemId: ep.id,
     entityId: entity.id,
     context: "discussed re: product design",
     approxTimestampSec: 120,
   })
   const links = await db
     .select()
-    .from(schema.episodeEntities)
-    .where(eq(schema.episodeEntities.entityId, entity.id))
+    .from(schema.itemEntities)
+    .where(eq(schema.itemEntities.entityId, entity.id))
   expect(links).toHaveLength(1)
   expect(links[0].context).toBe("discussed re: product design")
 
   await db.insert(schema.chunks).values({
-    episodeId: ep.id,
+    itemId: ep.id,
     entityId: entity.id,
     content: "Steve Jobs (person): Co-founder of Apple",
     startSec: 120,
@@ -77,19 +77,19 @@ test("entities + episode_entities round-trip, and chunks accept an entityId", as
   await db.delete(schema.entities).where(eq(schema.entities.id, entity.id))
   const after = await db
     .select()
-    .from(schema.episodeEntities)
-    .where(eq(schema.episodeEntities.entityId, entity.id))
+    .from(schema.itemEntities)
+    .where(eq(schema.itemEntities.entityId, entity.id))
   expect(after).toHaveLength(0)
   const chunksAfter = await db
     .select()
     .from(schema.chunks)
-    .where(eq(schema.chunks.episodeId, ep.id))
+    .where(eq(schema.chunks.itemId, ep.id))
   expect(chunksAfter).toHaveLength(0)
 }, 30_000)
 
 async function seedKnowledgeBase() {
-  const ep1 = await repo.create({ title: "EP One", audioUrl: "https://a/kb1.mp3" })
-  const ep2 = await repo.create({ title: "EP Two", audioUrl: "https://a/kb2.mp3" })
+  const ep1 = await repo.create({ type: "podcast", title: "EP One", audioUrl: "https://a/kb1.mp3" })
+  const ep2 = await repo.create({ type: "podcast", title: "EP Two", audioUrl: "https://a/kb2.mp3" })
   const [jobs] = await db
     .insert(schema.entities)
     .values({
@@ -110,10 +110,10 @@ async function seedKnowledgeBase() {
       enrichmentStatus: "enriched",
     })
     .returning()
-  await db.insert(schema.episodeEntities).values([
-    { episodeId: ep1.id, entityId: jobs.id, context: "design philosophy", approxTimestampSec: 60 },
-    { episodeId: ep1.id, entityId: apple.id, context: "the Mac story" },
-    { episodeId: ep2.id, entityId: jobs.id, context: "hiring" },
+  await db.insert(schema.itemEntities).values([
+    { itemId: ep1.id, entityId: jobs.id, context: "design philosophy", approxTimestampSec: 60 },
+    { itemId: ep1.id, entityId: apple.id, context: "the Mac story" },
+    { itemId: ep2.id, entityId: jobs.id, context: "hiring" },
   ])
   return { ep1, ep2, jobs, apple }
 }

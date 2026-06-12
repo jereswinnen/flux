@@ -9,7 +9,7 @@ export interface SearchHit {
   itemTitle: string
   podcastName: string | null
   artworkUrl: string | null
-  audioUrl: string
+  audioUrl: string | null
   content: string
   startSec: number
   endSec: number

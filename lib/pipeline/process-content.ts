@@ -23,7 +23,7 @@ export interface PipelineDeps {
   resolveEntities?: (
     itemId: string,
     extracted: ExtractedEntity[],
-    opts: { episodeTitle?: string },
+    opts: { itemTitle?: string },
   ) => Promise<void>
 }
 
@@ -35,7 +35,7 @@ export async function processContent(result: TranscriptResult, deps: PipelineDep
   const embed = deps.embedTexts ?? ((t: string[]) => defaultEmbedTexts(t))
   const resolveEntities =
     deps.resolveEntities ??
-    ((itemId: string, extracted: ExtractedEntity[], opts: { episodeTitle?: string }) =>
+    ((itemId: string, extracted: ExtractedEntity[], opts: { itemTitle?: string }) =>
       resolveEpisodeEntities(itemId, extracted, { db, embedTexts: embed }, opts))
 
   try {
@@ -84,7 +84,7 @@ export async function processContent(result: TranscriptResult, deps: PipelineDep
     try {
       const item = await repo.getById(result.itemId)
       await resolveEntities(result.itemId, insights.entities ?? [], {
-        episodeTitle: item?.title,
+        itemTitle: item?.title,
       })
     } catch (e) {
       console.error(`entity resolution failed for item ${result.itemId}`, e)

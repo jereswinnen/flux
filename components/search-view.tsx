@@ -12,8 +12,8 @@ import { formatTimestamp } from "@/lib/format"
 
 type Source = {
   chunkId: string
-  episodeId: string
-  episodeTitle: string
+  itemId: string
+  itemTitle: string
   podcastName: string | null
   artworkUrl: string | null
   content: string
@@ -41,8 +41,8 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 type Group = {
-  episodeId: string
-  episodeTitle: string
+  itemId: string
+  itemTitle: string
   podcastName: string | null
   artworkUrl: string | null
   items: (Source & { n: number })[]
@@ -52,16 +52,16 @@ function groupSources(sources: Source[]): Group[] {
   const groups: Group[] = []
   const byEp = new Map<string, Group>()
   sources.forEach((s, idx) => {
-    let g = byEp.get(s.episodeId)
+    let g = byEp.get(s.itemId)
     if (!g) {
       g = {
-        episodeId: s.episodeId,
-        episodeTitle: s.episodeTitle,
+        itemId: s.itemId,
+        itemTitle: s.itemTitle,
         podcastName: s.podcastName,
         artworkUrl: s.artworkUrl,
         items: [],
       }
-      byEp.set(s.episodeId, g)
+      byEp.set(s.itemId, g)
       groups.push(g)
     }
     g.items.push({ ...s, n: idx + 1 })
@@ -86,8 +86,8 @@ function Answer({ text, sources }: { text: string; sources: Source[] }) {
               if (s) {
                 return (
                   <Link
-                    href={`/episodes/${s.episodeId}?t=${Math.floor(s.startSec)}`}
-                    title={`${s.episodeTitle} · ${formatTimestamp(s.startSec)}`}
+                    href={`/episodes/${s.itemId}?t=${Math.floor(s.startSec)}`}
+                    title={`${s.itemTitle} · ${formatTimestamp(s.startSec)}`}
                     className="mx-0.5 inline-flex size-4 translate-y-[-0.15em] items-center justify-center rounded bg-primary/15 align-baseline text-[10px] font-medium text-primary no-underline hover:bg-primary/25"
                   >
                     {n}
@@ -233,9 +233,9 @@ export function SearchView({ query }: { query: string }) {
                 {groups.map((g) => {
                   const [first, ...rest] = g.items
                   return (
-                    <div key={g.episodeId} className="rounded-lg border p-3">
+                    <div key={g.itemId} className="rounded-lg border p-3">
                       <Link
-                        href={`/episodes/${g.episodeId}`}
+                        href={`/episodes/${g.itemId}`}
                         className="mb-2 flex items-center gap-2.5"
                       >
                         <div className="size-8 shrink-0 overflow-hidden rounded bg-muted">
@@ -244,7 +244,7 @@ export function SearchView({ query }: { query: string }) {
                           ) : null}
                         </div>
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-medium">{g.episodeTitle}</div>
+                          <div className="truncate text-sm font-medium">{g.itemTitle}</div>
                           {g.podcastName && (
                             <div className="truncate text-xs text-muted-foreground">{g.podcastName}</div>
                           )}
@@ -278,7 +278,7 @@ export function SearchView({ query }: { query: string }) {
 function Moment({ item }: { item: Source & { n: number } }) {
   return (
     <Link
-      href={`/episodes/${item.episodeId}?t=${Math.floor(item.startSec)}`}
+      href={`/episodes/${item.itemId}?t=${Math.floor(item.startSec)}`}
       className="flex gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-muted"
     >
       <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded bg-primary/15 text-[10px] font-medium text-primary">

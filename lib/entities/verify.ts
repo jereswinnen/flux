@@ -23,7 +23,7 @@ export interface MentionToVerify {
 export async function verifyCandidate(
   mention: MentionToVerify,
   candidates: Candidate[],
-  opts: { model?: LanguageModel; episodeTitle?: string } = {},
+  opts: { model?: LanguageModel; itemTitle?: string } = {},
 ): Promise<number> {
   if (candidates.length === 0) return -1
 
@@ -42,7 +42,7 @@ export async function verifyCandidate(
       "You match podcast mentions to knowledge-base records.\n\n" +
       `Mention: "${mention.name}" (type: ${mention.type})\n` +
       (mention.context ? `How it came up: ${mention.context}\n` : "") +
-      (opts.episodeTitle ? `Episode: ${opts.episodeTitle}\n` : "") +
+      (opts.itemTitle ? `Episode: ${opts.itemTitle}\n` : "") +
       `\nCandidates:\n${list}\n\n` +
       "Return the candidateIndex of the record that refers to the same real-world thing as the " +
       "mention, or -1 if none clearly do. Prefer -1 over guessing.",

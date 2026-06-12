@@ -5,7 +5,7 @@ import { drizzle } from "drizzle-orm/postgres-js"
 import { migrate } from "drizzle-orm/postgres-js/migrator"
 import postgres from "postgres"
 import { afterAll, beforeAll, expect, test } from "vitest"
-import { episodes } from "@/lib/db/schema"
+import { items } from "@/lib/db/schema"
 import { eq } from "drizzle-orm"
 
 const url = process.env.TEST_DATABASE_URL!
@@ -21,11 +21,11 @@ afterAll(async () => {
 
 test("can insert and read an episode", async () => {
   const [row] = await db
-    .insert(episodes)
+    .insert(items)
     .values({ title: "Test Ep", audioUrl: "https://example.com/a.mp3" })
     .returning()
   expect(row.status).toBe("processing")
-  const found = await db.select().from(episodes).where(eq(episodes.id, row.id))
+  const found = await db.select().from(items).where(eq(items.id, row.id))
   expect(found[0].title).toBe("Test Ep")
-  await db.delete(episodes).where(eq(episodes.id, row.id))
+  await db.delete(items).where(eq(items.id, row.id))
 })

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db"
-import { episodeRepo } from "@/lib/db/episodes"
+import { itemRepo } from "@/lib/db/items"
 import { embedQuery } from "@/lib/ai/embeddings"
 import { hybridSearch, refineHitTimestamps } from "@/lib/db/search"
 
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   if (query.length < 2) return Response.json({ episodes: [], moments: [] })
 
   const [episodes, moments] = await Promise.all([
-    episodeRepo.search(query, 6),
+    itemRepo.search(query, 6),
     embedQuery(query)
       .then((embedding) => hybridSearch(db, embedding, query, { limit: 6 }))
       .then((hits) => refineHitTimestamps(db, hits, query))

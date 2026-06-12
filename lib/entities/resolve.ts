@@ -66,7 +66,7 @@ async function enrichmentValues(
   name: string,
   type: schema.EntityType,
   mention: ExtractedEntity,
-  opts: { episodeTitle?: string },
+  opts: { itemTitle?: string },
   search: typeof defaultSearchCandidates,
   verify: typeof defaultVerifyCandidate,
 ): Promise<Omit<typeof schema.entities.$inferInsert, "slug"> | null> {
@@ -100,7 +100,7 @@ export async function resolveEpisodeEntities(
   itemId: string,
   extracted: ExtractedEntity[],
   deps: ResolveDeps,
-  opts: { episodeTitle?: string } = {},
+  opts: { itemTitle?: string } = {},
 ): Promise<void> {
   const { db } = deps
   const search = deps.searchCandidates ?? defaultSearchCandidates
@@ -141,7 +141,7 @@ export async function resolveEpisodeEntities(
           name,
           type,
           mention,
-          { episodeTitle: opts.episodeTitle },
+          { itemTitle: opts.itemTitle },
           search,
           verify,
         )
@@ -161,7 +161,7 @@ export async function resolveEpisodeEntities(
           name,
           type,
           mention,
-          { episodeTitle: opts.episodeTitle },
+          { itemTitle: opts.itemTitle },
           search,
           verify,
         )) ?? { name, type, enrichmentStatus: "failed" as const }

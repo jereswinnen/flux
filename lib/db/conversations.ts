@@ -8,19 +8,19 @@ type DB = PostgresJsDatabase<typeof schema>
 
 export function makeConversationRepo(db: DB) {
   return {
-    async create(input: { episodeId?: string | null }) {
+    async create(input: { itemId?: string | null }) {
       const [row] = await db
         .insert(conversations)
-        .values({ episodeId: input.episodeId ?? null })
+        .values({ itemId: input.itemId ?? null })
         .returning()
       return row
     },
 
-    async list(episodeId: string | null) {
+    async list(itemId: string | null) {
       return db
         .select()
         .from(conversations)
-        .where(episodeId === null ? isNull(conversations.episodeId) : eq(conversations.episodeId, episodeId))
+        .where(itemId === null ? isNull(conversations.itemId) : eq(conversations.itemId, itemId))
         .orderBy(desc(conversations.updatedAt))
     },
 

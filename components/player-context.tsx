@@ -4,7 +4,7 @@ import { createContext, useContext, useRef, useState, type ReactNode } from "rea
 
 export type AudioMarker = { sec: number; label: string }
 export type Track = {
-  episodeId: string
+  itemId: string
   audioUrl: string
   title: string
   artworkUrl: string | null
@@ -41,7 +41,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }
 
   function play(next: Track) {
-    if (track?.episodeId === next.episodeId) {
+    if (track?.itemId === next.itemId) {
       void audioRef.current?.play()
       return
     }
@@ -49,7 +49,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }
 
   function cue(next: Track, sec: number) {
-    if (track?.episodeId === next.episodeId) {
+    if (track?.itemId === next.itemId) {
       const a = audioRef.current
       if (a) {
         a.currentTime = sec

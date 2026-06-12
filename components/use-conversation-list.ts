@@ -6,14 +6,14 @@ import type { ConversationListItem } from "@/components/conversation-list"
 // Manages the list of conversations for a scope (an episode, or library-wide)
 // plus which one is active. Auto-creates one empty conversation if none exist.
 export function useConversationList(
-  episodeId?: string,
+  itemId?: string,
   opts: { autoStart?: boolean } = {},
 ) {
   const autoStart = opts.autoStart ?? true
   const [conversations, setConversations] = useState<ConversationListItem[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const seeded = useRef(false)
-  const scopeQuery = episodeId ? `episodeId=${episodeId}` : "scope=library"
+  const scopeQuery = itemId ? `itemId=${itemId}` : "scope=library"
 
   async function refresh() {
     const d = await fetch(`/api/conversations?${scopeQuery}`).then((r) => r.json())
@@ -26,7 +26,7 @@ export function useConversationList(
     const d = await fetch("/api/conversations", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(episodeId ? { episodeId } : {}),
+      body: JSON.stringify(itemId ? { itemId } : {}),
     }).then((r) => r.json())
     await refresh()
     setActiveId(d.conversation.id)
@@ -53,7 +53,7 @@ export function useConversationList(
       }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [episodeId])
+  }, [itemId])
 
   return { conversations, activeId, setActiveId, create, remove, refresh }
 }

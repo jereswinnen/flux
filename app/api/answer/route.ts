@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   const sources = await refineHitTimestamps(db, rawSources, query)
 
   const numbered = sources
-    .map((s, i) => `[${i + 1}] (${s.episodeTitle} @ ${formatTimestamp(s.startSec)}) ${s.content}`)
+    .map((s, i) => `[${i + 1}] (${s.itemTitle} @ ${formatTimestamp(s.startSec)}) ${s.content}`)
     .join("\n\n")
 
   const { text } = await generateText({

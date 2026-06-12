@@ -2,7 +2,7 @@ import { notFound } from "next/navigation"
 import { eq } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { entitiesForEpisode } from "@/lib/db/entities"
-import { episodeRepo } from "@/lib/db/episodes"
+import { itemRepo } from "@/lib/db/items"
 import { insights as insightsTable, transcripts as transcriptsTable } from "@/lib/db/schema"
 import { EpisodeView } from "@/components/episode-view"
 
@@ -10,11 +10,11 @@ export const dynamic = "force-dynamic"
 
 export default async function EpisodePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const episode = await episodeRepo.getById(id)
+  const episode = await itemRepo.getById(id)
   if (!episode) notFound()
 
-  const [transcript] = await db.select().from(transcriptsTable).where(eq(transcriptsTable.episodeId, id)).limit(1)
-  const [insight] = await db.select().from(insightsTable).where(eq(insightsTable.episodeId, id)).limit(1)
+  const [transcript] = await db.select().from(transcriptsTable).where(eq(transcriptsTable.itemId, id)).limit(1)
+  const [insight] = await db.select().from(insightsTable).where(eq(insightsTable.itemId, id)).limit(1)
   const entities = await entitiesForEpisode(db, id)
 
   return (

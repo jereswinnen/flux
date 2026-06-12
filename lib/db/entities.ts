@@ -1,6 +1,6 @@
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import { entities, episodeEntities, episodes } from "./schema"
+import { entities, itemEntities, items } from "./schema"
 import * as schema from "./schema"
 
 type DB = PostgresJsDatabase<typeof schema>
@@ -10,7 +10,7 @@ type DB = PostgresJsDatabase<typeof schema>
 // episode_entities never gaining an `id` column. count(*) comes back from
 // postgres-js as a bigint string, hence mapWith(Number).
 const mentionCount = sql`(
-  select count(*) from ${episodeEntities} ee where ee.entity_id = "entities"."id"
+  select count(*) from ${itemEntities} ee where ee.entity_id = "entities"."id"
 )`
   .mapWith(Number)
   .as("mention_count")
@@ -22,7 +22,7 @@ export async function getEntityBySlug(db: DB, slug: string) {
 
 // Entities mentioned in one episode, with this episode's mention context and
 // the library-wide mention count (for the hover card).
-export async function entitiesForEpisode(db: DB, episodeId: string) {
+export async function entitiesForEpisode(db: DB, itemId: string) {
   return db
     .select({
       id: entities.id,
@@ -32,13 +32,13 @@ export async function entitiesForEpisode(db: DB, episodeId: string) {
       description: entities.description,
       imageUrl: entities.imageUrl,
       metadata: entities.metadata,
-      context: episodeEntities.context,
-      approxTimestampSec: episodeEntities.approxTimestampSec,
+      context: itemEntities.context,
+      approxTimestampSec: itemEntities.approxTimestampSec,
       mentionCount,
     })
-    .from(episodeEntities)
-    .innerJoin(entities, eq(entities.id, episodeEntities.entityId))
-    .where(eq(episodeEntities.episodeId, episodeId))
+    .from(itemEntities)
+    .innerJoin(entities, eq(entities.id, itemEntities.entityId))
+    .where(eq(itemEntities.itemId, itemId))
     .orderBy(entities.name)
 }
 
@@ -46,19 +46,19 @@ export async function entitiesForEpisode(db: DB, episodeId: string) {
 export async function episodesMentioningEntity(db: DB, entityId: string) {
   return db
     .select({
-      id: episodes.id,
-      title: episodes.title,
-      podcastName: episodes.podcastName,
-      artworkUrl: episodes.artworkUrl,
-      publishedAt: episodes.publishedAt,
-      createdAt: episodes.createdAt,
-      context: episodeEntities.context,
-      approxTimestampSec: episodeEntities.approxTimestampSec,
+      id: items.id,
+      title: items.title,
+      podcastName: items.podcastName,
+      artworkUrl: items.artworkUrl,
+      publishedAt: items.publishedAt,
+      createdAt: items.createdAt,
+      context: itemEntities.context,
+      approxTimestampSec: itemEntities.approxTimestampSec,
     })
-    .from(episodeEntities)
-    .innerJoin(episodes, eq(episodes.id, episodeEntities.episodeId))
-    .where(eq(episodeEntities.entityId, entityId))
-    .orderBy(desc(episodes.createdAt))
+    .from(itemEntities)
+    .innerJoin(items, eq(items.id, itemEntities.itemId))
+    .where(eq(itemEntities.entityId, entityId))
+    .orderBy(desc(items.createdAt))
 }
 
 // "Often mentioned with": entities sharing episodes with this one, by count.
@@ -67,8 +67,8 @@ export async function coMentionedEntities(db: DB, entityId: string, limit = 8) {
   const result = await db.execute(sql`
     select e.id, e.name, e.slug, e.type, e.image_url as "imageUrl",
            count(*) as "sharedEpisodes"
-    from episode_entities ee
-    join episode_entities co on co.episode_id = ee.episode_id and co.entity_id <> ee.entity_id
+    from item_entities ee
+    join item_entities co on co.item_id = ee.item_id and co.entity_id <> ee.entity_id
     join entities e on e.id = co.entity_id
     where ee.entity_id = ${entityId}
     group by e.id
@@ -108,7 +108,7 @@ export async function searchEntities(db: DB, query: string, limit = 5) {
         or(ilike(entities.name, term), ilike(entities.description, term)),
         // Hide orphans: entities whose mentions were all deleted shouldn't
         // surface in search.
-        sql`(select count(*) from ${episodeEntities} ee where ee.entity_id = "entities"."id") > 0`,
+        sql`(select count(*) from ${itemEntities} ee where ee.entity_id = "entities"."id") > 0`,
       ),
     )
     .orderBy(desc(sql`mention_count`))

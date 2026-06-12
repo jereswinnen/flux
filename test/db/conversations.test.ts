@@ -23,21 +23,21 @@ afterAll(async () => {
 })
 
 test("create + list a library conversation", async () => {
-  const c = await repo.create({ episodeId: null })
+  const c = await repo.create({ itemId: null })
   expect(c.title).toBe("New chat")
   const list = await repo.list(null)
   expect(list.map((x) => x.id)).toContain(c.id)
 })
 
 test("addMessage, get returns ordered messages, title set from first user msg", async () => {
-  const c = await repo.create({ episodeId: null })
+  const c = await repo.create({ itemId: null })
   await repo.addMessage({ conversationId: c.id, role: "user", content: "What is RRF?" })
   await repo.setTitleFromFirstMessage(c.id, "What is RRF?")
   await repo.addMessage({
     conversationId: c.id,
     role: "assistant",
     content: "Reciprocal rank fusion.",
-    sources: [{ episodeId: "e1", episodeTitle: "E", startSec: 10 }],
+    sources: [{ itemId: "e1", itemTitle: "E", startSec: 10 }],
   })
   const got = await repo.get(c.id)
   expect(got?.conversation.title).toBe("What is RRF?")
@@ -46,21 +46,21 @@ test("addMessage, get returns ordered messages, title set from first user msg", 
 })
 
 test("remove cascades to messages", async () => {
-  const c = await repo.create({ episodeId: null })
+  const c = await repo.create({ itemId: null })
   await repo.addMessage({ conversationId: c.id, role: "user", content: "hi" })
   await repo.remove(c.id)
   expect(await repo.get(c.id)).toBeNull()
 })
 
 test("rename updates the title", async () => {
-  const c = await repo.create({ episodeId: null })
+  const c = await repo.create({ itemId: null })
   await repo.rename(c.id, "  My renamed thread  ")
   const got = await repo.get(c.id)
   expect(got?.conversation.title).toBe("My renamed thread")
 })
 
 test("truncateFrom deletes the target message and everything after it", async () => {
-  const c = await repo.create({ episodeId: null })
+  const c = await repo.create({ itemId: null })
   const m1 = await repo.addMessage({ conversationId: c.id, role: "user", content: "q1" })
   await new Promise((r) => setTimeout(r, 5))
   const m2 = await repo.addMessage({ conversationId: c.id, role: "assistant", content: "a1" })

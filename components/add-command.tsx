@@ -34,7 +34,7 @@ type LibEpisode = {
   status: string; publishedAt: string | null
 }
 type Moment = {
-  chunkId: string; episodeId: string; episodeTitle: string; podcastName: string | null
+  chunkId: string; itemId: string; itemTitle: string; podcastName: string | null
   artworkUrl: string | null; content: string; startSec: number; endSec: number
 }
 
@@ -299,14 +299,14 @@ export function AddCommand() {
                   <CommandItem
                     key={`moment-${m.chunkId}`}
                     value={`moment-${m.chunkId}`}
-                    onSelect={() => goTo(`/episodes/${m.episodeId}?t=${Math.floor(m.startSec)}`)}
+                    onSelect={() => goTo(`/episodes/${m.itemId}?t=${Math.floor(m.startSec)}`)}
                   >
-                    <Thumb src={m.artworkUrl} alt={m.episodeTitle} />
+                    <Thumb src={m.artworkUrl} alt={m.itemTitle} />
                     <div className="min-w-0 flex-1">
                       <p className="line-clamp-2 text-sm">
                         <Highlight text={m.content} query={query} />
                       </p>
-                      <div className="truncate text-xs text-muted-foreground">{m.episodeTitle}</div>
+                      <div className="truncate text-xs text-muted-foreground">{m.itemTitle}</div>
                     </div>
                     <CommandShortcut>{formatTimestamp(m.startSec)}</CommandShortcut>
                   </CommandItem>

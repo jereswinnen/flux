@@ -1,6 +1,6 @@
 import { desc, eq, sql } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import { episodes, insights } from "./schema"
+import { insights, items } from "./schema"
 import * as schema from "./schema"
 
 // Episodes whose insights list `name` as a topic, or mention it as a named entity.
@@ -10,16 +10,16 @@ export async function episodesMentioning(
 ) {
   return db
     .select({
-      id: episodes.id,
-      title: episodes.title,
-      podcastName: episodes.podcastName,
-      artworkUrl: episodes.artworkUrl,
-      status: episodes.status,
-      publishedAt: episodes.publishedAt,
-      createdAt: episodes.createdAt,
+      id: items.id,
+      title: items.title,
+      podcastName: items.podcastName,
+      artworkUrl: items.artworkUrl,
+      status: items.status,
+      publishedAt: items.publishedAt,
+      createdAt: items.createdAt,
     })
-    .from(episodes)
-    .innerJoin(insights, eq(insights.episodeId, episodes.id))
+    .from(items)
+    .innerJoin(insights, eq(insights.itemId, items.id))
     .where(
       sql`jsonb_exists(${insights.topics}, ${name})
           or exists (
@@ -27,5 +27,5 @@ export async function episodesMentioning(
             where e->>'name' = ${name}
           )`,
     )
-    .orderBy(desc(episodes.createdAt))
+    .orderBy(desc(items.createdAt))
 }

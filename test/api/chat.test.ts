@@ -31,7 +31,7 @@ test("404 for unknown conversation", async () => {
 })
 
 test.skipIf(!process.env.OPENAI_API_KEY)("persists user + assistant messages", async () => {
-  const c = await repo.create({ episodeId: null })
+  const c = await repo.create({ itemId: null })
   const { POST } = await import("@/app/api/chat/route")
   const res = await POST(
     new Request("http://x/api/chat", {
@@ -47,7 +47,7 @@ test.skipIf(!process.env.OPENAI_API_KEY)("persists user + assistant messages", a
 }, 30_000)
 
 test.skipIf(!process.env.OPENAI_API_KEY)("regenerate replaces the assistant turn without duplicating the user turn", async () => {
-  const c = await repo.create({ episodeId: null })
+  const c = await repo.create({ itemId: null })
   const { POST } = await import("@/app/api/chat/route")
   await (await POST(new Request("http://x", { method: "POST", body: JSON.stringify({ conversationId: c.id, content: "Say hi." }) }))).text()
   let got = await repo.get(c.id)
@@ -59,7 +59,7 @@ test.skipIf(!process.env.OPENAI_API_KEY)("regenerate replaces the assistant turn
 }, 60_000)
 
 test("regenerate with no messages returns 400", async () => {
-  const c = await repo.create({ episodeId: null })
+  const c = await repo.create({ itemId: null })
   const { POST } = await import("@/app/api/chat/route")
   const res = await POST(new Request("http://x", { method: "POST", body: JSON.stringify({ conversationId: c.id, regenerate: true }) }))
   expect(res.status).toBe(400)

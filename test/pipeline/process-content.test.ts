@@ -89,7 +89,7 @@ test("processContent resolves entities after insights, and a resolver failure do
   expect(resolveEntities).toHaveBeenCalledWith(
     ep.id,
     insightsValue.entities,
-    expect.objectContaining({ episodeTitle: "Entity EP" }),
+    expect.objectContaining({ itemTitle: "Entity EP" }),
   )
   expect((await repo.getById(ep.id))?.status).toBe("ready")
 

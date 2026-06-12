@@ -11,8 +11,8 @@ import { parseTimestamp, formatTimestamp } from "@/lib/format"
 import { usePlayer } from "@/components/player-context"
 
 export type ChatSourceRef = {
-  episodeId: string
-  episodeTitle: string
+  itemId: string
+  itemTitle: string
   startSec: number
   podcastName?: string | null
   artworkUrl?: string | null
@@ -62,16 +62,16 @@ export function ChatMessage({
     if (s.audioUrl) {
       player.cue(
         {
-          episodeId: s.episodeId,
+          itemId: s.itemId,
           audioUrl: s.audioUrl,
-          title: s.episodeTitle,
+          title: s.itemTitle,
           artworkUrl: s.artworkUrl ?? null,
           markers: [],
         },
         Math.floor(s.startSec),
       )
     } else {
-      router.push(`/episodes/${s.episodeId}?t=${Math.floor(s.startSec)}`)
+      router.push(`/episodes/${s.itemId}?t=${Math.floor(s.startSec)}`)
     }
   }
 
@@ -119,7 +119,7 @@ export function ChatMessage({
                       <button
                         type="button"
                         onClick={() => openSource(s)}
-                        title={`${s.episodeTitle} · ${formatTimestamp(s.startSec)}`}
+                        title={`${s.itemTitle} · ${formatTimestamp(s.startSec)}`}
                         className="mx-0.5 inline-flex size-5 -translate-y-[0.15em] items-center justify-center rounded bg-primary/15 align-baseline font-sans text-[11px] font-medium text-primary no-underline hover:bg-primary/25"
                       >
                         {n}
@@ -183,7 +183,7 @@ export function ChatMessage({
                       ) : null}
                     </div>
                     <div className="min-w-0 flex-1 font-sans">
-                      <div className="line-clamp-1 text-sm font-medium">{s.episodeTitle}</div>
+                      <div className="line-clamp-1 text-sm font-medium">{s.itemTitle}</div>
                       <div className="truncate text-xs text-muted-foreground">
                         {[s.podcastName, formatTimestamp(s.startSec)].filter(Boolean).join(" · ")}
                       </div>

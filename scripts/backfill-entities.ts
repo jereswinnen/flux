@@ -18,20 +18,20 @@ async function main() {
 
   const rows = await db
     .select({
-      episodeId: schema.insights.episodeId,
+      itemId: schema.insights.itemId,
       entities: schema.insights.entities,
-      title: schema.episodes.title,
+      title: schema.items.title,
     })
     .from(schema.insights)
-    .innerJoin(schema.episodes, eq(schema.episodes.id, schema.insights.episodeId))
+    .innerJoin(schema.items, eq(schema.items.id, schema.insights.itemId))
 
   let done = 0
   for (const row of rows) {
     const extracted = row.entities ?? []
     const [existing] = await db
-      .select({ episodeId: schema.episodeEntities.episodeId })
-      .from(schema.episodeEntities)
-      .where(eq(schema.episodeEntities.episodeId, row.episodeId))
+      .select({ itemId: schema.itemEntities.itemId })
+      .from(schema.itemEntities)
+      .where(eq(schema.itemEntities.itemId, row.itemId))
       .limit(1)
     if (existing || extracted.length === 0) {
       console.log(`skip  ${row.title}`)
@@ -40,7 +40,7 @@ async function main() {
     // Old insights rows predate per-entity context; the verifier falls back to
     // the episode title. One bad episode shouldn't abandon the rest of the queue.
     try {
-      await resolveEpisodeEntities(row.episodeId, extracted, { db }, { episodeTitle: row.title })
+      await resolveEpisodeEntities(row.itemId, extracted, { db }, { itemTitle: row.title })
       done++
       console.log(`done  ${row.title} (${extracted.length} entities)`)
     } catch (e) {
