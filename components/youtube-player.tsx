@@ -81,13 +81,23 @@ export function YouTubePlayerProvider({
   const [currentSec, setCurrentSec] = useState(0)
   const [minimized, setMinimized] = useState(false)
 
-  // Instantiate the player once per videoId.
+  // Instantiate the player once per videoId. The YouTube IFrame API REPLACES the
+  // element it's handed with an <iframe>. If that element were React-managed,
+  // React's reconciler would later try to operate on a node that no longer exists
+  // where it expects (e.g. inserting the docked-state button as a sibling) and
+  // throw "NotFoundError". So we append an imperative child that React doesn't
+  // track and let the API replace THAT, leaving React's host div untouched.
   useEffect(() => {
+    const host = hostRef.current
+    if (!host) return
     let cancelled = false
     let poll: ReturnType<typeof setInterval> | null = null
+    const target = document.createElement("div")
+    target.className = "size-full"
+    host.appendChild(target)
     void loadYouTubeApi().then(() => {
-      if (cancelled || !hostRef.current || !window.YT) return
-      playerRef.current = new window.YT.Player(hostRef.current, {
+      if (cancelled || !window.YT) return
+      playerRef.current = new window.YT.Player(target, {
         videoId,
         playerVars: { playsinline: 1, rel: 0, modestbranding: 1 },
         events: {
@@ -113,6 +123,13 @@ export function YouTubePlayerProvider({
         /* ignore */
       }
       playerRef.current = null
+      // Clear any iframe the API left inside our React-owned host so React never
+      // sees foreign nodes.
+      try {
+        while (host.firstChild) host.removeChild(host.firstChild)
+      } catch {
+        /* ignore */
+      }
       setReady(false)
     }
   }, [videoId])
