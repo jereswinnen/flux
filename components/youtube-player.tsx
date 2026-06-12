@@ -50,6 +50,12 @@ function loadYouTubeApi(): Promise<void> {
     }
     const tag = document.createElement("script")
     tag.src = "https://www.youtube.com/iframe_api"
+    // If the script fails to load, resolve anyway (callers guard on window.YT)
+    // and clear the cached promise so a later remount can retry.
+    tag.onerror = () => {
+      apiPromise = null
+      resolve()
+    }
     document.head.appendChild(tag)
   })
   return apiPromise
@@ -86,6 +92,7 @@ export function YouTubePlayerProvider({
         playerVars: { playsinline: 1, rel: 0, modestbranding: 1 },
         events: {
           onReady: () => {
+            if (cancelled) return
             setReady(true)
             poll = setInterval(() => {
               const p = playerRef.current
