@@ -5,6 +5,8 @@ import { ArrowDown, ArrowUp, Square, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ChatMessage } from "@/components/chat-message"
+import { usePlayer } from "@/components/player-context"
+import { useVideoPlayer } from "@/components/video-player"
 import { useStickToBottom } from "@/components/use-stick-to-bottom"
 import { hiResArtwork } from "@/lib/artwork"
 import { cn } from "@/lib/utils"
@@ -15,6 +17,8 @@ export type AttachableEpisode = {
   title: string
   podcastName?: string | null
   artworkUrl?: string | null
+  audioUrl?: string | null
+  videoId?: string | null
 }
 
 export function ConversationView({
@@ -33,6 +37,8 @@ export function ConversationView({
   initialAttachment?: AttachableEpisode | null
 }) {
   const { messages, busy, send, stop } = chat
+  const audio = usePlayer()
+  const video = useVideoPlayer()
   const [draft, setDraft] = useState("")
   const [attached, setAttached] = useState<AttachableEpisode | null>(
     initialAttachment
@@ -135,7 +141,30 @@ export function ConversationView({
                 <ChatMessage
                   key={m.id ?? i}
                   message={m}
-                  onSeek={onSeek}
+                  onSeek={(sec) => {
+                    // Inline [m:ss] timestamps refer to the attached item — cue it
+                    // in place (video mini / audio bar).
+                    if (attached?.videoId) {
+                      video.cue(attached.videoId, {
+                        startSec: Math.floor(sec),
+                        itemId: attached.id,
+                        title: attached.title,
+                      })
+                    } else if (attached?.audioUrl) {
+                      audio.cue(
+                        {
+                          itemId: attached.id,
+                          audioUrl: attached.audioUrl,
+                          title: attached.title,
+                          artworkUrl: attached.artworkUrl ?? null,
+                          markers: [],
+                        },
+                        Math.floor(sec),
+                      )
+                    } else {
+                      onSeek?.(sec)
+                    }
+                  }}
                   pending={isLast && m.role === "assistant" && busy}
                 />
               )

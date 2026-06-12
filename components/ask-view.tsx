@@ -30,15 +30,25 @@ export function AskView() {
 
   // Episodes power the @-mention picker and resolve the ?attach= deep link.
   useEffect(() => {
+    type Row = {
+      id: string
+      title: string
+      podcastName?: string | null
+      artworkUrl?: string | null
+      audioUrl?: string | null
+      sourceMetadata?: { videoId?: string } | null
+    }
     fetch("/api/episodes")
       .then((r) => r.json())
       .then((d) =>
         setEpisodes(
-          (d.episodes ?? []).map((e: AttachableEpisode) => ({
+          (d.episodes ?? []).map((e: Row) => ({
             id: e.id,
             title: e.title,
             podcastName: e.podcastName,
             artworkUrl: e.artworkUrl,
+            audioUrl: e.audioUrl,
+            videoId: e.sourceMetadata?.videoId ?? null,
           })),
         ),
       )
