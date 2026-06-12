@@ -1,4 +1,4 @@
-export async function triggerTranscription(episodeId: string, audioUrl: string) {
+export async function triggerTranscription(itemId: string, audioUrl: string) {
   const endpoint = process.env.MODAL_TRANSCRIBE_URL
   const secret = process.env.MODAL_WEBHOOK_SECRET
   const appUrl = process.env.APP_URL
@@ -10,7 +10,7 @@ export async function triggerTranscription(episodeId: string, audioUrl: string) 
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      episode_id: episodeId,
+      episode_id: itemId, // wire key unchanged; deployed Modal fn echoes it back
       audio_url: audioUrl,
       callback_url: `${appUrl}/api/modal/callback`,
       secret,

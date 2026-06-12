@@ -18,8 +18,8 @@ test("rejects wrong secret with 401", async () => {
 })
 
 test("accepts valid secret and kicks off processing", async () => {
-  vi.doMock("@/lib/pipeline/process-transcript", () => ({
-    processTranscript: vi.fn(async () => {}),
+  vi.doMock("@/lib/pipeline/process-content", () => ({
+    processContent: vi.fn(async () => {}),
   }))
   const { POST } = await import("@/app/api/modal/callback/route")
   const res = await POST(

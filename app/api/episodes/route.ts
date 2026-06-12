@@ -1,8 +1,8 @@
-import { episodeRepo } from "@/lib/db/episodes"
+import { itemRepo } from "@/lib/db/items"
 import { triggerTranscription } from "@/lib/modal/client"
 
 export async function GET() {
-  const list = await episodeRepo.list()
+  const list = await itemRepo.list()
   return Response.json({ episodes: list })
 }
 
@@ -12,27 +12,27 @@ export async function POST(request: Request) {
     return Response.json({ error: "title and audioUrl are required" }, { status: 400 })
   }
 
-  const episode = await episodeRepo.create({
+  const item = await itemRepo.create({
+    type: "podcast",
     title: body.title,
     audioUrl: body.audioUrl,
     podcastName: body.podcastName,
     sourceUrl: body.sourceUrl,
     artworkUrl: body.artworkUrl,
-    episodeGuid: body.episodeGuid,
     publishedAt: body.publishedAt ? new Date(body.publishedAt) : undefined,
     durationSec: body.durationSec,
-    itunesCollectionId: body.itunesCollectionId,
-    itunesTrackId: body.itunesTrackId,
+    sourceMetadata: {
+      guid: body.episodeGuid,
+      itunesCollectionId: body.itunesCollectionId,
+      itunesTrackId: body.itunesTrackId,
+    },
   })
 
-  // Fire transcription async; don't block the response.
-  if (episode.status === "processing") {
-    triggerTranscription(episode.id, episode.audioUrl)
-      .then(() => episodeRepo.updateStatus(episode.id, "transcribing"))
-      .catch((e) =>
-        episodeRepo.updateStatus(episode.id, "failed", String(e?.message ?? e)),
-      )
+  if (item.status === "processing" && item.audioUrl) {
+    triggerTranscription(item.id, item.audioUrl)
+      .then(() => itemRepo.updateStatus(item.id, "transcribing"))
+      .catch((e) => itemRepo.updateStatus(item.id, "failed", String(e?.message ?? e)))
   }
 
-  return Response.json({ episode }, { status: 201 })
+  return Response.json({ episode: item }, { status: 201 })
 }

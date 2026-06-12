@@ -1,7 +1,7 @@
 import crypto from "node:crypto"
 import { db } from "@/lib/db"
-import { episodeRepo } from "@/lib/db/episodes"
-import { processTranscript } from "@/lib/pipeline/process-transcript"
+import { itemRepo } from "@/lib/db/items"
+import { processContent } from "@/lib/pipeline/process-content"
 
 function secretValid(provided: unknown): boolean {
   const expected = process.env.MODAL_WEBHOOK_SECRET
@@ -19,24 +19,22 @@ export async function POST(request: Request) {
     return Response.json({ error: "unauthorized" }, { status: 401 })
   }
 
-  const episodeId = body.episode_id
-  if (typeof episodeId !== "string" || episodeId.length === 0) {
+  const itemId = body.episode_id
+  if (typeof itemId !== "string" || itemId.length === 0) {
     return Response.json({ error: "missing episode_id" }, { status: 400 })
   }
 
   // Transcription itself failed inside Modal.
   if (body.error) {
-    await episodeRepo.updateStatus(episodeId, "failed", String(body.error))
+    await itemRepo.updateStatus(itemId, "failed", String(body.error))
     return Response.json({ status: "recorded" }, { status: 202 })
   }
 
   // Run the rest of the pipeline without blocking the webhook response.
-  processTranscript(
-    { episodeId, transcript: body.transcript, segments: body.segments ?? [] },
+  processContent(
+    { itemId, transcript: body.transcript, segments: body.segments ?? [] },
     { db },
-  ).catch(() => {
-    // processTranscript already records the failure status.
-  })
+  ).catch(() => {})
 
   return Response.json({ status: "accepted" }, { status: 202 })
 }
