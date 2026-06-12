@@ -10,7 +10,7 @@ Living status across all phases. Updated as work lands. See the spec and per-pha
 | Phase | Scope | Status |
 |------|-------|--------|
 | 1 | Polymorphic data model + DTO foundation (`episodes`→`items`, `type`+`sourceMetadata`, `lib/api/` DTOs) | ✅ Done (pending manual smoke test) |
-| 2 | `SourceAdapter` abstraction + unified ingest (podcast adapter, YouTube adapter, `POST /api/items`, retry) | ⚪ Not started |
+| 2 | `SourceAdapter` abstraction + unified ingest (podcast adapter, YouTube adapter, `POST /api/items`, retry) | 🟡 In progress |
 | 3 | Modal YouTube function (`transcribe_youtube`: wgcf + wireproxy + yt-dlp, health gate, metadata backfill) | ⚪ Not started |
 | 4 | Frontend (`ItemView`, pluggable player, YouTube IFrame, live-reading transcript, bottom-right mini-player) | ⚪ Not started |
 
@@ -35,6 +35,28 @@ Each task passes two reviews (spec compliance → code quality) before it's mark
 - [x] **Task 9 — Mechanical rename sweep** (30 files) · commit `bdc8ff1` · typecheck clean + 90/90 tests · reviews ✅
 - [x] **Task 10 — Final verification** · typecheck clean · 90/90 tests · build ✅ · lint: 0 new errors (11 pre-existing on main) · final holistic review: **GO**
   - ⏳ **Pending (user):** manual podcast smoke test — add a podcast via ⌘K, confirm it reaches `ready` and renders.
+
+**Phase 1 merged to `main` locally** (fast-forward, branch deleted). `main` is ahead of `origin/main` by 19 commits — not yet pushed.
+
+---
+
+## Phase 2 — SourceAdapter + unified ingest
+
+Plan: [`plans/2026-06-12-youtube-phase-2-adapters.md`](plans/2026-06-12-youtube-phase-2-adapters.md) · Branch: `youtube-phase-2-adapters`
+
+- [ ] Task 1 — `SourceAdapter` interface (`lib/sources/types.ts`)
+- [ ] Task 2 — YouTube URL parsing (`youtube-url.ts`, TDD)
+- [ ] Task 3 — `triggerYoutubeTranscription` Modal client
+- [ ] Task 4 — Podcast + YouTube adapters + registry
+- [ ] Task 5 — Unified `POST`/`GET /api/items`
+- [ ] Task 6 — Generalized `POST /api/items/[id]/retry`
+- [ ] Task 7 — Callback metadata backfill (`item_id` + `metadata`)
+- [ ] Task 8 — add-command UI: paste YouTube URL → ingest
+- [ ] Task 9 — Final verification
+
+Boundary note: YouTube ingestion is fully wired on the Vercel side here but only works **end-to-end once Phase 3 deploys the Modal `transcribe_youtube` endpoint**. Until then a YouTube add creates the item then moves to `failed`. Verified in Phase 2 with the Modal call mocked.
+
+---
 
 ### Phase 1 fast-follows (non-blocking, from final review)
 - Index-name drift: DB still has `conversations_episode_updated_idx` / `episode_entities_entity_idx` (renames are cosmetic; a future `drizzle-kit generate` emits them).
