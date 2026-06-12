@@ -95,6 +95,7 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
   const [started, setStarted] = useState(false)
   const [docked, setDocked] = useState(false)
   const [closing, setClosing] = useState(false)
+  const [undockGhost, setUndockGhost] = useState(false)
 
   const hostRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
@@ -104,6 +105,7 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
   const dockedRef = useRef(false)
   const videoIdRef = useRef<string | null>(null)
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const ghostTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const cue = useCallback((id: string, opts?: CueOpts) => {
     if (closeTimerRef.current) {
@@ -241,8 +243,17 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
           stage.style.borderRadius = "0.75rem"
         }
         if (inline !== !dockedRef.current) {
+          const wasDocked = dockedRef.current
           dockedRef.current = !inline
           setDocked(!inline)
+          // Un-docking back to the inline slot: the real iframe returns inline
+          // instantly (where the user is looking); a corner thumbnail ghost slides
+          // out so the mini's dismissal still animates.
+          if (wasDocked && inline) {
+            setUndockGhost(true)
+            if (ghostTimerRef.current) clearTimeout(ghostTimerRef.current)
+            ghostTimerRef.current = setTimeout(() => setUndockGhost(false), 220)
+          }
         }
       }
       raf = requestAnimationFrame(place)
@@ -345,6 +356,18 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Corner ghost that slides out when un-docking back to the inline slot — the
+          real iframe is already inline, so this only animates the mini's exit. */}
+      {undockGhost && videoId && (
+        <div className="pointer-events-none fixed bottom-4 right-4 z-30 aspect-video w-80 overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-black/10 animate-out fade-out slide-out-to-bottom-3 md:w-[28rem]">
+          <img
+            src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`}
+            alt=""
+            className="size-full object-cover"
+          />
         </div>
       )}
     </Ctx.Provider>
