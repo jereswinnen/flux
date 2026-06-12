@@ -1,12 +1,12 @@
 import { cosineDistance, desc, eq, inArray, sql } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import { chunks, episodes, transcripts } from "./schema"
+import { chunks, items, transcripts } from "./schema"
 import * as schema from "./schema"
 
 export interface SearchHit {
   chunkId: string
-  episodeId: string
-  episodeTitle: string
+  itemId: string
+  itemTitle: string
   podcastName: string | null
   artworkUrl: string | null
   audioUrl: string
@@ -19,25 +19,25 @@ export interface SearchHit {
 export async function searchChunks(
   db: PostgresJsDatabase<typeof schema>,
   queryEmbedding: number[],
-  opts: { limit?: number; episodeId?: string } = {},
+  opts: { limit?: number; itemId?: string } = {},
 ): Promise<SearchHit[]> {
   const similarity = sql<number>`(1 - (${cosineDistance(chunks.embedding, queryEmbedding)}))::float8`
   const rows = await db
     .select({
       chunkId: chunks.id,
-      episodeId: chunks.episodeId,
-      episodeTitle: episodes.title,
-      podcastName: episodes.podcastName,
-      artworkUrl: episodes.artworkUrl,
-      audioUrl: episodes.audioUrl,
+      itemId: chunks.itemId,
+      itemTitle: items.title,
+      podcastName: items.podcastName,
+      artworkUrl: items.artworkUrl,
+      audioUrl: items.audioUrl,
       content: chunks.content,
       startSec: chunks.startSec,
       endSec: chunks.endSec,
       similarity,
     })
     .from(chunks)
-    .innerJoin(episodes, eq(chunks.episodeId, episodes.id))
-    .where(opts.episodeId ? eq(chunks.episodeId, opts.episodeId) : undefined)
+    .innerJoin(items, eq(chunks.itemId, items.id))
+    .where(opts.itemId ? eq(chunks.itemId, opts.itemId) : undefined)
     .orderBy(desc(similarity))
     .limit(opts.limit ?? 8)
   return rows
@@ -70,12 +70,12 @@ export async function hybridSearch(
              coalesce(1.0/(${k} + vec.rank), 0) + coalesce(1.0/(${k} + fts.rank), 0) as score
       from vec full outer join fts on vec.id = fts.id
     )
-    select c.id as "chunkId", c.episode_id as "episodeId", e.title as "episodeTitle",
+    select c.id as "chunkId", c.item_id as "itemId", e.title as "itemTitle",
            e.podcast_name as "podcastName", e.artwork_url as "artworkUrl", e.audio_url as "audioUrl",
            c.content, c.start_sec as "startSec", c.end_sec as "endSec", f.score as "similarity"
     from fused f
     join chunks c on c.id = f.id
-    join episodes e on e.id = c.episode_id
+    join items e on e.id = c.item_id
     order by f.score desc
     limit ${limit}
   `)
@@ -102,15 +102,15 @@ export async function refineHitTimestamps(
   const words = new Set(normalizeText(query).split(" ").filter((w) => w.length > 3))
   if (words.size === 0) return hits
 
-  const episodeIds = [...new Set(hits.map((h) => h.episodeId))]
+  const itemIds = [...new Set(hits.map((h) => h.itemId))]
   const rows = await db
-    .select({ episodeId: transcripts.episodeId, segments: transcripts.segments })
+    .select({ itemId: transcripts.itemId, segments: transcripts.segments })
     .from(transcripts)
-    .where(inArray(transcripts.episodeId, episodeIds))
-  const segsByEpisode = new Map(rows.map((r) => [r.episodeId, r.segments ?? []]))
+    .where(inArray(transcripts.itemId, itemIds))
+  const segsByEpisode = new Map(rows.map((r) => [r.itemId, r.segments ?? []]))
 
   return hits.map((h) => {
-    const segs = segsByEpisode.get(h.episodeId) ?? []
+    const segs = segsByEpisode.get(h.itemId) ?? []
     let bestStart = h.startSec
     let bestScore = 0
     for (const s of segs) {
