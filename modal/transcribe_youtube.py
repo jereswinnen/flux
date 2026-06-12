@@ -10,20 +10,23 @@ warp_cache = modal.Volume.from_name("warp-cache", create_if_missing=True)
 
 SOCKS_PORT = 25344
 
-# Release URLs verified 2026-06 (wgcf v2.2.31 is the latest pinned build; wireproxy
-# uses the active windtf fork via its stable `latest` asset, so it tracks upstream
-# without a hardcoded version). If the image build 404s, re-check these.
-WGCF_URL = "https://github.com/ViRb3/wgcf/releases/download/v2.2.31/wgcf_2.2.31_linux_amd64"
-WIREPROXY_URL = "https://github.com/windtf/wireproxy/releases/latest/download/wireproxy_linux_amd64.tar.gz"
+# WARP egress via usque — Cloudflare WARP's MASQUE (QUIC) protocol, exposed as a
+# local SOCKS5 proxy. Chosen over wgcf+wireproxy because WireGuard's userspace UDP
+# socket fails under Modal's gVisor sandbox ("operation not supported" on bind);
+# quic-go degrades gracefully when socket offloads are unavailable. If the image
+# build 404s, bump the version here.
+USQUE_URL = "https://github.com/Diniboy1123/usque/releases/download/v3.0.0/usque_3.0.0_linux_amd64.zip"
 
 image = (
     modal.Image.from_registry(
         "nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04", add_python="3.11"
     )
-    .apt_install("ffmpeg", "wget", "ca-certificates")
+    .apt_install("ffmpeg", "wget", "ca-certificates", "unzip")
     .pip_install(
         "faster-whisper==1.0.3",
-        "requests==2.32.3",
+        # [socks] pulls in PySocks so the health-gate request can go through usque's
+        # SOCKS5 proxy.
+        "requests[socks]==2.32.3",
         "fastapi[standard]",
         # Unpinned: a stale yt-dlp is the main cause of YouTube extraction breaking,
         # so each image build picks up the latest. Pin to a known-good version only
@@ -31,8 +34,10 @@ image = (
         "yt-dlp",
     )
     .run_commands(
-        f"wget -q -O /usr/local/bin/wgcf {WGCF_URL} && chmod +x /usr/local/bin/wgcf",
-        f"wget -q -O /tmp/wp.tar.gz {WIREPROXY_URL} && tar -xzf /tmp/wp.tar.gz -C /usr/local/bin wireproxy && chmod +x /usr/local/bin/wireproxy",
+        f"wget -q -O /tmp/usque.zip {USQUE_URL} "
+        "&& unzip -o /tmp/usque.zip -d /tmp/usque "
+        "&& install -m 0755 /tmp/usque/usque /usr/local/bin/usque "
+        "&& rm -rf /tmp/usque /tmp/usque.zip",
     )
     # ship the pure helpers into the image
     .add_local_python_source("youtube_helpers")
@@ -40,47 +45,44 @@ image = (
 
 
 def _start_warp():
-    """Register (once, cached) a free WARP identity and start wireproxy as a
-    userspace SOCKS5 proxy on 127.0.0.1:SOCKS_PORT. Returns when WARP is up."""
+    """Register (once, cached) a free Cloudflare WARP identity via usque (MASQUE/
+    QUIC — works under gVisor, unlike a WireGuard UDP socket) and start its SOCKS5
+    proxy on 127.0.0.1:SOCKS_PORT. Returns once WARP egress is confirmed."""
     import os
     import subprocess
     import time
     import requests
-    from youtube_helpers import build_wireproxy_config
 
     os.makedirs(WARP_DIR, exist_ok=True)
-    account = os.path.join(WARP_DIR, "wgcf-account.toml")
-    profile = os.path.join(WARP_DIR, "wgcf-profile.conf")
-    wp_conf = os.path.join(WARP_DIR, "wireproxy.conf")
+    config = os.path.join(WARP_DIR, "usque-config.json")
 
     warp_cache.reload()
-    if not os.path.exists(account):
-        # register a fresh anonymous WARP identity (accepts TOS) + generate wg profile
+    if not os.path.exists(config):
+        # Enroll a fresh anonymous WARP device (accepts Cloudflare TOS). Only runs
+        # when no cached config exists, so usque's interactive "overwrite?" prompt
+        # is never reached.
         subprocess.run(
-            ["wgcf", "register", "--accept-tos", "--config", account],
+            ["usque", "register", "--accept-tos", "-c", config],
             check=True, cwd=WARP_DIR,
         )
-    if not os.path.exists(profile):
-        subprocess.run(
-            ["wgcf", "generate", "--config", account, "--profile", profile],
-            check=True, cwd=WARP_DIR,
-        )
-    with open(profile) as f:
-        wg = f.read()
-    with open(wp_conf, "w") as f:
-        f.write(build_wireproxy_config(wg, SOCKS_PORT))
-    warp_cache.commit()
+        warp_cache.commit()
 
-    # start the userspace proxy (no TUN / NET_ADMIN needed)
-    subprocess.Popen(["wireproxy", "-c", wp_conf])
+    # Userspace SOCKS5 proxy over MASQUE — no TUN, no kernel module, no exotic
+    # socket options for gVisor to reject.
+    subprocess.Popen(
+        ["usque", "-c", config, "socks", "-b", "127.0.0.1", "-p", str(SOCKS_PORT)]
+    )
 
     # health gate: confirm WARP is the egress before doing any YouTube work
-    proxies = {"http": f"socks5://127.0.0.1:{SOCKS_PORT}", "https": f"socks5://127.0.0.1:{SOCKS_PORT}"}
+    proxies = {
+        "http": f"socks5h://127.0.0.1:{SOCKS_PORT}",
+        "https": f"socks5h://127.0.0.1:{SOCKS_PORT}",
+    }
     for _ in range(30):
         try:
             r = requests.get("https://www.cloudflare.com/cdn-cgi/trace", proxies=proxies, timeout=5)
             if "warp=on" in r.text or "warp=plus" in r.text:
-                return proxies
+                return
         except Exception:
             pass
         time.sleep(1)
@@ -103,7 +105,7 @@ def transcribe_youtube(video_url: str, item_id: str, callback_url: str, secret: 
 
     try:
         _start_warp()
-        socks = f"socks5://127.0.0.1:{SOCKS_PORT}"
+        socks = f"socks5h://127.0.0.1:{SOCKS_PORT}"
 
         with tempfile.TemporaryDirectory() as tmp:
             out = os.path.join(tmp, "audio.%(ext)s")
