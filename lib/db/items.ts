@@ -66,6 +66,18 @@ export function makeItemRepo(db: DB) {
         .where(eq(items.id, id))
     },
 
+    async updateMeta(
+      id: string,
+      fields: Partial<
+        Pick<NewItem, "title" | "podcastName" | "artworkUrl" | "durationSec"> & {
+          publishedAt: Date
+        }
+      >,
+    ) {
+      if (Object.keys(fields).length === 0) return
+      await db.update(items).set(fields).where(eq(items.id, id))
+    },
+
     async remove(id: string) {
       await db.delete(items).where(eq(items.id, id))
     },

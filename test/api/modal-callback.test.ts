@@ -62,3 +62,68 @@ test("returns 400 when episode_id is missing", async () => {
   )
   expect(res.status).toBe(400)
 })
+
+test("accepts item_id, calls updateMeta with mapped fields, returns 202", async () => {
+  const updateMeta = vi.fn(async () => {})
+  vi.doMock("@/lib/db/items", () => ({
+    itemRepo: {
+      updateStatus: vi.fn(async () => {}),
+      updateMeta,
+    },
+  }))
+  vi.doMock("@/lib/pipeline/process-content", () => ({
+    processContent: vi.fn(async () => {}),
+  }))
+  const { POST } = await import("@/app/api/modal/callback/route")
+  const res = await POST(
+    new Request("http://x/api/modal/callback", {
+      method: "POST",
+      body: JSON.stringify({
+        item_id: "y1",
+        secret: "s3cret",
+        metadata: {
+          title: "Real Title",
+          channelName: "Chan",
+          thumbnailUrl: "https://t/.jpg",
+          durationSec: 1200,
+        },
+        transcript: "t",
+        segments: [],
+      }),
+    }),
+  )
+  expect(res.status).toBe(202)
+  expect(updateMeta).toHaveBeenCalledWith("y1", {
+    title: "Real Title",
+    podcastName: "Chan",
+    artworkUrl: "https://t/.jpg",
+    durationSec: 1200,
+  })
+})
+
+test("podcast episode_id path: updateMeta is NOT called when no metadata", async () => {
+  const updateMeta = vi.fn(async () => {})
+  vi.doMock("@/lib/db/items", () => ({
+    itemRepo: {
+      updateStatus: vi.fn(async () => {}),
+      updateMeta,
+    },
+  }))
+  vi.doMock("@/lib/pipeline/process-content", () => ({
+    processContent: vi.fn(async () => {}),
+  }))
+  const { POST } = await import("@/app/api/modal/callback/route")
+  const res = await POST(
+    new Request("http://x/api/modal/callback", {
+      method: "POST",
+      body: JSON.stringify({
+        episode_id: "pod1",
+        secret: "s3cret",
+        transcript: "t",
+        segments: [],
+      }),
+    }),
+  )
+  expect(res.status).toBe(202)
+  expect(updateMeta).not.toHaveBeenCalled()
+})

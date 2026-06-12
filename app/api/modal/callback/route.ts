@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "unauthorized" }, { status: 401 })
   }
 
-  const itemId = body.episode_id
+  const itemId = body.item_id ?? body.episode_id
   if (typeof itemId !== "string" || itemId.length === 0) {
     return Response.json({ error: "missing episode_id" }, { status: 400 })
   }
@@ -28,6 +28,20 @@ export async function POST(request: Request) {
   if (body.error) {
     await itemRepo.updateStatus(itemId, "failed", String(body.error))
     return Response.json({ status: "recorded" }, { status: 202 })
+  }
+
+  // Backfill placeholder item metadata when provided (e.g. from YouTube job).
+  if (body.metadata !== null && typeof body.metadata === "object") {
+    const m = body.metadata as Record<string, unknown>
+    const mapped: Parameters<typeof itemRepo.updateMeta>[1] = {}
+    if (typeof m.title === "string") mapped.title = m.title
+    const podcastName = m.channelName ?? m.podcastName
+    if (typeof podcastName === "string") mapped.podcastName = podcastName
+    const artworkUrl = m.thumbnailUrl ?? m.artworkUrl
+    if (typeof artworkUrl === "string") mapped.artworkUrl = artworkUrl
+    if (typeof m.durationSec === "number") mapped.durationSec = m.durationSec
+    if (m.publishedAt != null) mapped.publishedAt = new Date(m.publishedAt as string)
+    await itemRepo.updateMeta(itemId, mapped)
   }
 
   // Run the rest of the pipeline without blocking the webhook response.
