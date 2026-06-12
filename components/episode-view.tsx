@@ -68,7 +68,7 @@ function YouTubeBody({
   onTabChange: (v: string) => void
 }) {
   return (
-    <YouTubePlayerProvider videoId={videoId}>
+    <YouTubePlayerProvider videoId={videoId} chapters={insights?.chapters ?? undefined}>
       <Tabs value={tab} onValueChange={onTabChange}>
         <div className="sticky top-0 z-10 -mx-4 mb-2 bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:-mx-6 md:px-6">
           <TabsList>

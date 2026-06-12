@@ -11,6 +11,8 @@ import {
 import { Pause, Play } from "lucide-react"
 import { formatTimestamp } from "@/lib/format"
 
+export type PlayerChapter = { title: string; startSec: number }
+
 type YouTubePlayerCtx = {
   currentSec: number
   duration: number
@@ -58,8 +60,6 @@ function loadYouTubeApi(): Promise<void> {
     }
     const tag = document.createElement("script")
     tag.src = "https://www.youtube.com/iframe_api"
-    // If the script fails to load, resolve anyway (callers guard on window.YT)
-    // and clear the cached promise so a later remount can retry.
     tag.onerror = () => {
       apiPromise = null
       resolve()
@@ -70,16 +70,18 @@ function loadYouTubeApi(): Promise<void> {
 }
 
 /**
- * Owns the YouTube IFrame player for one detail page. The IFrame runs with
- * `controls: 0` (no YouTube chrome); we render our own minimal controls overlay
- * instead. A persistent host node docks to the bottom-right when its in-flow
- * sentinel scrolls off, so playback + transcript sync are never interrupted.
+ * Owns the YouTube IFrame player for one detail page. The IFrame runs chrome-free
+ * (`controls: 0`); we render our own controls + a poster cover so YouTube's
+ * unstarted/paused UI never shows. A persistent host node docks bottom-right when
+ * its in-flow sentinel scrolls off, so playback + transcript sync never break.
  */
 export function YouTubePlayerProvider({
   videoId,
+  chapters,
   children,
 }: {
   videoId: string
+  chapters?: PlayerChapter[]
   children: ReactNode
 }) {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -89,14 +91,13 @@ export function YouTubePlayerProvider({
   const [currentSec, setCurrentSec] = useState(0)
   const [duration, setDuration] = useState(0)
   const [playing, setPlaying] = useState(false)
+  const [started, setStarted] = useState(false) // has playback ever begun?
   const [minimized, setMinimized] = useState(false)
 
-  // Instantiate the player once per videoId. The YouTube IFrame API REPLACES the
-  // element it's handed with an <iframe>. If that element were React-managed,
-  // React's reconciler would later try to operate on a node that no longer exists
-  // where it expects (e.g. inserting the docked-state button as a sibling) and
-  // throw "NotFoundError". So we append an imperative child that React doesn't
-  // track and let the API replace THAT, leaving React's host div untouched.
+  // Instantiate once per videoId. The YouTube API REPLACES the element it's given
+  // with an <iframe>; handing it a React-managed node makes React's reconciler
+  // throw "NotFoundError" later. So we append an imperative child it can replace,
+  // leaving our host div untouched.
   useEffect(() => {
     const host = hostRef.current
     if (!host) return
@@ -109,8 +110,6 @@ export function YouTubePlayerProvider({
       if (cancelled || !window.YT) return
       playerRef.current = new window.YT.Player(target, {
         videoId,
-        // controls:0 → no YouTube control bar; disablekb + iv_load_policy:3 trim
-        // the remaining chrome. We supply our own controls.
         playerVars: {
           playsinline: 1,
           rel: 0,
@@ -130,9 +129,11 @@ export function YouTubePlayerProvider({
               if (typeof p.getDuration === "function") setDuration(p.getDuration())
             }, 250)
           },
-          // YT.PlayerState.PLAYING === 1
           onStateChange: (e: { data: number }) => {
-            if (!cancelled) setPlaying(e.data === 1)
+            if (cancelled) return
+            // YT.PlayerState.PLAYING === 1
+            setPlaying(e.data === 1)
+            if (e.data === 1) setStarted(true)
           },
         },
       })
@@ -146,8 +147,6 @@ export function YouTubePlayerProvider({
         /* ignore */
       }
       playerRef.current = null
-      // Clear any iframe the API left inside our React-owned host so React never
-      // sees foreign nodes.
       try {
         while (host.firstChild) host.removeChild(host.firstChild)
       } catch {
@@ -155,6 +154,7 @@ export function YouTubePlayerProvider({
       }
       setReady(false)
       setPlaying(false)
+      setStarted(false)
     }
   }, [videoId])
 
@@ -187,23 +187,44 @@ export function YouTubePlayerProvider({
 
   return (
     <Ctx.Provider value={{ currentSec, duration, playing, ready, seekTo, togglePlay }}>
-      {/* In-flow sentinel that also reserves the video's space (16:9). */}
       <div ref={sentinelRef} className="mb-4 aspect-video w-full" aria-hidden={minimized}>
-        {/* The persistent player wrapper. Same node whether docked or inline. */}
         <div
           className={
             minimized
-              ? "group fixed bottom-4 right-4 z-30 aspect-video w-80 overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-black/10 duration-200 ease-out animate-in fade-in slide-in-from-bottom-2 md:w-[28rem]"
+              ? "group fixed bottom-4 right-4 z-30 aspect-video w-80 overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-black/10 duration-150 ease-out animate-in fade-in md:w-[28rem]"
               : "group relative aspect-video w-full overflow-hidden rounded-lg bg-black"
           }
         >
           <div ref={hostRef} className="pointer-events-none size-full" />
-          <PlayerControls />
+          <PlayerControls chapters={chapters} />
+
+          {/* Poster cover until playback first starts — hides YouTube's unstarted
+              chrome (thumbnail + big play button + title) behind our own. */}
+          {!started && (
+            <button
+              type="button"
+              onClick={togglePlay}
+              aria-label="Play"
+              className="absolute inset-0 z-20 size-full"
+            >
+              <img
+                src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`}
+                alt=""
+                className="size-full object-cover"
+              />
+              <span className="absolute inset-0 flex items-center justify-center bg-black/20">
+                <span className="rounded-full bg-black/60 p-4">
+                  <Play className="size-7 translate-x-0.5 fill-white text-white" />
+                </span>
+              </span>
+            </button>
+          )}
+
           {minimized && (
             <button
               type="button"
               onClick={() => sentinelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              className="absolute right-1 top-1 z-20 rounded bg-black/60 px-1.5 py-0.5 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"
+              className="absolute right-1 top-1 z-40 rounded bg-black/60 px-1.5 py-0.5 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"
               aria-label="Back to top"
             >
               ↑
@@ -216,12 +237,14 @@ export function YouTubePlayerProvider({
   )
 }
 
-// Custom controls drawn over the (chrome-free) iframe: click-to-toggle, a center
-// play affordance when paused, and a bottom bar with play/pause, scrub, and time.
-// Hidden until hover while playing; always shown when paused.
-function PlayerControls() {
+// Custom controls over the chrome-free iframe: click-to-toggle, center play when
+// paused, a top gradient masking YouTube's pause-state title/share, and a bottom
+// bar with play/pause, a scrubber (with chapter ticks), and time. Hidden while
+// playing; revealed on hover; always shown when paused.
+function PlayerControls({ chapters }: { chapters?: PlayerChapter[] }) {
   const { currentSec, duration, playing, togglePlay, seekTo } = useYouTubePlayer()
   const pct = duration > 0 ? Math.min(100, (currentSec / duration) * 100) : 0
+  const chapterTicks = (chapters ?? []).filter((c) => c.startSec > 0 && c.startSec <= duration)
 
   function onScrub(e: React.MouseEvent<HTMLDivElement>) {
     if (!duration) return
@@ -235,6 +258,9 @@ function PlayerControls() {
       data-paused={!playing}
       className="absolute inset-0 z-10 opacity-0 transition-opacity duration-200 group-hover:opacity-100 data-[paused=true]:opacity-100"
     >
+      {/* Masks YouTube's title/share that appear at the top on pause/hover. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/60 to-transparent" />
+
       {/* Click anywhere on the video to toggle play. */}
       <button
         type="button"
@@ -243,7 +269,6 @@ function PlayerControls() {
         className="absolute inset-0 size-full"
       />
 
-      {/* Center play affordance while paused. */}
       {!playing && (
         <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <span className="rounded-full bg-black/50 p-3">
@@ -277,6 +302,21 @@ function PlayerControls() {
             className="absolute inset-y-0 left-0 rounded-full bg-white"
             style={{ width: `${pct}%` }}
           />
+          {/* Chapter markers. */}
+          {chapterTicks.map((c, i) => (
+            <button
+              key={i}
+              type="button"
+              title={c.title}
+              onClick={(e) => {
+                e.stopPropagation()
+                seekTo(c.startSec)
+              }}
+              aria-label={`Chapter: ${c.title}`}
+              className="absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white ring-1 ring-black/40 transition-transform hover:scale-150"
+              style={{ left: `${(c.startSec / duration) * 100}%` }}
+            />
+          ))}
         </div>
         <span className="shrink-0 text-xs tabular-nums text-white/90">
           {formatTimestamp(currentSec)} / {formatTimestamp(duration)}

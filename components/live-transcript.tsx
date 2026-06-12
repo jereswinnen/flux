@@ -28,27 +28,23 @@ export function LiveTranscript({
   const containerRef = useRef<HTMLDivElement>(null)
   const activeRef = useRef<HTMLParagraphElement>(null)
   const [follow, setFollow] = useState(true)
-  // True while WE are smooth-scrolling, so the scroll handler can tell our own
-  // scrolls apart from the user's.
-  const programmatic = useRef(false)
 
+  // Smoothly keep the active line centered while following. Driven by activeIndex
+  // (changes once per line), so it animates per line rather than fighting the
+  // 250ms time ticks.
   useEffect(() => {
     if (!follow) return
     const box = containerRef.current
     const el = activeRef.current
     if (!box || !el) return
     const top = el.offsetTop - box.clientHeight / 2 + el.clientHeight / 2
-    programmatic.current = true
     box.scrollTo({ top: Math.max(0, top), behavior: "smooth" })
-    const t = window.setTimeout(() => {
-      programmatic.current = false
-    }, 700)
-    return () => window.clearTimeout(t)
   }, [activeIndex, follow])
 
-  function onScroll() {
-    // A user scroll (not one of ours) pauses following.
-    if (!programmatic.current) setFollow(false)
+  // Only real user input pauses following — NOT our own programmatic scrolls
+  // (which don't emit wheel/touch events). This is what keeps auto-scroll smooth.
+  function pauseFollow() {
+    setFollow(false)
   }
 
   function seekToLine(sec: number) {
@@ -60,7 +56,8 @@ export function LiveTranscript({
     <div className="relative">
       <div
         ref={containerRef}
-        onScroll={onScroll}
+        onWheel={pauseFollow}
+        onTouchMove={pauseFollow}
         className="max-h-[20rem] space-y-1 overflow-y-auto scroll-smooth rounded-lg border bg-muted/20 p-4 font-serif text-lg leading-relaxed"
       >
         {segments.map((s, i) => {
