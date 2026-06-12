@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge"
 import { useCommand } from "@/components/command-context"
 import { hiResArtwork } from "@/lib/artwork"
 import { isUrl, looksLikeFeedUrl } from "@/lib/url"
+import { isYouTubeUrl } from "@/lib/sources/youtube-url"
 import { formatRelativeDate, formatTimestamp } from "@/lib/format"
 
 type Show = { collectionId: number; name: string; artistName: string; artworkUrl?: string; feedUrl?: string }
@@ -171,6 +172,26 @@ export function AddCommand() {
     }
   }
 
+  async function ingestItem(payload: Record<string, unknown>) {
+    setSubmitting(true)
+    try {
+      const res = await fetch("/api/items", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) throw new Error((await res.json()).error ?? "Failed to add")
+      const { item } = await res.json()
+      toast.success("Item queued for transcription")
+      setOpen(false)
+      router.push(`/episodes/${item.id}`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to add")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   function goTo(href: string) {
     setOpen(false)
     router.push(href)
@@ -251,7 +272,9 @@ export function AddCommand() {
                   value={`url-${urlQuery}`}
                   disabled={submitting}
                   onSelect={() => {
-                    if (looksLikeFeedUrl(urlQuery)) {
+                    if (isYouTubeUrl(urlQuery)) {
+                      ingestItem({ url: urlQuery })
+                    } else if (looksLikeFeedUrl(urlQuery)) {
                       loadShowEpisodes(urlQuery, {})
                     } else {
                       ingest({ title: urlQuery, audioUrl: urlQuery, sourceUrl: urlQuery })
@@ -259,7 +282,11 @@ export function AddCommand() {
                   }}
                 >
                   <Link2 className="size-4" />
-                  {looksLikeFeedUrl(urlQuery) ? "Load feed episodes" : "Add this audio URL"}
+                  {isYouTubeUrl(urlQuery)
+                    ? "Add this YouTube video"
+                    : looksLikeFeedUrl(urlQuery)
+                      ? "Load feed episodes"
+                      : "Add this audio URL"}
                 </CommandItem>
               </CommandGroup>
             )}
