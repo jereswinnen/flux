@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Play, Sparkles } from "lucide-react"
+import { ExternalLink, Play, Sparkles } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -48,7 +48,7 @@ export type EpisodeViewProps = {
     type: string
     videoId: string | null
   }
-  transcript: { fullText: string; segments: Segment[] } | null
+  transcript: { fullText: string; segments: Segment[]; contentHtml?: string | null } | null
   insights: Insights
   entities?: MentionedEntity[]
 }
@@ -121,6 +121,66 @@ function EpisodeInsightsBound({ insights, entities }: { insights: Insights; enti
   return <EpisodeInsights insights={insights} entities={entities} onSeek={seekTo} />
 }
 
+function ArticleBody({
+  contentHtml,
+  leadImageUrl,
+  sourceUrl,
+  insights,
+  entities,
+  tab,
+  onTabChange,
+}: {
+  contentHtml: string
+  leadImageUrl: string | null
+  sourceUrl: string | null
+  insights: Insights
+  entities: MentionedEntity[]
+  tab: string
+  onTabChange: (v: string) => void
+}) {
+  return (
+    <Tabs value={tab} onValueChange={onTabChange}>
+      <div className="sticky top-0 z-10 -mx-4 mb-2 bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:-mx-6 md:px-6">
+        <TabsList>
+          <TabsTrigger value="article">Article</TabsTrigger>
+          <TabsTrigger value="insights">Insights</TabsTrigger>
+        </TabsList>
+      </div>
+      <TabsContent value="article" className="pb-10 pt-2">
+        {sourceUrl && (
+          <a
+            href={sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            View original <ExternalLink className="size-3.5" />
+          </a>
+        )}
+        {leadImageUrl && (
+          <img
+            src={leadImageUrl}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="mb-6 aspect-video w-full rounded-lg object-cover"
+          />
+        )}
+        <div
+          data-hl-kind="article"
+          className="prose prose-neutral max-w-none dark:prose-invert prose-img:rounded-lg"
+          // Content is pre-sanitized server-side via sanitize-html before storage
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{ __html: contentHtml }}
+        />
+      </TabsContent>
+      <TabsContent value="insights" className="pb-10 pt-2">
+        <EpisodeInsights insights={insights} entities={entities} onSeek={() => {}} />
+      </TabsContent>
+    </Tabs>
+  )
+}
+
 function statusVariant(status: string): "default" | "secondary" | "destructive" {
   if (status === "ready") return "default"
   if (status === "failed") return "destructive"
@@ -148,8 +208,9 @@ export function EpisodeView({ episode, transcript, insights, entities = [] }: Ep
     if (track) player.cue(track, sec)
   }
   const isYouTube = episode.type === "youtube" && !!episode.videoId
-  // YouTube items lead with the live transcript; podcasts lead with insights.
-  const [tab, setTab] = useState(isYouTube ? "transcript" : "insights")
+  const isArticle = episode.type === "article"
+  // YouTube items lead with the live transcript; articles lead with the article body; podcasts lead with insights.
+  const [tab, setTab] = useState(isYouTube ? "transcript" : isArticle ? "article" : "insights")
   const scrollRef = useRef<HTMLDivElement>(null)
   const sections = insightSections(insights, entities.length > 0)
 
@@ -249,6 +310,16 @@ export function EpisodeView({ episode, transcript, insights, entities = [] }: Ep
             </div>
           ) : !transcript ? (
             <div className="text-sm text-muted-foreground">Processing… this page updates automatically.</div>
+          ) : isArticle && transcript.contentHtml ? (
+            <ArticleBody
+              contentHtml={transcript.contentHtml}
+              leadImageUrl={episode.artworkUrl}
+              sourceUrl={episode.sourceUrl}
+              insights={insights}
+              entities={entities}
+              tab={tab}
+              onTabChange={setTab}
+            />
           ) : isYouTube && episode.videoId ? (
             <YouTubeBody
               videoId={episode.videoId}

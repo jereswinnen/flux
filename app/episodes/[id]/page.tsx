@@ -34,7 +34,7 @@ export default async function EpisodePage({ params }: { params: Promise<{ id: st
           type: episode.type,
           videoId: episode.sourceMetadata?.videoId ?? null,
         }}
-        transcript={transcript ? { fullText: transcript.fullText, segments: transcript.segments ?? [] } : null}
+        transcript={transcript ? { fullText: transcript.fullText, segments: transcript.segments ?? [], contentHtml: transcript.contentHtml ?? null } : null}
         insights={insight ?? null}
         entities={entities}
       />
