@@ -97,7 +97,7 @@ function entityChunkText(
 // episode_entities, and write one entity chunk per link for RAG retrieval.
 // Enrichment cost is once per *unique* entity across the library.
 export async function resolveEpisodeEntities(
-  episodeId: string,
+  itemId: string,
   extracted: ExtractedEntity[],
   deps: ResolveDeps,
   opts: { episodeTitle?: string } = {},
@@ -173,9 +173,9 @@ export async function resolveEpisodeEntities(
 
       // 3. Link (duplicate mentions in one episode collapse onto the PK).
       const inserted = await db
-        .insert(schema.episodeEntities)
+        .insert(schema.itemEntities)
         .values({
-          episodeId,
+          itemId,
           entityId: entity.id,
           context: mention.context ?? null,
           approxTimestampSec:
@@ -205,7 +205,7 @@ export async function resolveEpisodeEntities(
       const vectors = await embed(chunkQueue.map((c) => c.content))
       await db.insert(schema.chunks).values(
         chunkQueue.map((c, i) => ({
-          episodeId,
+          itemId,
           entityId: c.entityId,
           content: c.content,
           startSec: c.startSec,
@@ -216,7 +216,7 @@ export async function resolveEpisodeEntities(
     } catch (e) {
       // Entities and links are already persisted; reprocessing the episode
       // rebuilds entity chunks, so don't fail the pipeline over embeddings.
-      console.error(`entity chunk embedding failed for episode ${episodeId}:`, e)
+      console.error(`entity chunk embedding failed for item ${itemId}:`, e)
     }
   }
 }

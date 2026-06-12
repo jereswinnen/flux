@@ -7,18 +7,18 @@ import { eq } from "drizzle-orm"
 import postgres from "postgres"
 import { afterAll, beforeAll, beforeEach, expect, test, vi } from "vitest"
 import * as schema from "@/lib/db/schema"
-import { makeEpisodeRepo } from "@/lib/db/episodes"
-import { processTranscript } from "@/lib/pipeline/process-transcript"
+import { makeItemRepo } from "@/lib/db/items"
+import { processContent } from "@/lib/pipeline/process-content"
 
 const client = postgres(process.env.TEST_DATABASE_URL!, { max: 1 })
 const db = drizzle(client, { schema })
-const repo = makeEpisodeRepo(db)
+const repo = makeItemRepo(db)
 
 beforeAll(async () => {
   await migrate(db, { migrationsFolder: "./lib/db/migrations" })
 })
 beforeEach(async () => {
-  await db.delete(schema.episodes)
+  await db.delete(schema.items)
   await db.delete(schema.entities)
 })
 afterAll(async () => {
@@ -26,11 +26,11 @@ afterAll(async () => {
 })
 
 test("stores transcript, insights, chunks and marks ready", async () => {
-  const ep = await repo.create({ title: "E", audioUrl: "https://a/1.mp3" })
+  const ep = await repo.create({ type: "podcast", title: "E", audioUrl: "https://a/1.mp3" })
 
-  await processTranscript(
+  await processContent(
     {
-      episodeId: ep.id,
+      itemId: ep.id,
       transcript: "hello world ".repeat(200),
       segments: [
         { start: 0, end: 5, text: "hello world ".repeat(50) },
@@ -54,16 +54,16 @@ test("stores transcript, insights, chunks and marks ready", async () => {
   const got = await repo.getById(ep.id)
   expect(got?.status).toBe("ready")
 
-  const t = await db.select().from(schema.transcripts).where(eq(schema.transcripts.episodeId, ep.id))
+  const t = await db.select().from(schema.transcripts).where(eq(schema.transcripts.itemId, ep.id))
   expect(t).toHaveLength(1)
-  const ins = await db.select().from(schema.insights).where(eq(schema.insights.episodeId, ep.id))
+  const ins = await db.select().from(schema.insights).where(eq(schema.insights.itemId, ep.id))
   expect(ins[0].summary).toBe("s")
-  const ch = await db.select().from(schema.chunks).where(eq(schema.chunks.episodeId, ep.id))
+  const ch = await db.select().from(schema.chunks).where(eq(schema.chunks.itemId, ep.id))
   expect(ch.length).toBeGreaterThan(0)
 }, 30_000)
 
-test("processTranscript resolves entities after insights, and a resolver failure does not fail the episode", async () => {
-  const ep = await repo.create({ title: "Entity EP", audioUrl: "https://a/ent.mp3" })
+test("processContent resolves entities after insights, and a resolver failure does not fail the episode", async () => {
+  const ep = await repo.create({ type: "podcast", title: "Entity EP", audioUrl: "https://a/ent.mp3" })
   const insightsValue = {
     summary: "s",
     takeaways: [],
@@ -76,8 +76,8 @@ test("processTranscript resolves entities after insights, and a resolver failure
   }
   const resolveEntities = vi.fn(async () => {})
 
-  await processTranscript(
-    { episodeId: ep.id, transcript: "hello world", segments: [{ start: 0, end: 5, text: "hello world" }] },
+  await processContent(
+    { itemId: ep.id, transcript: "hello world", segments: [{ start: 0, end: 5, text: "hello world" }] },
     {
       db,
       generateInsights: async () => insightsValue,
@@ -94,9 +94,9 @@ test("processTranscript resolves entities after insights, and a resolver failure
   expect((await repo.getById(ep.id))?.status).toBe("ready")
 
   // A resolver crash is logged, not fatal: episode still reaches "ready".
-  const ep2 = await repo.create({ title: "Entity EP 2", audioUrl: "https://a/ent2.mp3" })
-  await processTranscript(
-    { episodeId: ep2.id, transcript: "hi", segments: [{ start: 0, end: 2, text: "hi" }] },
+  const ep2 = await repo.create({ type: "podcast", title: "Entity EP 2", audioUrl: "https://a/ent2.mp3" })
+  await processContent(
+    { itemId: ep2.id, transcript: "hi", segments: [{ start: 0, end: 2, text: "hi" }] },
     {
       db,
       generateInsights: async () => insightsValue,
@@ -109,8 +109,8 @@ test("processTranscript resolves entities after insights, and a resolver failure
   expect((await repo.getById(ep2.id))?.status).toBe("ready")
 }, 60_000)
 
-test("re-running processTranscript deletes prior episode_entities links (step 0 idempotency)", async () => {
-  const ep = await repo.create({ title: "Idem EP", audioUrl: "https://a/idem.mp3" })
+test("re-running processContent deletes prior item_entities links (step 0 idempotency)", async () => {
+  const ep = await repo.create({ type: "podcast", title: "Idem EP", audioUrl: "https://a/idem.mp3" })
 
   // Simulate a previous run's leftovers: a canonical entity + a link row.
   const [entity] = await db
@@ -118,11 +118,11 @@ test("re-running processTranscript deletes prior episode_entities links (step 0 
     .values({ name: "Steve Jobs", slug: "steve-jobs-idem", type: "person" })
     .returning()
   await db
-    .insert(schema.episodeEntities)
-    .values({ episodeId: ep.id, entityId: entity.id, context: "old run" })
+    .insert(schema.itemEntities)
+    .values({ itemId: ep.id, entityId: entity.id, context: "old run" })
 
-  await processTranscript(
-    { episodeId: ep.id, transcript: "hi", segments: [{ start: 0, end: 2, text: "hi" }] },
+  await processContent(
+    { itemId: ep.id, transcript: "hi", segments: [{ start: 0, end: 2, text: "hi" }] },
     {
       db,
       generateInsights: async () => ({
@@ -141,8 +141,8 @@ test("re-running processTranscript deletes prior episode_entities links (step 0 
   // Step 0 wiped the stale links; the stub resolver created none.
   const links = await db
     .select()
-    .from(schema.episodeEntities)
-    .where(eq(schema.episodeEntities.episodeId, ep.id))
+    .from(schema.itemEntities)
+    .where(eq(schema.itemEntities.itemId, ep.id))
   expect(links).toHaveLength(0)
   expect((await repo.getById(ep.id))?.status).toBe("ready")
 }, 30_000)
