@@ -96,13 +96,10 @@ export function YouTubePlayerProvider({
   const [playing, setPlaying] = useState(false)
   const [started, setStarted] = useState(false) // has playback ever begun?
   const [minimized, setMinimized] = useState(false)
-  // On un-dock, the real player returns inline instantly (no empty-slot flicker);
-  // a lightweight thumbnail "ghost" slides out of the corner so the exit still
-  // animates as the reverse of the dock-in.
-  const [closing, setClosing] = useState(false)
+  // Dock-in animates; un-dock is instant. A single <iframe> can't animate out of
+  // the corner without either an empty inline gap or a video→thumbnail swap — both
+  // flicker — so the clean option is to return inline immediately.
   const docked = minimized
-  const wasOffRef = useRef(false)
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Instantiate once per videoId. The YouTube API REPLACES the element it's given
   // with an <iframe>; handing it a React-managed node makes React's reconciler
@@ -173,29 +170,15 @@ export function YouTubePlayerProvider({
   }, [videoId])
 
   // Dock to bottom-right when the sentinel (the video's in-flow slot) scrolls off.
-  // On the off→on transition (un-dock) fire the ghost exit. State is set in the
-  // observer callback (not the effect body) to avoid cascading-render lint.
   useEffect(() => {
     const sentinel = sentinelRef.current
     if (!sentinel) return
     const io = new IntersectionObserver(
-      ([entry]) => {
-        const off = !entry.isIntersecting
-        setMinimized(off)
-        if (!off && wasOffRef.current) {
-          if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
-          setClosing(true)
-          closeTimerRef.current = setTimeout(() => setClosing(false), 220)
-        }
-        wasOffRef.current = off
-      },
+      ([entry]) => setMinimized(!entry.isIntersecting),
       { threshold: 0 },
     )
     io.observe(sentinel)
-    return () => {
-      io.disconnect()
-      if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
-    }
+    return () => io.disconnect()
   }, [])
 
   function seekTo(sec: number) {
@@ -260,18 +243,6 @@ export function YouTubePlayerProvider({
           )}
         </div>
       </div>
-
-      {/* Ghost that slides out of the corner on un-dock (the real player is already
-          back inline), so the exit animates as the reverse of the dock-in. */}
-      {closing && !minimized && (
-        <div className="pointer-events-none fixed bottom-4 right-4 z-30 aspect-video w-80 overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-black/10 transition-none animate-out fade-out slide-out-to-bottom-3 md:w-[28rem]">
-          <img
-            src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`}
-            alt=""
-            className="size-full object-cover"
-          />
-        </div>
-      )}
       {children}
     </Ctx.Provider>
   )
