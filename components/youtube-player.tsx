@@ -8,11 +8,16 @@ import {
   useState,
   type ReactNode,
 } from "react"
+import { Pause, Play } from "lucide-react"
+import { formatTimestamp } from "@/lib/format"
 
 type YouTubePlayerCtx = {
   currentSec: number
+  duration: number
+  playing: boolean
   ready: boolean
   seekTo: (sec: number) => void
+  togglePlay: () => void
 }
 
 const Ctx = createContext<YouTubePlayerCtx | null>(null)
@@ -26,8 +31,11 @@ export function useYouTubePlayer() {
 // Minimal IFrame API surface (avoids adding @types/youtube).
 type YTPlayer = {
   getCurrentTime: () => number
+  getDuration: () => number
+  getPlayerState: () => number
   seekTo: (sec: number, allowSeekAhead: boolean) => void
   playVideo: () => void
+  pauseVideo: () => void
   destroy: () => void
 }
 declare global {
@@ -62,10 +70,10 @@ function loadYouTubeApi(): Promise<void> {
 }
 
 /**
- * Owns the YouTube IFrame player for one detail page. Renders a persistent host
- * node (never unmounted) inside a wrapper that docks to the bottom-right when its
- * in-flow sentinel scrolls out of view, so playback + transcript sync are never
- * interrupted. Exposes currentSec/seekTo via context for the live transcript.
+ * Owns the YouTube IFrame player for one detail page. The IFrame runs with
+ * `controls: 0` (no YouTube chrome); we render our own minimal controls overlay
+ * instead. A persistent host node docks to the bottom-right when its in-flow
+ * sentinel scrolls off, so playback + transcript sync are never interrupted.
  */
 export function YouTubePlayerProvider({
   videoId,
@@ -79,6 +87,8 @@ export function YouTubePlayerProvider({
   const playerRef = useRef<YTPlayer | null>(null)
   const [ready, setReady] = useState(false)
   const [currentSec, setCurrentSec] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [playing, setPlaying] = useState(false)
   const [minimized, setMinimized] = useState(false)
 
   // Instantiate the player once per videoId. The YouTube IFrame API REPLACES the
@@ -99,17 +109,30 @@ export function YouTubePlayerProvider({
       if (cancelled || !window.YT) return
       playerRef.current = new window.YT.Player(target, {
         videoId,
-        playerVars: { playsinline: 1, rel: 0, modestbranding: 1 },
+        // controls:0 → no YouTube control bar; disablekb + iv_load_policy:3 trim
+        // the remaining chrome. We supply our own controls.
+        playerVars: {
+          playsinline: 1,
+          rel: 0,
+          modestbranding: 1,
+          controls: 0,
+          disablekb: 1,
+          iv_load_policy: 3,
+        },
         events: {
           onReady: () => {
             if (cancelled) return
             setReady(true)
             poll = setInterval(() => {
               const p = playerRef.current
-              if (p && typeof p.getCurrentTime === "function") {
-                setCurrentSec(p.getCurrentTime())
-              }
+              if (!p) return
+              if (typeof p.getCurrentTime === "function") setCurrentSec(p.getCurrentTime())
+              if (typeof p.getDuration === "function") setDuration(p.getDuration())
             }, 250)
+          },
+          // YT.PlayerState.PLAYING === 1
+          onStateChange: (e: { data: number }) => {
+            if (!cancelled) setPlaying(e.data === 1)
           },
         },
       })
@@ -131,6 +154,7 @@ export function YouTubePlayerProvider({
         /* ignore */
       }
       setReady(false)
+      setPlaying(false)
     }
   }, [videoId])
 
@@ -154,32 +178,110 @@ export function YouTubePlayerProvider({
     }
   }
 
+  function togglePlay() {
+    const p = playerRef.current
+    if (!p) return
+    if (typeof p.getPlayerState === "function" && p.getPlayerState() === 1) p.pauseVideo()
+    else p.playVideo()
+  }
+
   return (
-    <Ctx.Provider value={{ currentSec, ready, seekTo }}>
+    <Ctx.Provider value={{ currentSec, duration, playing, ready, seekTo, togglePlay }}>
       {/* In-flow sentinel that also reserves the video's space (16:9). */}
       <div ref={sentinelRef} className="mb-4 aspect-video w-full" aria-hidden={minimized}>
         {/* The persistent player wrapper. Same node whether docked or inline. */}
         <div
           className={
             minimized
-              ? "fixed bottom-4 right-4 z-30 aspect-video w-80 overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-black/10 duration-300 animate-in fade-in slide-in-from-bottom-4 md:w-[28rem]"
-              : "aspect-video w-full overflow-hidden rounded-lg bg-black"
+              ? "group fixed bottom-4 right-4 z-30 aspect-video w-80 overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-black/10 duration-200 ease-out animate-in fade-in slide-in-from-bottom-2 md:w-[28rem]"
+              : "group relative aspect-video w-full overflow-hidden rounded-lg bg-black"
           }
         >
+          <div ref={hostRef} className="pointer-events-none size-full" />
+          <PlayerControls />
           {minimized && (
             <button
               type="button"
               onClick={() => sentinelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              className="absolute right-1 top-1 z-10 rounded bg-black/60 px-1.5 py-0.5 text-xs text-white"
+              className="absolute right-1 top-1 z-20 rounded bg-black/60 px-1.5 py-0.5 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"
               aria-label="Back to top"
             >
               ↑
             </button>
           )}
-          <div ref={hostRef} className="size-full" />
         </div>
       </div>
       {children}
     </Ctx.Provider>
+  )
+}
+
+// Custom controls drawn over the (chrome-free) iframe: click-to-toggle, a center
+// play affordance when paused, and a bottom bar with play/pause, scrub, and time.
+// Hidden until hover while playing; always shown when paused.
+function PlayerControls() {
+  const { currentSec, duration, playing, togglePlay, seekTo } = useYouTubePlayer()
+  const pct = duration > 0 ? Math.min(100, (currentSec / duration) * 100) : 0
+
+  function onScrub(e: React.MouseEvent<HTMLDivElement>) {
+    if (!duration) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const frac = (e.clientX - rect.left) / rect.width
+    seekTo(Math.max(0, Math.min(1, frac)) * duration)
+  }
+
+  return (
+    <div
+      data-paused={!playing}
+      className="absolute inset-0 z-10 opacity-0 transition-opacity duration-200 group-hover:opacity-100 data-[paused=true]:opacity-100"
+    >
+      {/* Click anywhere on the video to toggle play. */}
+      <button
+        type="button"
+        aria-label={playing ? "Pause" : "Play"}
+        onClick={togglePlay}
+        className="absolute inset-0 size-full"
+      />
+
+      {/* Center play affordance while paused. */}
+      {!playing && (
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <span className="rounded-full bg-black/50 p-3">
+            <Play className="size-6 translate-x-0.5 fill-white text-white" />
+          </span>
+        </span>
+      )}
+
+      {/* Bottom control bar. */}
+      <div
+        className="absolute inset-x-0 bottom-0 flex items-center gap-2 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-8"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={togglePlay}
+          aria-label={playing ? "Pause" : "Play"}
+          className="shrink-0 text-white"
+        >
+          {playing ? (
+            <Pause className="size-4 fill-current" />
+          ) : (
+            <Play className="size-4 translate-x-px fill-current" />
+          )}
+        </button>
+        <div
+          className="relative h-1.5 flex-1 cursor-pointer rounded-full bg-white/30"
+          onClick={onScrub}
+        >
+          <div
+            className="absolute inset-y-0 left-0 rounded-full bg-white"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <span className="shrink-0 text-xs tabular-nums text-white/90">
+          {formatTimestamp(currentSec)} / {formatTimestamp(duration)}
+        </span>
+      </div>
+    </div>
   )
 }
