@@ -9,7 +9,7 @@ Living status across all phases. Updated as work lands. See the spec and per-pha
 
 | Phase | Scope | Status |
 |------|-------|--------|
-| 1 | Polymorphic data model + DTO foundation (`episodes`→`items`, `type`+`sourceMetadata`, `lib/api/` DTOs) | 🟡 In progress |
+| 1 | Polymorphic data model + DTO foundation (`episodes`→`items`, `type`+`sourceMetadata`, `lib/api/` DTOs) | ✅ Done (pending manual smoke test) |
 | 2 | `SourceAdapter` abstraction + unified ingest (podcast adapter, YouTube adapter, `POST /api/items`, retry) | ⚪ Not started |
 | 3 | Modal YouTube function (`transcribe_youtube`: wgcf + wireproxy + yt-dlp, health gate, metadata backfill) | ⚪ Not started |
 | 4 | Frontend (`ItemView`, pluggable player, YouTube IFrame, live-reading transcript, bottom-right mini-player) | ⚪ Not started |
@@ -32,8 +32,14 @@ Each task passes two reviews (spec compliance → code quality) before it's mark
 - [x] **Task 6 — Modal client / callback / episodes route / retry** (+ fixed `[id]/route.ts`) · commits `69a187e` + fixes · 6/6 tests · reviews ✅
 - [x] **Task 7 — DTO layer** (`lib/api/dto.ts` + test) · commit `b2ba0a4` · 2/2 tests · reviews ✅
 - [x] **Task 8 — Wire DTO into `GET /api/episodes/[id]`** · commit `d582b38` · reviews ✅
-- [ ] **Task 9 — Mechanical rename sweep** (typecheck + full suite green) ← in progress
-- [ ] **Task 10 — Final verification** (typecheck + test + lint + build + manual smoke)
+- [x] **Task 9 — Mechanical rename sweep** (30 files) · commit `bdc8ff1` · typecheck clean + 90/90 tests · reviews ✅
+- [x] **Task 10 — Final verification** · typecheck clean · 90/90 tests · build ✅ · lint: 0 new errors (11 pre-existing on main) · final holistic review: **GO**
+  - ⏳ **Pending (user):** manual podcast smoke test — add a podcast via ⌘K, confirm it reaches `ready` and renders.
+
+### Phase 1 fast-follows (non-blocking, from final review)
+- Index-name drift: DB still has `conversations_episode_updated_idx` / `episode_entities_entity_idx` (renames are cosmetic; a future `drizzle-kit generate` emits them).
+- `messages.sources` JSONB has stale `episodeId`/`episodeTitle` keys in pre-migration **dev** rows only (no prod data) — delete old dev conversations or backfill.
+- Stale "episode" wording in a few comments + the `verify.ts` `"Episode:"` prompt label (fold into the Phase 3 content-vocabulary generalization).
 
 ### Follow-ups surfaced during review (non-blocking)
 - **Test gap:** `sourceUrl` dedup path in `itemRepo.create` has no test — will be exercised + tested by Phase 2 YouTube ingestion.
