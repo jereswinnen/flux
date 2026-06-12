@@ -213,8 +213,8 @@ export function YouTubePlayerProvider({
         <div
           className={
             docked
-              ? `group fixed bottom-4 right-4 z-30 aspect-video w-80 overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-black/10 duration-200 ease-out md:w-[28rem] ${closing ? "fade-out slide-out-to-bottom-3 animate-out" : "fade-in slide-in-from-bottom-3 animate-in"}`
-              : "group relative aspect-video w-full overflow-hidden rounded-lg bg-black"
+              ? `group fixed bottom-4 right-4 z-30 aspect-video w-80 overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-black/10 transition-none md:w-[28rem] ${closing ? "fade-out slide-out-to-bottom-3 animate-out" : "fade-in slide-in-from-bottom-3 animate-in"}`
+              : "group relative aspect-video w-full overflow-hidden rounded-lg bg-black transition-none"
           }
         >
           <div ref={hostRef} className="pointer-events-none size-full" />
