@@ -258,8 +258,9 @@ export function EpisodeView({ episode, transcript, insights, entities = [] }: Ep
         </div>
       </div>
 
-      {/* Floating on-this-page nav — right edge, vertically centered, doesn't shift content. */}
-      {transcript && tab === "insights" && sections.length > 0 && (
+      {/* Floating on-this-page nav — right edge, vertically centered, doesn't shift content.
+          YouTube items manage their own inner tab state, so gate on !isYouTube. */}
+      {transcript && !isYouTube && tab === "insights" && sections.length > 0 && (
         <div className="fixed right-6 top-1/2 z-20 hidden -translate-y-1/2 xl:block">
           <InsightsNav sections={sections} scrollRef={scrollRef} />
         </div>
