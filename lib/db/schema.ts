@@ -1,6 +1,5 @@
 import { sql } from "drizzle-orm"
 import {
-  bigint,
   index,
   integer,
   jsonb,
@@ -12,44 +11,56 @@ import {
   vector,
 } from "drizzle-orm/pg-core"
 
-export type EpisodeStatus =
+export type ItemStatus =
   | "processing"
   | "transcribing"
   | "analyzing"
   | "ready"
   | "failed"
 
-export const episodes = pgTable("episodes", {
+export type ItemType = "podcast" | "youtube" | "article"
+
+export type SourceMetadata = {
+  // podcast
+  guid?: string
+  itunesCollectionId?: number
+  itunesTrackId?: number
+  // youtube
+  videoId?: string
+  channelId?: string
+  channelName?: string
+}
+
+export const items = pgTable("items", {
   id: uuid("id").defaultRandom().primaryKey(),
+  type: text("type").$type<ItemType>().notNull().default("podcast"),
   title: text("title").notNull(),
   podcastName: text("podcast_name"),
-  audioUrl: text("audio_url").notNull(),
+  audioUrl: text("audio_url"),
   sourceUrl: text("source_url"),
   artworkUrl: text("artwork_url"),
-  episodeGuid: text("episode_guid"),
   publishedAt: timestamp("published_at", { withTimezone: true }),
   durationSec: integer("duration_sec"),
-  itunesCollectionId: bigint("itunes_collection_id", { mode: "number" }),
-  itunesTrackId: bigint("itunes_track_id", { mode: "number" }),
-  status: text("status").$type<EpisodeStatus>().notNull().default("processing"),
+  status: text("status").$type<ItemStatus>().notNull().default("processing"),
   errorMessage: text("error_message"),
+  sourceMetadata: jsonb("source_metadata").$type<SourceMetadata>(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 })
 
 export const transcripts = pgTable("transcripts", {
   id: uuid("id").defaultRandom().primaryKey(),
-  episodeId: uuid("episode_id")
+  itemId: uuid("item_id")
     .notNull()
-    .references(() => episodes.id, { onDelete: "cascade" }),
+    .references(() => items.id, { onDelete: "cascade" }),
   fullText: text("full_text").notNull(),
   segments: jsonb("segments").$type<{ start: number; end: number; text: string }[]>(),
 })
 
 export const insights = pgTable("insights", {
   id: uuid("id").defaultRandom().primaryKey(),
-  episodeId: uuid("episode_id")
+  itemId: uuid("item_id")
     .notNull()
-    .references(() => episodes.id, { onDelete: "cascade" }),
+    .references(() => items.id, { onDelete: "cascade" }),
   summary: text("summary"),
   takeaways: jsonb("takeaways").$type<string[]>(),
   topics: jsonb("topics").$type<string[]>(),
@@ -91,12 +102,12 @@ export const entities = pgTable(
   (t) => [index("entities_lower_name_type_idx").on(sql`lower(${t.name})`, t.type)],
 )
 
-export const episodeEntities = pgTable(
-  "episode_entities",
+export const itemEntities = pgTable(
+  "item_entities",
   {
-    episodeId: uuid("episode_id")
+    itemId: uuid("item_id")
       .notNull()
-      .references(() => episodes.id, { onDelete: "cascade" }),
+      .references(() => items.id, { onDelete: "cascade" }),
     entityId: uuid("entity_id")
       .notNull()
       .references(() => entities.id, { onDelete: "cascade" }),
@@ -104,8 +115,8 @@ export const episodeEntities = pgTable(
     approxTimestampSec: integer("approx_timestamp_sec"),
   },
   (t) => [
-    primaryKey({ columns: [t.episodeId, t.entityId] }),
-    index("episode_entities_entity_idx").on(t.entityId),
+    primaryKey({ columns: [t.itemId, t.entityId] }),
+    index("item_entities_entity_idx").on(t.entityId),
   ],
 )
 
@@ -113,10 +124,10 @@ export const chunks = pgTable(
   "chunks",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    episodeId: uuid("episode_id")
+    itemId: uuid("item_id")
       .notNull()
-      .references(() => episodes.id, { onDelete: "cascade" }),
-    // Entity-derived chunks (one per episode_entities link) carry the entity id;
+      .references(() => items.id, { onDelete: "cascade" }),
+    // Entity-derived chunks (one per item_entities link) carry the entity id;
     // transcript chunks leave it null.
     entityId: uuid("entity_id").references(() => entities.id, { onDelete: "cascade" }),
     content: text("content").notNull(),
@@ -137,18 +148,18 @@ export const conversations = pgTable(
   "conversations",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    episodeId: uuid("episode_id").references(() => episodes.id, { onDelete: "cascade" }),
+    itemId: uuid("item_id").references(() => items.id, { onDelete: "cascade" }),
     title: text("title").notNull().default("New chat"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [index("conversations_episode_updated_idx").on(t.episodeId, t.updatedAt)],
+  (t) => [index("conversations_item_updated_idx").on(t.itemId, t.updatedAt)],
 )
 
 export type MessageRole = "user" | "assistant"
 export type ChatSource = {
-  episodeId: string
-  episodeTitle: string
+  itemId: string
+  itemTitle: string
   startSec: number
   podcastName?: string | null
   artworkUrl?: string | null
