@@ -18,3 +18,25 @@ export async function triggerTranscription(itemId: string, audioUrl: string) {
   })
   if (!res.ok) throw new Error(`Modal trigger failed: ${res.status}`)
 }
+
+export async function triggerYoutubeTranscription(itemId: string, videoUrl: string) {
+  const endpoint = process.env.MODAL_TRANSCRIBE_YOUTUBE_URL
+  const secret = process.env.MODAL_WEBHOOK_SECRET
+  const appUrl = process.env.APP_URL
+  if (!endpoint || !secret || !appUrl) {
+    throw new Error(
+      "Modal env not configured (MODAL_TRANSCRIBE_YOUTUBE_URL/SECRET/APP_URL)",
+    )
+  }
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      item_id: itemId,
+      video_url: videoUrl,
+      callback_url: `${appUrl}/api/modal/callback`,
+      secret,
+    }),
+  })
+  if (!res.ok) throw new Error(`Modal youtube trigger failed: ${res.status}`)
+}
