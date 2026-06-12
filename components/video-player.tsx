@@ -9,12 +9,13 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { Pause, Play, X } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Maximize2, Pause, Play, X } from "lucide-react"
 import { formatTimestamp } from "@/lib/format"
 
 export type PlayerChapter = { title: string; startSec: number }
 
-type CueOpts = { startSec?: number; chapters?: PlayerChapter[]; title?: string }
+type CueOpts = { startSec?: number; chapters?: PlayerChapter[]; title?: string; itemId?: string }
 
 type VideoPlayerCtx = {
   videoId: string | null
@@ -82,7 +83,9 @@ function loadYouTubeApi(): Promise<void> {
 const MINI_MARGIN = 16
 
 export function VideoPlayerProvider({ children }: { children: ReactNode }) {
+  const router = useRouter()
   const [videoId, setVideoId] = useState<string | null>(null)
+  const [itemId, setItemId] = useState<string | null>(null)
   const [title, setTitle] = useState<string | null>(null)
   const [chapters, setChapters] = useState<PlayerChapter[]>([])
   const [currentSec, setCurrentSec] = useState(0)
@@ -91,6 +94,7 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false)
   const [started, setStarted] = useState(false)
   const [docked, setDocked] = useState(false)
+  const [closing, setClosing] = useState(false)
 
   const hostRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
@@ -99,12 +103,19 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
   const pendingSeekRef = useRef<number | null>(null)
   const dockedRef = useRef(false)
   const videoIdRef = useRef<string | null>(null)
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const cue = useCallback((id: string, opts?: CueOpts) => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+    setClosing(false)
     // Already playing this video (e.g. opening its detail page from the mini):
-    // don't reset — just update chapters and optionally seek.
+    // don't reset — just update chapters/itemId and optionally seek.
     if (videoIdRef.current === id) {
       if (opts?.chapters) setChapters(opts.chapters)
+      if (opts?.itemId) setItemId(opts.itemId)
       if (opts?.startSec != null && opts.startSec > 0) {
         playerRef.current?.seekTo(opts.startSec, true)
         playerRef.current?.playVideo()
@@ -115,6 +126,7 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
     pendingSeekRef.current = opts?.startSec ?? null
     setChapters(opts?.chapters ?? [])
     setTitle(opts?.title ?? null)
+    setItemId(opts?.itemId ?? null)
     setStarted(false)
     setCurrentSec(0)
     setDuration(0)
@@ -122,10 +134,16 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const close = useCallback(() => {
-    videoIdRef.current = null
-    setVideoId(null)
-    setPlaying(false)
-    setReady(false)
+    // Play the slide/fade-out, then unmount.
+    setClosing(true)
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+    closeTimerRef.current = setTimeout(() => {
+      videoIdRef.current = null
+      setVideoId(null)
+      setPlaying(false)
+      setReady(false)
+      setClosing(false)
+    }, 200)
   }, [])
 
   const registerSlot = useCallback((el: HTMLElement | null) => {
@@ -271,7 +289,14 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
           ref={stageRef}
           className={
             "group fixed z-30 overflow-hidden bg-black " +
-            (docked ? "shadow-2xl ring-1 ring-black/10" : "")
+            (docked ? "shadow-2xl ring-1 ring-black/10 " : "") +
+            // Animate only the corner mini's appearance/dismissal (the inline
+            // overlay just tracks the slot). No transition on position → no zoom.
+            (closing
+              ? "animate-out fade-out slide-out-to-bottom-3"
+              : docked
+                ? "animate-in fade-in slide-in-from-bottom-3"
+                : "")
           }
           style={{ top: 0, left: 0, width: 0, height: 0 }}
         >
@@ -299,14 +324,26 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
           )}
 
           {docked && (
-            <button
-              type="button"
-              onClick={close}
-              aria-label="Close player"
-              className="absolute right-1 top-1 z-40 rounded bg-black/60 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
-            >
-              <X className="size-3.5" />
-            </button>
+            <div className="absolute right-1 top-1 z-40 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              {itemId && (
+                <button
+                  type="button"
+                  onClick={() => router.push(`/episodes/${itemId}`)}
+                  aria-label="Open video page"
+                  className="rounded bg-black/60 p-1 text-white hover:bg-black/80"
+                >
+                  <Maximize2 className="size-3.5" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={close}
+                aria-label="Close player"
+                className="rounded bg-black/60 p-1 text-white hover:bg-black/80"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
           )}
         </div>
       )}

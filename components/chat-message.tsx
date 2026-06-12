@@ -63,7 +63,11 @@ export function ChatMessage({
   // (video mini for YouTube, audio bar for podcasts); fall back to navigating.
   function openSource(s: ChatSourceRef) {
     if (s.videoId) {
-      video.cue(s.videoId, { startSec: Math.floor(s.startSec), title: s.itemTitle })
+      video.cue(s.videoId, {
+        startSec: Math.floor(s.startSec),
+        title: s.itemTitle,
+        itemId: s.itemId,
+      })
       return
     }
     if (s.audioUrl) {
@@ -140,7 +144,14 @@ export function ChatMessage({
                   return (
                     <button
                       type="button"
-                      onClick={() => onSeek?.(Number(href.slice(3)) || sec)}
+                      onClick={() => {
+                        const t = Number(href.slice(3)) || sec
+                        // Inline [m:ss] timestamps refer to the answer's primary
+                        // source — cue it (video mini / audio bar) at that moment.
+                        const src = sources[0]
+                        if (src) openSource({ ...src, startSec: t })
+                        else onSeek?.(t)
+                      }}
                       className="font-sans text-primary hover:underline"
                     >
                       {children}

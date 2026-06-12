@@ -61,6 +61,7 @@ function YouTubeBody({
   onTabChange,
   startSec,
   title,
+  itemId,
 }: {
   videoId: string
   transcript: { segments: Segment[] }
@@ -70,13 +71,14 @@ function YouTubeBody({
   onTabChange: (v: string) => void
   startSec?: number
   title?: string
+  itemId: string
 }) {
   const video = useVideoPlayer()
   const slotRef = useRef<HTMLDivElement>(null)
 
   // Load this video into the GLOBAL player on mount; it persists across nav.
   useEffect(() => {
-    video.cue(videoId, { chapters: insights?.chapters ?? undefined, startSec, title })
+    video.cue(videoId, { chapters: insights?.chapters ?? undefined, startSec, title, itemId })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId])
 
@@ -256,6 +258,7 @@ export function EpisodeView({ episode, transcript, insights, entities = [] }: Ep
               onTabChange={setTab}
               startSec={tParam ? Math.floor(Number(tParam)) || undefined : undefined}
               title={episode.title}
+              itemId={episode.id}
             />
           ) : (
             <Tabs value={tab} onValueChange={setTab}>
