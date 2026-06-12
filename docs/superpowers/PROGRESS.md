@@ -28,11 +28,11 @@ Each task passes two reviews (spec compliance → code quality) before it's mark
 - [x] **Task 2 — Hand-authored rename migration** (`0005_items_rename.sql` + journal) · commit `ead5afe` · applied to DB · reviews ✅
 - [x] **Task 3 — `itemRepo`** (`lib/db/items.ts` + test) · commit `32fbc6e` · 4/4 tests · reviews ✅
 - [x] **Task 4 — `process-content` pipeline** (rename from `process-transcript`; folded in `resolve.ts`) · commit `92995ec` · 3/3 tests · reviews ✅
-- [ ] **Task 5 — `search.ts` itemId rename** (incl. raw SQL)
-- [ ] **Task 6 — Modal client / callback / episodes route / retry**
-- [ ] **Task 7 — DTO layer** (`lib/api/dto.ts` + test)
-- [ ] **Task 8 — Wire DTO into `GET /api/episodes/[id]`**
-- [ ] **Task 9 — Mechanical rename sweep** (typecheck + full suite green)
+- [x] **Task 5 — `search.ts` itemId rename** (incl. raw SQL) · commit `f86a606` · 2/2 tests · reviews ✅
+- [x] **Task 6 — Modal client / callback / episodes route / retry** (+ fixed `[id]/route.ts`) · commits `69a187e` + fixes · 6/6 tests · reviews ✅
+- [x] **Task 7 — DTO layer** (`lib/api/dto.ts` + test) · commit `b2ba0a4` · 2/2 tests · reviews ✅
+- [x] **Task 8 — Wire DTO into `GET /api/episodes/[id]`** · commit `d582b38` · reviews ✅
+- [ ] **Task 9 — Mechanical rename sweep** (typecheck + full suite green) ← in progress
 - [ ] **Task 10 — Final verification** (typecheck + test + lint + build + manual smoke)
 
 ### Follow-ups surfaced during review (non-blocking)
