@@ -41,7 +41,7 @@ export const articleAdapter: SourceAdapter = {
         itemId: item.id,
         transcript: article.textContent,
         segments: paragraphsToSegments(article.textContent),
-        // TODO(task5): pass contentHtml once the pipeline accepts it
+        contentHtml: article.contentHtml,
       },
       { db },
     )

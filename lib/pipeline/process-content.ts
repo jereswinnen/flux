@@ -14,6 +14,7 @@ export interface TranscriptResult {
   itemId: string
   transcript: string
   segments: Segment[]
+  contentHtml?: string
 }
 
 export interface PipelineDeps {
@@ -50,6 +51,7 @@ export async function processContent(result: TranscriptResult, deps: PipelineDep
       itemId: result.itemId,
       fullText: result.transcript,
       segments: result.segments,
+      contentHtml: result.contentHtml,
     })
 
     // 2. Insights
