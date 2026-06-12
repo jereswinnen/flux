@@ -5,10 +5,10 @@ vi.mock("@/lib/modal/client", () => ({
   triggerYoutubeTranscription: vi.fn(async () => {}),
 }))
 
-const created: any[] = []
+const created: Record<string, unknown>[] = []
 vi.mock("@/lib/db/items", () => ({
   itemRepo: {
-    create: vi.fn(async (v: any) => {
+    create: vi.fn(async (v: Record<string, unknown>) => {
       const row = { id: "new-id", status: "processing", ...v }
       created.push(row)
       return row

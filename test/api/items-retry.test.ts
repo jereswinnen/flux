@@ -6,8 +6,8 @@ vi.mock("@/lib/modal/client", () => ({
 }))
 vi.mock("@/lib/pipeline/process-content", () => ({ processContent: vi.fn(async () => {}) }))
 
-let item: any
-let transcriptRows: any[] = []
+let item: Record<string, unknown> | null
+let transcriptRows: Record<string, unknown>[] = []
 vi.mock("@/lib/db/items", () => ({
   itemRepo: { getById: vi.fn(async () => item), updateStatus: vi.fn(async () => {}) },
 }))
