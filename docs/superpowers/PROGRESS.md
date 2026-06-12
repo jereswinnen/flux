@@ -10,7 +10,7 @@ Living status across all phases. Updated as work lands. See the spec and per-pha
 | Phase | Scope | Status |
 |------|-------|--------|
 | 1 | Polymorphic data model + DTO foundation (`episodes`→`items`, `type`+`sourceMetadata`, `lib/api/` DTOs) | ✅ Done (pending manual smoke test) |
-| 2 | `SourceAdapter` abstraction + unified ingest (podcast adapter, YouTube adapter, `POST /api/items`, retry) | 🟡 In progress |
+| 2 | `SourceAdapter` abstraction + unified ingest (podcast adapter, YouTube adapter, `POST /api/items`, retry) | ✅ Done |
 | 3 | Modal YouTube function (`transcribe_youtube`: wgcf + wireproxy + yt-dlp, health gate, metadata backfill) | ⚪ Not started |
 | 4 | Frontend (`ItemView`, pluggable player, YouTube IFrame, live-reading transcript, bottom-right mini-player) | ⚪ Not started |
 
@@ -44,15 +44,21 @@ Each task passes two reviews (spec compliance → code quality) before it's mark
 
 Plan: [`plans/2026-06-12-youtube-phase-2-adapters.md`](plans/2026-06-12-youtube-phase-2-adapters.md) · Branch: `youtube-phase-2-adapters`
 
-- [ ] Task 1 — `SourceAdapter` interface (`lib/sources/types.ts`)
-- [ ] Task 2 — YouTube URL parsing (`youtube-url.ts`, TDD)
-- [ ] Task 3 — `triggerYoutubeTranscription` Modal client
-- [ ] Task 4 — Podcast + YouTube adapters + registry
-- [ ] Task 5 — Unified `POST`/`GET /api/items`
-- [ ] Task 6 — Generalized `POST /api/items/[id]/retry`
-- [ ] Task 7 — Callback metadata backfill (`item_id` + `metadata`)
-- [ ] Task 8 — add-command UI: paste YouTube URL → ingest
-- [ ] Task 9 — Final verification
+- [x] Task 1 — `SourceAdapter` interface · `44f2376` · reviews ✅
+- [x] Task 2 — YouTube URL parsing · `b3785e6` · reviews ✅
+- [x] Task 3 — `triggerYoutubeTranscription` Modal client · `0a88659` · reviews ✅
+- [x] Task 4 — Podcast + YouTube adapters + registry · `ad43312` (+fix) · reviews ✅
+- [x] Task 5 — Unified `POST`/`GET /api/items` · `682edd8` (+fix) · reviews ✅
+- [x] Task 6 — Generalized `POST /api/items/[id]/retry` · `72eba7a` · reviews ✅
+- [x] Task 7 — Callback metadata backfill (`item_id` + `metadata`) · `69fad82` · reviews ✅
+- [x] Task 8 — add-command UI: paste YouTube URL → ingest · `778f271` (+fix) · reviews ✅
+- [x] Task 9 — Final verification · typecheck clean · 109/109 tests · build ✅ · lint 0 new
+
+### Phase 2 fast-follows (non-blocking, from review)
+- `POST /api/items` returns 201 with a "queued" toast even on dedup (re-submit of an existing URL) — make it signal "already in library".
+- `ingest()` / `ingestItem()` in add-command are near-duplicates — collapse into one `postAndNavigate` helper.
+- Minor test-coverage adds: `youtu.be?t=` + `music.youtube.com` URL cases; youtube non-2xx trigger error; retry `updateStatus` transition assertions.
+- YouTube playback affordance on the detail page is **Phase 4** (ItemView + IFrame player), not a Phase 2 gap.
 
 Boundary note: YouTube ingestion is fully wired on the Vercel side here but only works **end-to-end once Phase 3 deploys the Modal `transcribe_youtube` endpoint**. Until then a YouTube add creates the item then moves to `failed`. Verified in Phase 2 with the Modal call mocked.
 
