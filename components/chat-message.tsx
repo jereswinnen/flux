@@ -9,6 +9,7 @@ import { remarkTimestamps } from "@/lib/markdown/timestamps"
 import { hiResArtwork } from "@/lib/artwork"
 import { parseTimestamp, formatTimestamp } from "@/lib/format"
 import { usePlayer } from "@/components/player-context"
+import { useVideoPlayer } from "@/components/video-player"
 
 export type ChatSourceRef = {
   itemId: string
@@ -17,6 +18,7 @@ export type ChatSourceRef = {
   podcastName?: string | null
   artworkUrl?: string | null
   audioUrl?: string | null
+  videoId?: string | null
 }
 
 export type UIMessage = {
@@ -54,11 +56,16 @@ export function ChatMessage({
   pending?: boolean
 }) {
   const player = usePlayer()
+  const video = useVideoPlayer()
   const router = useRouter()
 
-  // Start playback at a source's moment — cue the global player in place when we
-  // have the audio URL, otherwise navigate to the episode (which cues on load).
+  // Start playback at a source's moment — cue the relevant global player in place
+  // (video mini for YouTube, audio bar for podcasts); fall back to navigating.
   function openSource(s: ChatSourceRef) {
+    if (s.videoId) {
+      video.cue(s.videoId, { startSec: Math.floor(s.startSec), title: s.itemTitle })
+      return
+    }
     if (s.audioUrl) {
       player.cue(
         {
@@ -70,9 +77,9 @@ export function ChatMessage({
         },
         Math.floor(s.startSec),
       )
-    } else {
-      router.push(`/episodes/${s.itemId}?t=${Math.floor(s.startSec)}`)
+      return
     }
+    router.push(`/episodes/${s.itemId}?t=${Math.floor(s.startSec)}`)
   }
 
   if (message.role === "user") {

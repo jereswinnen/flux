@@ -10,6 +10,7 @@ export interface SearchHit {
   podcastName: string | null
   artworkUrl: string | null
   audioUrl: string | null
+  videoId: string | null
   content: string
   startSec: number
   endSec: number
@@ -30,6 +31,7 @@ export async function searchChunks(
       podcastName: items.podcastName,
       artworkUrl: items.artworkUrl,
       audioUrl: items.audioUrl,
+      videoId: sql<string | null>`${items.sourceMetadata}->>'videoId'`,
       content: chunks.content,
       startSec: chunks.startSec,
       endSec: chunks.endSec,
@@ -72,6 +74,7 @@ export async function hybridSearch(
     )
     select c.id as "chunkId", c.item_id as "itemId", e.title as "itemTitle",
            e.podcast_name as "podcastName", e.artwork_url as "artworkUrl", e.audio_url as "audioUrl",
+           e.source_metadata->>'videoId' as "videoId",
            c.content, c.start_sec as "startSec", c.end_sec as "endSec", f.score as "similarity"
     from fused f
     join chunks c on c.id = f.id

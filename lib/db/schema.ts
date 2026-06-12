@@ -178,6 +178,7 @@ export type ChatSource = {
   podcastName?: string | null
   artworkUrl?: string | null
   audioUrl?: string | null
+  videoId?: string | null
 }
 
 export const messages = pgTable(

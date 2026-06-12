@@ -73,6 +73,7 @@ export async function POST(request: Request) {
         podcastName: h.podcastName,
         artworkUrl: h.artworkUrl,
         audioUrl: h.audioUrl,
+        videoId: h.videoId,
       }))
     }
   } else {
