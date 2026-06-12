@@ -46,4 +46,5 @@ function fireProcessing(adapter: SourceAdapter, item: ItemRow) {
     .catch((e: unknown) =>
       itemRepo.updateStatus(item.id, "failed", e instanceof Error ? e.message : String(e)),
     )
+    .catch(() => {}) // never let a failure-path DB write surface as an unhandled rejection
 }

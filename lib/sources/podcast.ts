@@ -1,5 +1,5 @@
 import type { ItemRow } from "@/lib/api/dto"
-import { itemRepo, type NewItem } from "@/lib/db/items"
+import type { NewItem } from "@/lib/db/items"
 import { triggerTranscription } from "@/lib/modal/client"
 import type { SourceAdapter } from "./types"
 
@@ -46,5 +46,3 @@ export const podcastAdapter: SourceAdapter = {
     if (item.audioUrl) await triggerTranscription(item.id, item.audioUrl)
   },
 }
-
-export { itemRepo }

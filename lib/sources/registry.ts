@@ -5,10 +5,12 @@ import { youtubeAdapter } from "./youtube"
 
 // URL-based adapters checked in order by detect().
 const URL_ADAPTERS: SourceAdapter[] = [youtubeAdapter]
-const BY_TYPE: Record<NewItem["type"], SourceAdapter> = {
+// Only implemented types are registered; `getAdapter` throws for the rest so an
+// unimplemented source (e.g. "article") fails loudly instead of silently
+// proxying to the wrong adapter.
+const BY_TYPE: Partial<Record<NewItem["type"], SourceAdapter>> = {
   podcast: podcastAdapter,
   youtube: youtubeAdapter,
-  article: youtubeAdapter, // placeholder; never invoked in Phase 2
 }
 
 /** Find the URL-based adapter for a raw input, or null. */
@@ -17,5 +19,7 @@ export function detectAdapter(input: string): SourceAdapter | null {
 }
 
 export function getAdapter(type: NewItem["type"]): SourceAdapter {
-  return BY_TYPE[type]
+  const adapter = BY_TYPE[type]
+  if (!adapter) throw new Error(`no source adapter for type: ${type}`)
+  return adapter
 }
