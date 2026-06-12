@@ -26,14 +26,20 @@ Each task passes two reviews (spec compliance → code quality) before it's mark
 
 - [x] **Task 1 — Schema rename to `items`** (`lib/db/schema.ts`) · commits `7918725` + refinement · reviews ✅ (dropped redundant `channelName`)
 - [x] **Task 2 — Hand-authored rename migration** (`0005_items_rename.sql` + journal) · commit `ead5afe` · applied to DB · reviews ✅
-- [ ] **Task 3 — `itemRepo`** (`lib/db/items.ts` + test)
-- [ ] **Task 4 — `process-content` pipeline** (rename from `process-transcript`)
+- [x] **Task 3 — `itemRepo`** (`lib/db/items.ts` + test) · commit `32fbc6e` · 4/4 tests · reviews ✅
+- [x] **Task 4 — `process-content` pipeline** (rename from `process-transcript`; folded in `resolve.ts`) · commit `92995ec` · 3/3 tests · reviews ✅
 - [ ] **Task 5 — `search.ts` itemId rename** (incl. raw SQL)
 - [ ] **Task 6 — Modal client / callback / episodes route / retry**
 - [ ] **Task 7 — DTO layer** (`lib/api/dto.ts` + test)
 - [ ] **Task 8 — Wire DTO into `GET /api/episodes/[id]`**
 - [ ] **Task 9 — Mechanical rename sweep** (typecheck + full suite green)
 - [ ] **Task 10 — Final verification** (typecheck + test + lint + build + manual smoke)
+
+### Follow-ups surfaced during review (non-blocking)
+- **Test gap:** `sourceUrl` dedup path in `itemRepo.create` has no test — will be exercised + tested by Phase 2 YouTube ingestion.
+- **Cleanup:** rename internal opt key `episodeTitle` → `itemTitle` in `PipelineDeps`/`resolve.ts` (vocabulary leak; harmless) — fold into Task 9 sweep.
+- **Phase 3 content:** `resolve.ts` `entityChunkText` hardcodes "podcast episode" in embedded chunk text — generalize when YouTube items exist.
+- **Perf (pre-existing):** no index on `chunks.item_id`; consider adding when convenient.
 
 ### Notes / decisions carried forward
 - **Flagged deviations from spec (active):** `podcastName`/`audioUrl` kept as columns (not JSONB); `artworkUrl` name kept (not renamed to `thumbnailUrl`). See plan header.
