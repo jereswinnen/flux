@@ -11,7 +11,7 @@ Living status across all phases. Updated as work lands. See the spec and per-pha
 |------|-------|--------|
 | 1 | Polymorphic data model + DTO foundation (`episodes`→`items`, `type`+`sourceMetadata`, `lib/api/` DTOs) | ✅ Done (pending manual smoke test) |
 | 2 | `SourceAdapter` abstraction + unified ingest (podcast adapter, YouTube adapter, `POST /api/items`, retry) | ✅ Done |
-| 3 | Modal YouTube function (`transcribe_youtube`: wgcf + wireproxy + yt-dlp, health gate, metadata backfill) | ⚪ Not started |
+| 3 | Modal YouTube function (`transcribe_youtube`: wgcf + wireproxy + yt-dlp, health gate, metadata backfill) | 🟡 In progress |
 | 4 | Frontend (`ItemView`, pluggable player, YouTube IFrame, live-reading transcript, bottom-right mini-player) | ⚪ Not started |
 
 Legend: ⚪ not started · 🟡 in progress · ✅ done · ⛔ blocked
@@ -36,7 +36,21 @@ Each task passes two reviews (spec compliance → code quality) before it's mark
 - [x] **Task 10 — Final verification** · typecheck clean · 90/90 tests · build ✅ · lint: 0 new errors (11 pre-existing on main) · final holistic review: **GO**
   - ⏳ **Pending (user):** manual podcast smoke test — add a podcast via ⌘K, confirm it reaches `ready` and renders.
 
-**Phase 1 merged to `main` locally** (fast-forward, branch deleted). `main` is ahead of `origin/main` by 19 commits — not yet pushed.
+**Phase 1 + Phase 2 merged to `main` locally** (fast-forward, branches deleted). `main` is ahead of `origin/main` (~32 commits) — not yet pushed.
+
+---
+
+## Phase 3 — Modal `transcribe_youtube` (WARP + yt-dlp)
+
+Plan: [`plans/2026-06-12-youtube-phase-3-modal.md`](plans/2026-06-12-youtube-phase-3-modal.md) · Branch: `youtube-phase-3-modal`
+
+- [ ] Task 1 — pure helpers (`modal/youtube_helpers.py`) + tests (TDD, plain python3)
+- [ ] Task 2 — `modal/transcribe_youtube.py` (WARP egress + yt-dlp + large-v3)
+- [ ] Task 3 — verify wgcf/wireproxy/yt-dlp release URLs + pins
+- [ ] Task 4 — `modal/README.md` deploy + env docs
+- [ ] Task 5 — automated verification + **manual deploy handoff (user)**
+
+Reality: the WARP/yt-dlp/Modal integration is only fully verifiable via `modal deploy` (user step). Phase 3 auto-tests the pure helpers + py_compile + contract match; deploy + real-video smoke is the documented manual handoff. Wire contract (must match Phase 2): in `{item_id, video_url, callback_url, secret}`; out `{item_id, secret, metadata{title,channelName,thumbnailUrl,durationSec,publishedAt}, transcript, segments}`.
 
 ---
 
