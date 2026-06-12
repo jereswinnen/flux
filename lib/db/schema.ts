@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm"
+import type { HighlightLocator } from "@/lib/highlights/locator"
 import {
   index,
   integer,
@@ -51,6 +52,25 @@ export const items = pgTable("items", {
   sourceMetadata: jsonb("source_metadata").$type<SourceMetadata>(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 })
+
+export const highlights = pgTable(
+  "highlights",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    text: text("text").notNull(),
+    note: text("note"),
+    locator: jsonb("locator").$type<HighlightLocator>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("highlights_item_idx").on(t.itemId),
+    index("highlights_created_idx").on(t.createdAt),
+  ],
+)
 
 export const transcripts = pgTable("transcripts", {
   id: uuid("id").defaultRandom().primaryKey(),
