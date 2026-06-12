@@ -24,8 +24,8 @@ Plan: [`plans/2026-06-12-youtube-phase-1-data-model.md`](plans/2026-06-12-youtub
 
 Each task passes two reviews (spec compliance → code quality) before it's marked done.
 
-- [x] **Task 1 — Schema rename to `items`** (`lib/db/schema.ts`) · commit `7918725` · spec ✅
-- [ ] **Task 2 — Hand-authored rename migration** (`0005_items_rename.sql` + journal)
+- [x] **Task 1 — Schema rename to `items`** (`lib/db/schema.ts`) · commits `7918725` + refinement · reviews ✅ (dropped redundant `channelName`)
+- [x] **Task 2 — Hand-authored rename migration** (`0005_items_rename.sql` + journal) · commit `ead5afe` · applied to DB · reviews ✅
 - [ ] **Task 3 — `itemRepo`** (`lib/db/items.ts` + test)
 - [ ] **Task 4 — `process-content` pipeline** (rename from `process-transcript`)
 - [ ] **Task 5 — `search.ts` itemId rename** (incl. raw SQL)
