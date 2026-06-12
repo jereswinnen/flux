@@ -162,7 +162,7 @@ export function YouTubePlayerProvider({
         <div
           className={
             minimized
-              ? "fixed bottom-4 right-4 z-30 aspect-video w-64 overflow-hidden rounded-lg bg-black shadow-xl ring-1 ring-black/10 md:w-80"
+              ? "fixed bottom-4 right-4 z-30 aspect-video w-80 overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-black/10 duration-300 animate-in fade-in slide-in-from-bottom-4 md:w-[28rem]"
               : "aspect-video w-full overflow-hidden rounded-lg bg-black"
           }
         >

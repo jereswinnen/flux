@@ -57,16 +57,19 @@ function YouTubeBody({
   transcript,
   insights,
   entities,
+  tab,
+  onTabChange,
 }: {
   videoId: string
   transcript: { segments: Segment[] }
   insights: Insights
   entities: MentionedEntity[]
+  tab: string
+  onTabChange: (v: string) => void
 }) {
-  const [tab, setTab] = useState("transcript")
   return (
     <YouTubePlayerProvider videoId={videoId}>
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs value={tab} onValueChange={onTabChange}>
         <div className="sticky top-0 z-10 -mx-4 mb-2 bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:-mx-6 md:px-6">
           <TabsList>
             <TabsTrigger value="transcript">Live Transcript</TabsTrigger>
@@ -121,7 +124,8 @@ export function EpisodeView({ episode, transcript, insights, entities = [] }: Ep
     if (track) player.cue(track, sec)
   }
   const isYouTube = episode.type === "youtube" && !!episode.videoId
-  const [tab, setTab] = useState("insights")
+  // YouTube items lead with the live transcript; podcasts lead with insights.
+  const [tab, setTab] = useState(isYouTube ? "transcript" : "insights")
   const scrollRef = useRef<HTMLDivElement>(null)
   const sections = insightSections(insights, entities.length > 0)
 
@@ -227,6 +231,8 @@ export function EpisodeView({ episode, transcript, insights, entities = [] }: Ep
               transcript={transcript}
               insights={insights}
               entities={entities}
+              tab={tab}
+              onTabChange={setTab}
             />
           ) : (
             <Tabs value={tab} onValueChange={setTab}>
@@ -263,9 +269,9 @@ export function EpisodeView({ episode, transcript, insights, entities = [] }: Ep
         </div>
       </div>
 
-      {/* Floating on-this-page nav — right edge, vertically centered, doesn't shift content.
-          YouTube items manage their own inner tab state, so gate on !isYouTube. */}
-      {transcript && !isYouTube && tab === "insights" && sections.length > 0 && (
+      {/* Floating on-this-page nav — right edge, vertically centered, doesn't shift
+          content. Shared across podcasts and videos (tab state is lifted here). */}
+      {transcript && tab === "insights" && sections.length > 0 && (
         <div className="fixed right-6 top-1/2 z-20 hidden -translate-y-1/2 xl:block">
           <InsightsNav sections={sections} scrollRef={scrollRef} />
         </div>
