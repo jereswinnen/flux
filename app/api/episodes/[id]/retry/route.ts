@@ -33,6 +33,9 @@ export async function POST(
       triggerTranscription(id, item.audioUrl)
         .then(() => itemRepo.updateStatus(id, "transcribing"))
         .catch((e) => itemRepo.updateStatus(id, "failed", String(e?.message ?? e)))
+    } else {
+      // No audio source to transcribe — don't leave the item stuck in "processing".
+      await itemRepo.updateStatus(id, "failed", "No audio URL to transcribe")
     }
   }
 

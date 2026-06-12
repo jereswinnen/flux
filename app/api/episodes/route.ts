@@ -12,6 +12,13 @@ export async function POST(request: Request) {
     return Response.json({ error: "title and audioUrl are required" }, { status: 400 })
   }
 
+  const sourceMetadata = {
+    guid: body.episodeGuid,
+    itunesCollectionId: body.itunesCollectionId,
+    itunesTrackId: body.itunesTrackId,
+  }
+  const hasMeta = Object.values(sourceMetadata).some((v) => v !== undefined && v !== null)
+
   const item = await itemRepo.create({
     type: "podcast",
     title: body.title,
@@ -21,11 +28,7 @@ export async function POST(request: Request) {
     artworkUrl: body.artworkUrl,
     publishedAt: body.publishedAt ? new Date(body.publishedAt) : undefined,
     durationSec: body.durationSec,
-    sourceMetadata: {
-      guid: body.episodeGuid,
-      itunesCollectionId: body.itunesCollectionId,
-      itunesTrackId: body.itunesTrackId,
-    },
+    sourceMetadata: hasMeta ? sourceMetadata : undefined,
   })
 
   if (item.status === "processing" && item.audioUrl) {
