@@ -12,7 +12,7 @@ Living status across all phases. Updated as work lands. See the spec and per-pha
 | 1 | Polymorphic data model + DTO foundation (`episodes`→`items`, `type`+`sourceMetadata`, `lib/api/` DTOs) | ✅ Done (pending manual smoke test) |
 | 2 | `SourceAdapter` abstraction + unified ingest (podcast adapter, YouTube adapter, `POST /api/items`, retry) | ✅ Done |
 | 3 | Modal YouTube function (`transcribe_youtube`: wgcf + wireproxy + yt-dlp, health gate, metadata backfill) | ✅ Done (pending user deploy) |
-| 4 | Frontend (`ItemView`, pluggable player, YouTube IFrame, live-reading transcript, bottom-right mini-player) | ⚪ Not started |
+| 4 | Frontend (`ItemView`, pluggable player, YouTube IFrame, live-reading transcript, bottom-right mini-player) | 🟡 In progress |
 
 Legend: ⚪ not started · 🟡 in progress · ✅ done · ⛔ blocked
 
@@ -36,7 +36,21 @@ Each task passes two reviews (spec compliance → code quality) before it's mark
 - [x] **Task 10 — Final verification** · typecheck clean · 90/90 tests · build ✅ · lint: 0 new errors (11 pre-existing on main) · final holistic review: **GO**
   - ⏳ **Pending (user):** manual podcast smoke test — add a podcast via ⌘K, confirm it reaches `ready` and renders.
 
-**Phase 1 + Phase 2 merged to `main` locally** (fast-forward, branches deleted). `main` is ahead of `origin/main` (~32 commits) — not yet pushed.
+**Phases 1–3 merged to `main` locally** (fast-forward, branches deleted). `main` is well ahead of `origin/main` — not yet pushed.
+
+---
+
+## Phase 4 — Detail page video player + live-reading transcript
+
+Plan: [`plans/2026-06-12-youtube-phase-4-frontend.md`](plans/2026-06-12-youtube-phase-4-frontend.md) · Branch: `youtube-phase-4-frontend`
+
+- [ ] Task 1 — active-segment pure helper (`lib/transcript/active-segment.ts`) + tests
+- [ ] Task 2 — `components/youtube-player.tsx` (IFrame player + bottom-right minimize)
+- [ ] Task 3 — `components/live-transcript.tsx` (highlight + auto-scroll + jump-to-current)
+- [ ] Task 4 — wire into `EpisodeView` youtube branch + detail page (`type`/`videoId`)
+- [ ] Task 5 — verification + **manual browser test (user; needs Phase 3 deployed)**
+
+Design decision (flagged): **page-local** YouTube player (not the global audio `usePlayer`) — matches the approved video-at-top + minimize mockups; podcast playback untouched.
 
 ---
 
