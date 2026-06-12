@@ -1,14 +1,19 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { findActiveSegmentIndex, type TimedSegment } from "@/lib/transcript/active-segment"
+import { useEffect, useRef } from "react"
+import {
+  findActiveSegmentIndex,
+  findActiveWordIndex,
+  type TimedSegment,
+} from "@/lib/transcript/active-segment"
 import { formatTimestamp } from "@/lib/format"
 
 /**
- * Renders a transcript that follows playback: the active line (per `currentSec`)
- * is highlighted and auto-scrolled into view. Auto-scroll pauses while the user
- * is manually scrolling and offers a "Jump to current" affordance to resume.
- * Clicking any line calls `onSeek`.
+ * A transcript that follows playback inside its OWN scroll box (so the page —
+ * and the video pinned above it — never moves). The active line is highlighted
+ * and auto-scrolled to the middle of the box; within that line, the current word
+ * is highlighted when per-word timing is available. Clicking a line's timestamp
+ * seeks the player.
  */
 export function LiveTranscript({
   segments,
@@ -20,64 +25,71 @@ export function LiveTranscript({
   onSeek: (sec: number) => void
 }) {
   const activeIndex = findActiveSegmentIndex(segments, currentSec)
+  const containerRef = useRef<HTMLDivElement>(null)
   const activeRef = useRef<HTMLParagraphElement>(null)
-  const [follow, setFollow] = useState(true)
 
-  // Auto-scroll the active line into view while following.
+  // Auto-scroll the active line to the middle of the BOX (never the page).
   useEffect(() => {
-    if (follow && activeRef.current) {
-      activeRef.current.scrollIntoView({ behavior: "smooth", block: "center" })
-    }
-  }, [activeIndex, follow])
-
-  // Any manual wheel/touch scroll pauses following.
-  useEffect(() => {
-    const pause = () => setFollow(false)
-    window.addEventListener("wheel", pause, { passive: true })
-    window.addEventListener("touchmove", pause, { passive: true })
-    return () => {
-      window.removeEventListener("wheel", pause)
-      window.removeEventListener("touchmove", pause)
-    }
-  }, [])
+    const box = containerRef.current
+    const el = activeRef.current
+    if (!box || !el) return
+    const top = el.offsetTop - box.clientHeight / 2 + el.clientHeight / 2
+    box.scrollTo({ top: Math.max(0, top), behavior: "smooth" })
+  }, [activeIndex])
 
   return (
-    <div className="relative">
-      <div className="space-y-2 font-serif text-lg leading-relaxed">
-        {segments.map((s, i) => {
-          const active = i === activeIndex
-          return (
-            <p
-              key={s.start ?? i}
-              ref={active ? activeRef : undefined}
-              className={
-                active
-                  ? "rounded-md bg-primary/10 px-2 py-1 transition-colors"
-                  : "px-2 py-1 text-muted-foreground transition-colors"
-              }
+    <div
+      ref={containerRef}
+      className="relative max-h-[20rem] space-y-2 overflow-y-auto rounded-lg border bg-muted/20 p-4 font-serif text-lg leading-relaxed"
+    >
+      {segments.map((s, i) => {
+        const active = i === activeIndex
+        return (
+          <p
+            key={s.start ?? i}
+            ref={active ? activeRef : undefined}
+            className={active ? "transition-colors" : "text-muted-foreground transition-colors"}
+          >
+            <button
+              type="button"
+              onClick={() => onSeek(s.start)}
+              className="mr-2 font-sans text-sm tabular-nums text-muted-foreground hover:text-foreground hover:underline"
             >
-              <button
-                type="button"
-                onClick={() => onSeek(s.start)}
-                className="mr-2 font-sans text-sm tabular-nums text-muted-foreground hover:text-foreground hover:underline"
-              >
-                {formatTimestamp(s.start)}
-              </button>
-              {s.text}
-            </p>
-          )
-        })}
-      </div>
-
-      {!follow && (
-        <button
-          type="button"
-          onClick={() => setFollow(true)}
-          className="fixed bottom-20 left-1/2 z-30 -translate-x-1/2 rounded-full border bg-background/90 px-3 py-1.5 text-sm shadow-md backdrop-blur"
-        >
-          Jump to current
-        </button>
-      )}
+              {formatTimestamp(s.start)}
+            </button>
+            {active && s.words?.length ? (
+              <SegmentWords words={s.words} currentSec={currentSec} />
+            ) : (
+              s.text
+            )}
+          </p>
+        )
+      })}
     </div>
+  )
+}
+
+// Renders the active line word-by-word, highlighting the word at `currentSec`.
+// faster-whisper word strings include their leading space, so concatenating the
+// spans reproduces the original spacing.
+function SegmentWords({
+  words,
+  currentSec,
+}: {
+  words: NonNullable<TimedSegment["words"]>
+  currentSec: number
+}) {
+  const wi = findActiveWordIndex(words, currentSec)
+  return (
+    <>
+      {words.map((w, i) => (
+        <span
+          key={i}
+          className={i === wi ? "rounded bg-primary/20 text-foreground" : undefined}
+        >
+          {w.word}
+        </span>
+      ))}
+    </>
   )
 }

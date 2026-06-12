@@ -58,8 +58,17 @@ export const transcripts = pgTable("transcripts", {
     .notNull()
     .references(() => items.id, { onDelete: "cascade" }),
   fullText: text("full_text").notNull(),
-  segments: jsonb("segments").$type<{ start: number; end: number; text: string }[]>(),
+  segments: jsonb("segments").$type<TranscriptSegment[]>(),
 })
+
+export type TranscriptWord = { start: number; end: number; word: string }
+export type TranscriptSegment = {
+  start: number
+  end: number
+  text: string
+  // Per-word timing (YouTube items, for the live-transcript word highlight).
+  words?: TranscriptWord[]
+}
 
 export const insights = pgTable("insights", {
   id: uuid("id").defaultRandom().primaryKey(),

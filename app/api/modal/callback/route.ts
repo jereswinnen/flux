@@ -44,6 +44,12 @@ export async function POST(request: Request) {
     await itemRepo.updateMeta(itemId, mapped)
   }
 
+  // Interim metadata-only callback (sent before transcription finishes): backfill
+  // title/thumbnail and return — there's no transcript to process yet.
+  if (typeof body.transcript !== "string") {
+    return Response.json({ status: "metadata" }, { status: 202 })
+  }
+
   // Run the rest of the pipeline without blocking the webhook response.
   processContent(
     { itemId, transcript: body.transcript, segments: body.segments ?? [] },

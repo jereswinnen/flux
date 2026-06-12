@@ -17,7 +17,12 @@ import { InsightsNav } from "@/components/insights-nav"
 import { YouTubePlayerProvider, useYouTubePlayer } from "@/components/youtube-player"
 import { LiveTranscript } from "@/components/live-transcript"
 
-type Segment = { start: number; end: number; text: string }
+type Segment = {
+  start: number
+  end: number
+  text: string
+  words?: { start: number; end: number; word: string }[]
+}
 type Insights = {
   summary?: string | null
   takeaways?: string[] | null

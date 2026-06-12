@@ -38,6 +38,12 @@ image = (
         "&& unzip -o /tmp/usque.zip -d /tmp/usque "
         "&& install -m 0755 /tmp/usque/usque /usr/local/bin/usque "
         "&& rm -rf /tmp/usque /tmp/usque.zip",
+        # deno: yt-dlp uses it as the JS runtime to solve YouTube's player
+        # challenge; without it, some formats are missing / extraction can fail.
+        "wget -q -O /tmp/deno.zip https://github.com/denoland/deno/releases/latest/download/deno-x86_64-unknown-linux-gnu.zip "
+        "&& unzip -o /tmp/deno.zip -d /usr/local/bin "
+        "&& chmod +x /usr/local/bin/deno "
+        "&& rm /tmp/deno.zip",
     )
     # ship the pure helpers into the image
     .add_local_python_source("youtube_helpers")
@@ -122,6 +128,18 @@ def transcribe_youtube(video_url: str, item_id: str, callback_url: str, secret: 
 
             metadata = map_ytdlp_metadata(info)
 
+            # Backfill title/thumbnail/etc immediately (before the slow transcribe)
+            # so the detail page shows real metadata while Whisper runs. Best-effort;
+            # the final callback carries metadata again.
+            try:
+                requests.post(
+                    callback_url,
+                    json={"item_id": item_id, "secret": secret, "metadata": metadata},
+                    timeout=30,
+                )
+            except Exception:
+                pass
+
             # transcribe (identical cache-aware load to transcribe.py)
             model_cache.reload()
             snapshot = os.path.isdir(
@@ -136,12 +154,21 @@ def transcribe_youtube(video_url: str, item_id: str, callback_url: str, secret: 
             )
             if not snapshot:
                 model_cache.commit()
-            segments_iter, _info = model.transcribe(audio_path, vad_filter=True)
+            # word_timestamps gives per-word timing so the live transcript can
+            # highlight the current word, not just the current line.
+            segments_iter, _info = model.transcribe(
+                audio_path, vad_filter=True, word_timestamps=True
+            )
 
             segments = []
             parts = []
             for s in segments_iter:
-                segments.append({"start": s.start, "end": s.end, "text": s.text.strip()})
+                seg = {"start": s.start, "end": s.end, "text": s.text.strip()}
+                if s.words:
+                    seg["words"] = [
+                        {"start": w.start, "end": w.end, "word": w.word} for w in s.words
+                    ]
+                segments.append(seg)
                 parts.append(s.text.strip())
 
             payload = {
