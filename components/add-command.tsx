@@ -39,6 +39,11 @@ type Moment = {
   artworkUrl: string | null; content: string; startSec: number; endSec: number
 }
 
+const AUDIO_EXT = /\.(mp3|m4a|aac|ogg|oga|wav|flac)(\?|#|$)/i
+function isArticleUrl(u: string): boolean {
+  return isUrl(u) && !isYouTubeUrl(u) && !looksLikeFeedUrl(u) && !AUDIO_EXT.test(u.trim())
+}
+
 function Thumb({ src, alt }: { src?: string | null; alt: string }) {
   const url = hiResArtwork(src, 120)
   if (!url) return <div className="size-9 shrink-0 rounded bg-muted" aria-hidden />
@@ -279,6 +284,8 @@ export function AddCommand() {
                       ingestItem({ url: urlQuery })
                     } else if (looksLikeFeedUrl(urlQuery)) {
                       loadShowEpisodes(urlQuery, {})
+                    } else if (isArticleUrl(urlQuery)) {
+                      ingestItem({ url: urlQuery })
                     } else {
                       ingest({ title: urlQuery, audioUrl: urlQuery, sourceUrl: urlQuery })
                     }
@@ -289,7 +296,9 @@ export function AddCommand() {
                     ? "Add this YouTube video"
                     : looksLikeFeedUrl(urlQuery)
                       ? "Load feed episodes"
-                      : "Add this audio URL"}
+                      : isArticleUrl(urlQuery)
+                        ? "Add this article"
+                        : "Add this audio URL"}
                 </CommandItem>
               </CommandGroup>
             )}
