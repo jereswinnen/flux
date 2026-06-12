@@ -16,6 +16,7 @@ import { EpisodeInsights, insightSections, type MentionedEntity } from "@/compon
 import { InsightsNav } from "@/components/insights-nav"
 import { useVideoPlayer } from "@/components/video-player"
 import { LiveTranscript } from "@/components/live-transcript"
+import { HighlightLayer } from "@/components/highlight-layer"
 
 type Segment = {
   start: number
@@ -293,6 +294,7 @@ export function EpisodeView({ episode, transcript, insights, entities = [] }: Ep
           <InsightsNav sections={sections} scrollRef={scrollRef} />
         </div>
       )}
+      <HighlightLayer itemId={episode.id} />
     </>
   )
 }

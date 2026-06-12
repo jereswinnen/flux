@@ -126,7 +126,7 @@ export function EpisodeInsights({
         <Section id="takeaways" icon={<Lightbulb className="size-3.5" />} title="Key takeaways">
           <ul className="space-y-4">
             {takeaways.map((t, i) => (
-              <li key={i} className="flex gap-3 font-serif text-lg leading-relaxed">
+              <li key={i} data-hl-kind="takeaway" data-hl-index={String(i)} className="flex gap-3 font-serif text-lg leading-relaxed">
                 <span aria-hidden className="mt-2.5 size-1.5 shrink-0 rounded-full bg-primary" />
                 <span>{t}</span>
               </li>
@@ -141,6 +141,9 @@ export function EpisodeInsights({
             {quotes.map((q, i) => (
               <blockquote
                 key={i}
+                data-hl-kind="quote"
+                data-hl-index={String(i)}
+                data-hl-sec={String(q.approxTimestampSec)}
                 className="border-l-2 border-primary/40 pl-4 font-serif text-lg italic leading-relaxed"
               >
                 &ldquo;{q.text}&rdquo;{" "}

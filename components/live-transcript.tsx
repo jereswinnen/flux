@@ -106,6 +106,8 @@ export function LiveTranscript({
               key={s.start ?? i}
               ref={i === focusIndex ? targetRef : undefined}
               onClick={() => seekToLine(s.start)}
+              data-hl-kind="transcript"
+              data-hl-sec={String(s.start)}
               className={[
                 "cursor-pointer rounded-md px-2 py-1 transition-colors hover:bg-muted/70",
                 !isMatch && !playbackActive ? "text-muted-foreground" : "",
