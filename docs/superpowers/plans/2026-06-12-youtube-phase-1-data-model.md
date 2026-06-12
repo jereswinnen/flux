@@ -178,33 +178,66 @@ git commit -m "refactor(schema): episodes -> polymorphic items with type + sourc
 
 ---
 
-## Task 2: Generate and apply the migration
+## Task 2: Hand-author the rename migration (do NOT use `drizzle-kit generate`)
 
 **Files:**
-- Create: a new file under `lib/db/migrations/` (generated)
+- Create: `lib/db/migrations/0005_items_rename.sql`
+- Modify: `lib/db/migrations/meta/_journal.json`
 
-Data loss is approved, so a drop/recreate migration is acceptable.
+**Why hand-authored:** `drizzle-kit generate` is **interactive** when it detects renames (it prompts "renamed vs created/dropped?"), which hangs in a non-interactive shell. More importantly, `chunks.content_tsv` (a generated `tsvector` column + GIN index, added in `0001`) and `CREATE EXTENSION vector` (in `0000`) exist **only in migration SQL, not in `schema.ts`** — so any regenerate-from-schema approach would silently drop full-text search. An `ALTER ... RENAME` migration preserves `content_tsv`, the extension, indexes, and all existing rows (no data loss needed), and applies cleanly on top of the existing journal (idx 0–4).
 
-- [ ] **Step 1: Generate the migration**
+The migrator splits statements on `--> statement-breakpoint` and only runs migrations listed in `_journal.json`. Both files below are required.
 
-Run: `npm run db:generate`
-Expected: drizzle-kit prints a new migration file path under `lib/db/migrations/`. When prompted about renamed tables/columns, choosing "create/drop" (rather than rename) is fine given data loss.
+- [ ] **Step 1: Create `lib/db/migrations/0005_items_rename.sql`** (verbatim)
 
-- [ ] **Step 2: Eyeball the generated SQL**
+```sql
+ALTER TABLE "episodes" RENAME TO "items";--> statement-breakpoint
+ALTER TABLE "episode_entities" RENAME TO "item_entities";--> statement-breakpoint
+ALTER TABLE "transcripts" RENAME COLUMN "episode_id" TO "item_id";--> statement-breakpoint
+ALTER TABLE "insights" RENAME COLUMN "episode_id" TO "item_id";--> statement-breakpoint
+ALTER TABLE "chunks" RENAME COLUMN "episode_id" TO "item_id";--> statement-breakpoint
+ALTER TABLE "conversations" RENAME COLUMN "episode_id" TO "item_id";--> statement-breakpoint
+ALTER TABLE "item_entities" RENAME COLUMN "episode_id" TO "item_id";--> statement-breakpoint
+ALTER TABLE "items" ADD COLUMN "type" text DEFAULT 'podcast' NOT NULL;--> statement-breakpoint
+ALTER TABLE "items" ADD COLUMN "source_metadata" jsonb;--> statement-breakpoint
+ALTER TABLE "items" ALTER COLUMN "audio_url" DROP NOT NULL;--> statement-breakpoint
+UPDATE "items" SET "source_metadata" = jsonb_strip_nulls(jsonb_build_object('guid', "episode_guid", 'itunesCollectionId', "itunes_collection_id", 'itunesTrackId', "itunes_track_id"));--> statement-breakpoint
+ALTER TABLE "items" DROP COLUMN "episode_guid";--> statement-breakpoint
+ALTER TABLE "items" DROP COLUMN "itunes_collection_id";--> statement-breakpoint
+ALTER TABLE "items" DROP COLUMN "itunes_track_id";
+```
 
-Open the new `lib/db/migrations/NNNN_*.sql`. Confirm it creates `items`, `item_entities`, and the renamed `item_id` columns, and references are intact. No manual edits expected.
+Notes: FK constraints and indexes follow the table/column through a `RENAME` automatically (their internal names keep the old `episode_*` text — cosmetic only, the app references columns not constraint names). `content_tsv` lives on `chunks` and is untouched.
 
-- [ ] **Step 3: Apply to the database**
+- [ ] **Step 2: Append the journal entry in `lib/db/migrations/meta/_journal.json`**
+
+Add this object as the last element of the `entries` array (after the `idx: 4` entry — remember the comma):
+
+```json
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1781200000000,
+      "tag": "0005_items_rename",
+      "breakpoints": true
+    }
+```
+
+- [ ] **Step 3: Apply to the test database and verify it lands**
+
+The test suite auto-runs `migrate()` against `TEST_DATABASE_URL` in `beforeAll`. Apply + sanity-check with a focused run after Task 3 exists. For now, apply to the app DB:
 
 Run: `npm run db:migrate`
-Expected: completes without error. (If the local DB has old `episodes` data that blocks a drop, dropping those tables is acceptable — data loss approved.)
+Expected: prints `migrations applied` with no error. (If it errors that a column/table doesn't exist, the DB is at an unexpected state — STOP and report; do not force.)
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add lib/db/migrations
-git commit -m "chore(db): migration for items model rename"
+git add lib/db/migrations/0005_items_rename.sql lib/db/migrations/meta/_journal.json
+git commit -m "chore(db): rename migration episodes->items (preserves content_tsv + data)"
 ```
+
+**Known follow-up (not this phase):** the drizzle snapshot in `meta/` still models `episodes`, so the next `drizzle-kit generate` would try to re-derive the rename. Phases 2–4 need no schema changes (YouTube's `videoId` lives in the existing `source_metadata` JSONB), so this is deferred; resolve it by running `generate` once interactively when a future schema change is actually needed.
 
 ---
 
@@ -217,34 +250,62 @@ git commit -m "chore(db): migration for items model rename"
 
 - [ ] **Step 1: Write the failing test for `sourceMetadata`-based dedup**
 
-Rename `test/db/episodes.test.ts` → `test/db/items.test.ts` and update it to the new API. Add this dedup test (uses the project's existing in-test DB harness — mirror the harness already used by the other `test/db/*.test.ts` files):
+There is **no shared test DB helper** — each `test/db/*.test.ts` sets up its own postgres-js client inline against `TEST_DATABASE_URL` and runs `migrate()` in `beforeAll`. Rename `test/db/episodes.test.ts` → `test/db/items.test.ts`, mirror that inline setup, and update every `repo`/`schema.episodes` reference to the new names. The file should look like:
 
 ```ts
-import { describe, expect, it } from "vitest"
-import { makeItemRepo } from "@/lib/db/items"
-import { testDb } from "../helpers/db" // use the SAME helper the other db tests import
+import { config } from "dotenv"
+config({ path: ".env.local" })
 
-describe("itemRepo.create dedup", () => {
-  it("dedupes podcasts by sourceMetadata.guid", async () => {
-    const repo = makeItemRepo(testDb)
-    const a = await repo.create({
-      type: "podcast",
-      title: "Ep 1",
-      audioUrl: "https://x/1.mp3",
-      sourceMetadata: { guid: "guid-1" },
-    })
-    const b = await repo.create({
-      type: "podcast",
-      title: "Ep 1 (dupe)",
-      audioUrl: "https://x/1-other.mp3",
-      sourceMetadata: { guid: "guid-1" },
-    })
-    expect(b.id).toBe(a.id)
+import { drizzle } from "drizzle-orm/postgres-js"
+import { migrate } from "drizzle-orm/postgres-js/migrator"
+import postgres from "postgres"
+import { afterAll, beforeAll, beforeEach, expect, test } from "vitest"
+import * as schema from "@/lib/db/schema"
+import { makeItemRepo } from "@/lib/db/items"
+
+const client = postgres(process.env.TEST_DATABASE_URL!, { max: 1 })
+const db = drizzle(client, { schema })
+const repo = makeItemRepo(db)
+
+beforeAll(async () => {
+  await migrate(db, { migrationsFolder: "./lib/db/migrations" })
+})
+beforeEach(async () => {
+  await db.delete(schema.items)
+})
+afterAll(async () => {
+  await client.end()
+})
+
+test("create returns a processing podcast item", async () => {
+  const item = await repo.create({
+    type: "podcast",
+    title: "E",
+    audioUrl: "https://a/1.mp3",
+    sourceMetadata: { guid: "g1" },
   })
+  expect(item.status).toBe("processing")
+  expect(item.type).toBe("podcast")
+})
+
+test("dedupes podcasts by sourceMetadata.guid", async () => {
+  const a = await repo.create({
+    type: "podcast",
+    title: "Ep 1",
+    audioUrl: "https://x/1.mp3",
+    sourceMetadata: { guid: "guid-1" },
+  })
+  const b = await repo.create({
+    type: "podcast",
+    title: "Ep 1 (dupe)",
+    audioUrl: "https://x/1-other.mp3",
+    sourceMetadata: { guid: "guid-1" },
+  })
+  expect(b.id).toBe(a.id)
 })
 ```
 
-(If `test/helpers/db` doesn't exist, copy the DB-setup pattern from the existing `test/db/episodes.test.ts` before deleting it.)
+Preserve any other meaningful test cases that were in `episodes.test.ts`, translating them to the new `NewItem` shape (`type` required; `episodeGuid`/`itunes*` → `sourceMetadata`).
 
 - [ ] **Step 2: Run it to confirm it fails**
 
