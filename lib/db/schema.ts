@@ -20,21 +20,26 @@ export type ItemStatus =
 
 export type ItemType = "podcast" | "youtube" | "article"
 
+// Source-specific identifiers. Callers must populate the fields relevant to the
+// item's `type` (e.g. youtube items set `videoId`). The display "source name"
+// (show / channel / author) lives in the top-level `podcastName` column, not here.
 export type SourceMetadata = {
-  // podcast
+  // podcast — `guid` is the RSS <guid>. iTunes ids are opaque identifiers; they
+  // sit comfortably within JSON's safe-integer range (currently ~10 digits).
   guid?: string
   itunesCollectionId?: number
   itunesTrackId?: number
   // youtube
   videoId?: string
   channelId?: string
-  channelName?: string
+  // article — reserved; no fields yet
 }
 
 export const items = pgTable("items", {
   id: uuid("id").defaultRandom().primaryKey(),
   type: text("type").$type<ItemType>().notNull().default("podcast"),
   title: text("title").notNull(),
+  // Generic source name: podcast show, YouTube channel, or article author.
   podcastName: text("podcast_name"),
   audioUrl: text("audio_url"),
   sourceUrl: text("source_url"),
