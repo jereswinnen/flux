@@ -11,7 +11,7 @@ Living status across all phases. Updated as work lands. See the spec and per-pha
 |------|-------|--------|
 | 1 | Polymorphic data model + DTO foundation (`episodes`→`items`, `type`+`sourceMetadata`, `lib/api/` DTOs) | ✅ Done (pending manual smoke test) |
 | 2 | `SourceAdapter` abstraction + unified ingest (podcast adapter, YouTube adapter, `POST /api/items`, retry) | ✅ Done |
-| 3 | Modal YouTube function (`transcribe_youtube`: wgcf + wireproxy + yt-dlp, health gate, metadata backfill) | 🟡 In progress |
+| 3 | Modal YouTube function (`transcribe_youtube`: wgcf + wireproxy + yt-dlp, health gate, metadata backfill) | ✅ Done (pending user deploy) |
 | 4 | Frontend (`ItemView`, pluggable player, YouTube IFrame, live-reading transcript, bottom-right mini-player) | ⚪ Not started |
 
 Legend: ⚪ not started · 🟡 in progress · ✅ done · ⛔ blocked
@@ -44,11 +44,22 @@ Each task passes two reviews (spec compliance → code quality) before it's mark
 
 Plan: [`plans/2026-06-12-youtube-phase-3-modal.md`](plans/2026-06-12-youtube-phase-3-modal.md) · Branch: `youtube-phase-3-modal`
 
-- [ ] Task 1 — pure helpers (`modal/youtube_helpers.py`) + tests (TDD, plain python3)
-- [ ] Task 2 — `modal/transcribe_youtube.py` (WARP egress + yt-dlp + large-v3)
-- [ ] Task 3 — verify wgcf/wireproxy/yt-dlp release URLs + pins
-- [ ] Task 4 — `modal/README.md` deploy + env docs
-- [ ] Task 5 — automated verification + **manual deploy handoff (user)**
+- [x] Task 1 — pure helpers + tests · `e2e3143` · 12/12 · reviews ✅
+- [x] Task 2 — `modal/transcribe_youtube.py` · `e7bf946` (+ security/URL fixes) · py_compile ✅ · reviews ✅
+- [x] Task 3 — release URLs verified (wgcf v2.2.31; wireproxy `windtf` `/latest/`; yt-dlp unpinned)
+- [x] Task 4 — `modal/README.md` deploy + secret + contract docs
+- [x] Task 5 — automated verification ✅ (helpers + py_compile + app typecheck clean; app suite unchanged at 109/109)
+
+### ⏳ Phase 3 manual handoff (USER — required for end-to-end YouTube)
+1. `modal secret create podcast-kb-webhook MODAL_WEBHOOK_SECRET=<same value as the app>`
+2. `modal deploy modal/transcribe_youtube.py`
+3. Set `MODAL_TRANSCRIBE_YOUTUBE_URL` (app env) to the printed `web` endpoint URL.
+4. Smoke-test: paste a short public YouTube URL in ⌘K → item should reach `ready` with real title/thumbnail + transcript.
+
+### Phase 3 fast-follows (non-blocking)
+- Harden the podcast `transcribe.py` web endpoint with the same `compare_digest` secret check (currently presence-only).
+- `_start_warp()` returns a `proxies` dict now unused by the caller — make it return None.
+- Detail page still has no video player for YouTube items — that's **Phase 4**.
 
 Reality: the WARP/yt-dlp/Modal integration is only fully verifiable via `modal deploy` (user step). Phase 3 auto-tests the pure helpers + py_compile + contract match; deploy + real-video smoke is the documented manual handoff. Wire contract (must match Phase 2): in `{item_id, video_url, callback_url, secret}`; out `{item_id, secret, metadata{title,channelName,thumbnailUrl,durationSec,publishedAt}, transcript, segments}`.
 
