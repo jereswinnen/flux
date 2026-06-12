@@ -79,6 +79,7 @@ export const transcripts = pgTable("transcripts", {
     .references(() => items.id, { onDelete: "cascade" }),
   fullText: text("full_text").notNull(),
   segments: jsonb("segments").$type<TranscriptSegment[]>(),
+  contentHtml: text("content_html"),
 })
 
 export type TranscriptWord = { start: number; end: number; word: string }
