@@ -69,6 +69,12 @@ export function TranscriptSearchBar({
             e.preventDefault()
             if (e.shiftKey) prev()
             else next()
+          } else if (e.key === "ArrowDown") {
+            e.preventDefault()
+            next()
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault()
+            prev()
           }
         }}
         placeholder="Search transcript…"
