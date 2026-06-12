@@ -11,6 +11,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { PlayerProvider } from "@/components/player-context"
 import { GlobalPlayer } from "@/components/global-player"
+import { VideoPlayerProvider } from "@/components/video-player"
 
 const dmSans = DM_Sans({subsets:['latin'],variable:'--font-sans'})
 const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" })
@@ -26,16 +27,18 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <ThemeProvider>
           <CommandProvider>
             <PlayerProvider>
-              <TooltipProvider>
-                <SidebarProvider className="h-svh">
-                  <AppSidebar />
-                  <SidebarInset className="min-h-0 overflow-hidden">
-                    {children}
-                    <GlobalPlayer />
-                  </SidebarInset>
-                </SidebarProvider>
-              </TooltipProvider>
-              <AddCommand />
+              <VideoPlayerProvider>
+                <TooltipProvider>
+                  <SidebarProvider className="h-svh">
+                    <AppSidebar />
+                    <SidebarInset className="min-h-0 overflow-hidden">
+                      {children}
+                      <GlobalPlayer />
+                    </SidebarInset>
+                  </SidebarProvider>
+                </TooltipProvider>
+                <AddCommand />
+              </VideoPlayerProvider>
             </PlayerProvider>
           </CommandProvider>
         </ThemeProvider>

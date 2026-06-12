@@ -14,7 +14,7 @@ import { formatRelativeDate, formatTimestamp } from "@/lib/format"
 import { EpisodeActions } from "@/components/episode-actions"
 import { EpisodeInsights, insightSections, type MentionedEntity } from "@/components/episode-insights"
 import { InsightsNav } from "@/components/insights-nav"
-import { YouTubePlayerProvider, useYouTubePlayer } from "@/components/youtube-player"
+import { useVideoPlayer } from "@/components/video-player"
 import { LiveTranscript } from "@/components/live-transcript"
 
 type Segment = {
@@ -60,6 +60,7 @@ function YouTubeBody({
   tab,
   onTabChange,
   startSec,
+  title,
 }: {
   videoId: string
   transcript: { segments: Segment[] }
@@ -68,13 +69,27 @@ function YouTubeBody({
   tab: string
   onTabChange: (v: string) => void
   startSec?: number
+  title?: string
 }) {
+  const video = useVideoPlayer()
+  const slotRef = useRef<HTMLDivElement>(null)
+
+  // Load this video into the GLOBAL player on mount; it persists across nav.
+  useEffect(() => {
+    video.cue(videoId, { chapters: insights?.chapters ?? undefined, startSec, title })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoId])
+
+  // Register the inline slot the global player overlays while it's on-screen.
+  useEffect(() => {
+    video.registerSlot(slotRef.current)
+    return () => video.registerSlot(null)
+  }, [video])
+
   return (
-    <YouTubePlayerProvider
-      videoId={videoId}
-      chapters={insights?.chapters ?? undefined}
-      startSec={startSec}
-    >
+    <>
+      {/* The global video player overlays this slot while it's visible. */}
+      <div ref={slotRef} className="mb-4 aspect-video w-full rounded-lg bg-black" />
       <Tabs value={tab} onValueChange={onTabChange}>
         <div className="sticky top-0 z-10 -mx-4 mb-2 bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:-mx-6 md:px-6">
           <TabsList>
@@ -89,17 +104,17 @@ function YouTubeBody({
           <EpisodeInsightsBound insights={insights} entities={entities} />
         </TabsContent>
       </Tabs>
-    </YouTubePlayerProvider>
+    </>
   )
 }
 
 function LiveTranscriptBound({ segments }: { segments: Segment[] }) {
-  const { currentSec, seekTo } = useYouTubePlayer()
+  const { currentSec, seekTo } = useVideoPlayer()
   return <LiveTranscript segments={segments} currentSec={currentSec} onSeek={seekTo} />
 }
 
 function EpisodeInsightsBound({ insights, entities }: { insights: Insights; entities: MentionedEntity[] }) {
-  const { seekTo } = useYouTubePlayer()
+  const { seekTo } = useVideoPlayer()
   return <EpisodeInsights insights={insights} entities={entities} onSeek={seekTo} />
 }
 
@@ -240,6 +255,7 @@ export function EpisodeView({ episode, transcript, insights, entities = [] }: Ep
               tab={tab}
               onTabChange={setTab}
               startSec={tParam ? Math.floor(Number(tParam)) || undefined : undefined}
+              title={episode.title}
             />
           ) : (
             <Tabs value={tab} onValueChange={setTab}>

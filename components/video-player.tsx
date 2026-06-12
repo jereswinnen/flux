@@ -2,35 +2,45 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
   useState,
   type ReactNode,
 } from "react"
-import { Pause, Play } from "lucide-react"
+import { Pause, Play, X } from "lucide-react"
 import { formatTimestamp } from "@/lib/format"
 
 export type PlayerChapter = { title: string; startSec: number }
 
-type YouTubePlayerCtx = {
+type CueOpts = { startSec?: number; chapters?: PlayerChapter[]; title?: string }
+
+type VideoPlayerCtx = {
+  videoId: string | null
+  title: string | null
   currentSec: number
   duration: number
   playing: boolean
   ready: boolean
   seekTo: (sec: number) => void
   togglePlay: () => void
+  /** Load + play a video (persists across navigation; shows the corner mini). */
+  cue: (videoId: string, opts?: CueOpts) => void
+  close: () => void
+  /** The detail page registers its inline slot; the player overlays it while
+   *  visible and docks to the corner when it scrolls away / on other pages. */
+  registerSlot: (el: HTMLElement | null) => void
 }
 
-const Ctx = createContext<YouTubePlayerCtx | null>(null)
+const Ctx = createContext<VideoPlayerCtx | null>(null)
 
-export function useYouTubePlayer() {
+export function useVideoPlayer() {
   const c = useContext(Ctx)
-  if (!c) throw new Error("useYouTubePlayer must be used within YouTubePlayerProvider")
+  if (!c) throw new Error("useVideoPlayer must be used within VideoPlayerProvider")
   return c
 }
 
-// Minimal IFrame API surface (avoids adding @types/youtube).
 type YTPlayer = {
   getCurrentTime: () => number
   getDuration: () => number
@@ -69,45 +79,63 @@ function loadYouTubeApi(): Promise<void> {
   return apiPromise
 }
 
-/**
- * Owns the YouTube IFrame player for one detail page. The IFrame runs chrome-free
- * (`controls: 0`); we render our own controls + a poster cover so YouTube's
- * unstarted/paused UI never shows. A persistent host node docks bottom-right when
- * its in-flow sentinel scrolls off, so playback + transcript sync never break.
- */
-export function YouTubePlayerProvider({
-  videoId,
-  chapters,
-  startSec,
-  children,
-}: {
-  videoId: string
-  chapters?: PlayerChapter[]
-  /** Seek here + autoplay once the player is ready (e.g. from a ?t= deep-link). */
-  startSec?: number
-  children: ReactNode
-}) {
-  const hostRef = useRef<HTMLDivElement>(null)
-  const sentinelRef = useRef<HTMLDivElement>(null)
-  const playerRef = useRef<YTPlayer | null>(null)
-  const [ready, setReady] = useState(false)
+const MINI_MARGIN = 16
+
+export function VideoPlayerProvider({ children }: { children: ReactNode }) {
+  const [videoId, setVideoId] = useState<string | null>(null)
+  const [title, setTitle] = useState<string | null>(null)
+  const [chapters, setChapters] = useState<PlayerChapter[]>([])
   const [currentSec, setCurrentSec] = useState(0)
   const [duration, setDuration] = useState(0)
   const [playing, setPlaying] = useState(false)
-  const [started, setStarted] = useState(false) // has playback ever begun?
-  const [minimized, setMinimized] = useState(false)
-  // Dock-in animates; un-dock is instant. A single <iframe> can't animate out of
-  // the corner without either an empty inline gap or a video→thumbnail swap — both
-  // flicker — so the clean option is to return inline immediately.
-  const docked = minimized
+  const [ready, setReady] = useState(false)
+  const [started, setStarted] = useState(false)
+  const [docked, setDocked] = useState(false)
 
-  // Instantiate once per videoId. The YouTube API REPLACES the element it's given
-  // with an <iframe>; handing it a React-managed node makes React's reconciler
-  // throw "NotFoundError" later. So we append an imperative child it can replace,
-  // leaving our host div untouched.
+  const hostRef = useRef<HTMLDivElement>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
+  const playerRef = useRef<YTPlayer | null>(null)
+  const slotRef = useRef<HTMLElement | null>(null)
+  const pendingSeekRef = useRef<number | null>(null)
+  const dockedRef = useRef(false)
+  const videoIdRef = useRef<string | null>(null)
+
+  const cue = useCallback((id: string, opts?: CueOpts) => {
+    // Already playing this video (e.g. opening its detail page from the mini):
+    // don't reset — just update chapters and optionally seek.
+    if (videoIdRef.current === id) {
+      if (opts?.chapters) setChapters(opts.chapters)
+      if (opts?.startSec != null && opts.startSec > 0) {
+        playerRef.current?.seekTo(opts.startSec, true)
+        playerRef.current?.playVideo()
+      }
+      return
+    }
+    videoIdRef.current = id
+    pendingSeekRef.current = opts?.startSec ?? null
+    setChapters(opts?.chapters ?? [])
+    setTitle(opts?.title ?? null)
+    setStarted(false)
+    setCurrentSec(0)
+    setDuration(0)
+    setVideoId(id)
+  }, [])
+
+  const close = useCallback(() => {
+    videoIdRef.current = null
+    setVideoId(null)
+    setPlaying(false)
+    setReady(false)
+  }, [])
+
+  const registerSlot = useCallback((el: HTMLElement | null) => {
+    slotRef.current = el
+  }, [])
+
+  // Build the player when the active video changes.
   useEffect(() => {
     const host = hostRef.current
-    if (!host) return
+    if (!host || !videoId) return
     let cancelled = false
     let poll: ReturnType<typeof setInterval> | null = null
     const target = document.createElement("div")
@@ -129,8 +157,9 @@ export function YouTubePlayerProvider({
           onReady: () => {
             if (cancelled) return
             setReady(true)
-            if (typeof startSec === "number" && startSec > 0) {
-              playerRef.current?.seekTo(startSec, true)
+            const seek = pendingSeekRef.current
+            if (typeof seek === "number" && seek > 0) {
+              playerRef.current?.seekTo(seek, true)
               playerRef.current?.playVideo()
             }
             poll = setInterval(() => {
@@ -142,7 +171,6 @@ export function YouTubePlayerProvider({
           },
           onStateChange: (e: { data: number }) => {
             if (cancelled) return
-            // YT.PlayerState.PLAYING === 1
             setPlaying(e.data === 1)
             if (e.data === 1) setStarted(true)
           },
@@ -163,54 +191,93 @@ export function YouTubePlayerProvider({
       } catch {
         /* ignore */
       }
-      setReady(false)
-      setPlaying(false)
-      setStarted(false)
     }
   }, [videoId])
 
-  // Dock to bottom-right when the sentinel (the video's in-flow slot) scrolls off.
+  // Continuously position the (fixed) stage: overlay the registered slot while it
+  // is on-screen, else dock to the corner. Styles are written imperatively each
+  // frame to avoid per-frame React renders; docked state flips only on change.
   useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel) return
-    const io = new IntersectionObserver(
-      ([entry]) => setMinimized(!entry.isIntersecting),
-      { threshold: 0 },
-    )
-    io.observe(sentinel)
-    return () => io.disconnect()
-  }, [])
+    if (!videoId) return
+    let raf = 0
+    const place = () => {
+      const stage = stageRef.current
+      if (stage) {
+        const slot = slotRef.current
+        const rect = slot?.getBoundingClientRect()
+        const inline =
+          !!rect && rect.bottom > 80 && rect.top < window.innerHeight - 8 && rect.width > 0
+        if (inline && rect) {
+          stage.style.top = `${rect.top}px`
+          stage.style.left = `${rect.left}px`
+          stage.style.width = `${rect.width}px`
+          stage.style.height = `${rect.height}px`
+          stage.style.borderRadius = "0.5rem"
+        } else {
+          const w = window.innerWidth >= 768 ? 448 : 288
+          const h = Math.round((w * 9) / 16)
+          stage.style.top = `${window.innerHeight - h - MINI_MARGIN}px`
+          stage.style.left = `${window.innerWidth - w - MINI_MARGIN}px`
+          stage.style.width = `${w}px`
+          stage.style.height = `${h}px`
+          stage.style.borderRadius = "0.75rem"
+        }
+        if (inline !== !dockedRef.current) {
+          dockedRef.current = !inline
+          setDocked(!inline)
+        }
+      }
+      raf = requestAnimationFrame(place)
+    }
+    raf = requestAnimationFrame(place)
+    return () => cancelAnimationFrame(raf)
+  }, [videoId])
 
-  function seekTo(sec: number) {
+  const seekTo = useCallback((sec: number) => {
     const p = playerRef.current
     if (p && typeof p.seekTo === "function") {
       p.seekTo(sec, true)
       p.playVideo()
     }
-  }
+  }, [])
 
-  function togglePlay() {
+  const togglePlay = useCallback(() => {
     const p = playerRef.current
     if (!p) return
     if (typeof p.getPlayerState === "function" && p.getPlayerState() === 1) p.pauseVideo()
     else p.playVideo()
-  }
+  }, [])
 
   return (
-    <Ctx.Provider value={{ currentSec, duration, playing, ready, seekTo, togglePlay }}>
-      <div ref={sentinelRef} className="mb-4 aspect-video w-full" aria-hidden={docked}>
+    <Ctx.Provider
+      value={{
+        videoId,
+        title,
+        currentSec,
+        duration,
+        playing,
+        ready,
+        seekTo,
+        togglePlay,
+        cue,
+        close,
+        registerSlot,
+      }}
+    >
+      {children}
+
+      {videoId && (
         <div
+          ref={stageRef}
           className={
-            docked
-              ? "group fixed bottom-4 right-4 z-30 aspect-video w-80 overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-black/10 transition-none animate-in fade-in slide-in-from-bottom-3 md:w-[28rem]"
-              : "group relative aspect-video w-full overflow-hidden rounded-lg bg-black transition-none"
+            "group fixed z-30 overflow-hidden bg-black " +
+            (docked ? "shadow-2xl ring-1 ring-black/10" : "")
           }
+          style={{ top: 0, left: 0, width: 0, height: 0 }}
         >
           <div ref={hostRef} className="pointer-events-none size-full" />
-          <PlayerControls chapters={chapters} />
+          <VideoControls chapters={chapters} />
 
-          {/* Poster cover until playback first starts — hides YouTube's unstarted
-              chrome (thumbnail + big play button + title) behind our own. */}
           {!started && (
             <button
               type="button"
@@ -234,28 +301,23 @@ export function YouTubePlayerProvider({
           {docked && (
             <button
               type="button"
-              onClick={() => sentinelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              className="absolute right-1 top-1 z-40 rounded bg-black/60 px-1.5 py-0.5 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"
-              aria-label="Back to top"
+              onClick={close}
+              aria-label="Close player"
+              className="absolute right-1 top-1 z-40 rounded bg-black/60 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
             >
-              ↑
+              <X className="size-3.5" />
             </button>
           )}
         </div>
-      </div>
-      {children}
+      )}
     </Ctx.Provider>
   )
 }
 
-// Custom controls over the chrome-free iframe: click-to-toggle, center play when
-// paused, a top gradient masking YouTube's pause-state title/share, and a bottom
-// bar with play/pause, a scrubber (with chapter ticks), and time. Hidden while
-// playing; revealed on hover; always shown when paused.
-function PlayerControls({ chapters }: { chapters?: PlayerChapter[] }) {
-  const { currentSec, duration, playing, togglePlay, seekTo } = useYouTubePlayer()
+function VideoControls({ chapters }: { chapters: PlayerChapter[] }) {
+  const { currentSec, duration, playing, togglePlay, seekTo } = useVideoPlayer()
   const pct = duration > 0 ? Math.min(100, (currentSec / duration) * 100) : 0
-  const chapterTicks = (chapters ?? []).filter((c) => c.startSec > 0 && c.startSec <= duration)
+  const ticks = chapters.filter((c) => c.startSec > 0 && c.startSec <= duration)
 
   function onScrub(e: React.MouseEvent<HTMLDivElement>) {
     if (!duration) return
@@ -269,10 +331,8 @@ function PlayerControls({ chapters }: { chapters?: PlayerChapter[] }) {
       data-paused={!playing}
       className="absolute inset-0 z-10 opacity-0 transition-opacity duration-200 group-hover:opacity-100 data-[paused=true]:opacity-100"
     >
-      {/* Masks YouTube's title/share that appear at the top on pause/hover. */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/60 to-transparent" />
 
-      {/* Click anywhere on the video to toggle play. */}
       <button
         type="button"
         aria-label={playing ? "Pause" : "Play"}
@@ -288,7 +348,6 @@ function PlayerControls({ chapters }: { chapters?: PlayerChapter[] }) {
         </span>
       )}
 
-      {/* Bottom control bar. */}
       <div
         className="absolute inset-x-0 bottom-0 flex items-center gap-2 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2 pt-8"
         onClick={(e) => e.stopPropagation()}
@@ -313,8 +372,7 @@ function PlayerControls({ chapters }: { chapters?: PlayerChapter[] }) {
             className="absolute inset-y-0 left-0 rounded-full bg-white"
             style={{ width: `${pct}%` }}
           />
-          {/* Chapter markers, each with a hover label above the scrubber. */}
-          {chapterTicks.map((c, i) => (
+          {ticks.map((c, i) => (
             <div
               key={i}
               className="group/tick absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
