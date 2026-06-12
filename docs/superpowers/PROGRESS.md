@@ -12,7 +12,7 @@ Living status across all phases. Updated as work lands. See the spec and per-pha
 | 1 | Polymorphic data model + DTO foundation (`episodes`→`items`, `type`+`sourceMetadata`, `lib/api/` DTOs) | ✅ Done (pending manual smoke test) |
 | 2 | `SourceAdapter` abstraction + unified ingest (podcast adapter, YouTube adapter, `POST /api/items`, retry) | ✅ Done |
 | 3 | Modal YouTube function (`transcribe_youtube`: wgcf + wireproxy + yt-dlp, health gate, metadata backfill) | ✅ Done (pending user deploy) |
-| 4 | Frontend (`ItemView`, pluggable player, YouTube IFrame, live-reading transcript, bottom-right mini-player) | 🟡 In progress |
+| 4 | Frontend (`ItemView`, pluggable player, YouTube IFrame, live-reading transcript, bottom-right mini-player) | ✅ Done (pending manual browser test) |
 
 Legend: ⚪ not started · 🟡 in progress · ✅ done · ⛔ blocked
 
@@ -44,11 +44,18 @@ Each task passes two reviews (spec compliance → code quality) before it's mark
 
 Plan: [`plans/2026-06-12-youtube-phase-4-frontend.md`](plans/2026-06-12-youtube-phase-4-frontend.md) · Branch: `youtube-phase-4-frontend`
 
-- [ ] Task 1 — active-segment pure helper (`lib/transcript/active-segment.ts`) + tests
-- [ ] Task 2 — `components/youtube-player.tsx` (IFrame player + bottom-right minimize)
-- [ ] Task 3 — `components/live-transcript.tsx` (highlight + auto-scroll + jump-to-current)
-- [ ] Task 4 — wire into `EpisodeView` youtube branch + detail page (`type`/`videoId`)
-- [ ] Task 5 — verification + **manual browser test (user; needs Phase 3 deployed)**
+- [x] Task 1 — active-segment pure helper + tests · `83a43b6` · 4/4 · reviews ✅
+- [x] Task 2 — `components/youtube-player.tsx` · `f1d31a4` (+ unmount-race/script-error fix) · reviews ✅
+- [x] Task 3 — `components/live-transcript.tsx` · `24320d1` · reviews ✅
+- [x] Task 4 — wire `EpisodeView` youtube branch + page (`type`/`videoId`) · `7ede64c` (+ InsightsNav fix) · podcast path untouched · reviews ✅
+- [x] Task 5 — verification ✅ · typecheck clean · 113/113 tests · build ✅ · lint 0 new
+
+### ⏳ Phase 4 manual verification (USER — needs Phase 3 deployed)
+Add a short YouTube video → on its detail page confirm: video plays on top; Live Transcript highlights + auto-scrolls; clicking lines/chapters/quotes seeks the video; scrolling docks the video bottom-right (still playing); "↑"/"Jump to current" restore. Confirm a podcast page is unchanged.
+
+### Phase 4 fast-follows (non-blocking)
+- `LiveTranscript` pauses follow on ANY window scroll — scope to the transcript container if other scroll regions appear.
+- `seekTo`/context value not memoized (harmless; consumers re-render at the 250ms poll cadence anyway).
 
 Design decision (flagged): **page-local** YouTube player (not the global audio `usePlayer`) — matches the approved video-at-top + minimize mockups; podcast playback untouched.
 
