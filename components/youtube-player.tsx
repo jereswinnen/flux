@@ -78,10 +78,13 @@ function loadYouTubeApi(): Promise<void> {
 export function YouTubePlayerProvider({
   videoId,
   chapters,
+  startSec,
   children,
 }: {
   videoId: string
   chapters?: PlayerChapter[]
+  /** Seek here + autoplay once the player is ready (e.g. from a ?t= deep-link). */
+  startSec?: number
   children: ReactNode
 }) {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -129,6 +132,10 @@ export function YouTubePlayerProvider({
           onReady: () => {
             if (cancelled) return
             setReady(true)
+            if (typeof startSec === "number" && startSec > 0) {
+              playerRef.current?.seekTo(startSec, true)
+              playerRef.current?.playVideo()
+            }
             poll = setInterval(() => {
               const p = playerRef.current
               if (!p) return

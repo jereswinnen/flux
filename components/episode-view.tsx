@@ -59,6 +59,7 @@ function YouTubeBody({
   entities,
   tab,
   onTabChange,
+  startSec,
 }: {
   videoId: string
   transcript: { segments: Segment[] }
@@ -66,9 +67,14 @@ function YouTubeBody({
   entities: MentionedEntity[]
   tab: string
   onTabChange: (v: string) => void
+  startSec?: number
 }) {
   return (
-    <YouTubePlayerProvider videoId={videoId} chapters={insights?.chapters ?? undefined}>
+    <YouTubePlayerProvider
+      videoId={videoId}
+      chapters={insights?.chapters ?? undefined}
+      startSec={startSec}
+    >
       <Tabs value={tab} onValueChange={onTabChange}>
         <div className="sticky top-0 z-10 -mx-4 mb-2 bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:-mx-6 md:px-6">
           <TabsList>
@@ -233,6 +239,7 @@ export function EpisodeView({ episode, transcript, insights, entities = [] }: Ep
               entities={entities}
               tab={tab}
               onTabChange={setTab}
+              startSec={tParam ? Math.floor(Number(tParam)) || undefined : undefined}
             />
           ) : (
             <Tabs value={tab} onValueChange={setTab}>
