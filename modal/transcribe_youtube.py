@@ -10,10 +10,11 @@ warp_cache = modal.Volume.from_name("warp-cache", create_if_missing=True)
 
 SOCKS_PORT = 25344
 
-# NOTE (version risk): confirm these release URLs are current at build time — they
-# change. A stale URL fails the image build with a 404.
-WGCF_URL = "https://github.com/ViRb3/wgcf/releases/download/v2.2.27/wgcf_2.2.27_linux_amd64"
-WIREPROXY_URL = "https://github.com/whyvl/wireproxy/releases/download/v1.0.9/wireproxy_linux_amd64.tar.gz"
+# Release URLs verified 2026-06 (wgcf v2.2.31 is the latest pinned build; wireproxy
+# uses the active windtf fork via its stable `latest` asset, so it tracks upstream
+# without a hardcoded version). If the image build 404s, re-check these.
+WGCF_URL = "https://github.com/ViRb3/wgcf/releases/download/v2.2.31/wgcf_2.2.31_linux_amd64"
+WIREPROXY_URL = "https://github.com/windtf/wireproxy/releases/latest/download/wireproxy_linux_amd64.tar.gz"
 
 image = (
     modal.Image.from_registry(
@@ -24,7 +25,10 @@ image = (
         "faster-whisper==1.0.3",
         "requests==2.32.3",
         "fastapi[standard]",
-        "yt-dlp==2025.6.9",  # pin; bump when YouTube changes its player
+        # Unpinned: a stale yt-dlp is the main cause of YouTube extraction breaking,
+        # so each image build picks up the latest. Pin to a known-good version only
+        # if a future release regresses.
+        "yt-dlp",
     )
     .run_commands(
         f"wget -q -O /usr/local/bin/wgcf {WGCF_URL} && chmod +x /usr/local/bin/wgcf",
@@ -98,7 +102,7 @@ def transcribe_youtube(video_url: str, item_id: str, callback_url: str, secret: 
     from youtube_helpers import map_ytdlp_metadata
 
     try:
-        proxies = _start_warp()
+        _start_warp()
         socks = f"socks5://127.0.0.1:{SOCKS_PORT}"
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -152,13 +156,32 @@ def transcribe_youtube(video_url: str, item_id: str, callback_url: str, secret: 
     resp.raise_for_status()
 
 
-@app.function(image=image)
+# The public endpoint compares the provided secret against MODAL_WEBHOOK_SECRET
+# (supplied via a Modal secret named "podcast-kb-webhook"), so a leaked endpoint
+# URL can't be used to spawn GPU jobs. Create it once with:
+#   modal secret create podcast-kb-webhook MODAL_WEBHOOK_SECRET=<same value as the app>
+@app.function(image=image, secrets=[modal.Secret.from_name("podcast-kb-webhook")])
 @modal.fastapi_endpoint(method="POST")
 def web(body: dict):
+    import hmac
+    import os
     from fastapi import Response
 
-    if not body.get("secret"):
-        return Response(content='{"error":"missing secret"}', status_code=401, media_type="application/json")
+    def unauthorized():
+        return Response(
+            content='{"error":"unauthorized"}', status_code=401, media_type="application/json"
+        )
+
+    expected = os.environ.get("MODAL_WEBHOOK_SECRET")
+    provided = body.get("secret")
+    if not expected or not isinstance(provided, str) or not hmac.compare_digest(provided, expected):
+        return unauthorized()
+
+    missing = [k for k in ("video_url", "item_id", "callback_url") if not body.get(k)]
+    if missing:
+        return Response(
+            content='{"error":"missing fields"}', status_code=400, media_type="application/json"
+        )
 
     transcribe_youtube.spawn(
         video_url=body["video_url"],
