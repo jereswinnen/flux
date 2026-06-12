@@ -1,19 +1,24 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   findActiveSegmentIndex,
   findActiveWordIndex,
   type TimedSegment,
 } from "@/lib/transcript/active-segment"
 import { formatTimestamp } from "@/lib/format"
+import {
+  highlightQuery,
+  TranscriptSearchBar,
+  useTranscriptSearch,
+} from "@/components/transcript-search"
 
 /**
- * A transcript that follows playback inside its OWN scroll box (the page — and
- * the video pinned above it — never moves). The active line is smoothly scrolled
- * to the middle of the box and, when per-word timing is available, the current
- * word is highlighted. Manually scrolling the box pauses following (a "Jump to
- * live" pill resumes it); clicking any line seeks the player to that moment.
+ * A transcript that follows playback inside its own scroll box (the page — and
+ * the video pinned above it — never moves). While playing it continuously eases
+ * the active line to the middle and highlights the current word. A search bar
+ * finds matches and steps through them with up/down (pausing follow). Clicking a
+ * line seeks the player.
  */
 export function LiveTranscript({
   segments,
@@ -26,56 +31,90 @@ export function LiveTranscript({
 }) {
   const activeIndex = findActiveSegmentIndex(segments, currentSec)
   const containerRef = useRef<HTMLDivElement>(null)
-  const activeRef = useRef<HTMLParagraphElement>(null)
+  const targetRef = useRef<HTMLParagraphElement>(null)
   const [follow, setFollow] = useState(true)
 
-  // Smoothly keep the active line centered while following. Driven by activeIndex
-  // (changes once per line), so it animates per line rather than fighting the
-  // 250ms time ticks.
-  useEffect(() => {
-    if (!follow) return
-    const box = containerRef.current
-    const el = activeRef.current
-    if (!box || !el) return
-    const top = el.offsetTop - box.clientHeight / 2 + el.clientHeight / 2
-    box.scrollTo({ top: Math.max(0, top), behavior: "smooth" })
-  }, [activeIndex, follow])
+  const search = useTranscriptSearch(useMemo(() => segments.map((s) => s.text), [segments]))
+  const searching = search.query.trim() !== ""
+  // The line we keep in view: the current search match while searching, else the
+  // active playback line.
+  const focusIndex = searching ? search.current : activeIndex
 
-  // Only real user input pauses following — NOT our own programmatic scrolls
-  // (which don't emit wheel/touch events). This is what keeps auto-scroll smooth.
+  // Continuously ease the focus line toward the middle of the box while following
+  // (and not searching). A rAF lerp gives a gentle constant glide as playback
+  // advances — reads the focus element live each frame.
+  useEffect(() => {
+    if (!follow || searching) return
+    let raf = 0
+    const step = () => {
+      const box = containerRef.current
+      const el = targetRef.current
+      if (box && el) {
+        const target = Math.max(0, el.offsetTop - box.clientHeight / 2 + el.clientHeight / 2)
+        const delta = target - box.scrollTop
+        if (Math.abs(delta) > 0.5) box.scrollTop = box.scrollTop + delta * 0.12
+      }
+      raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(raf)
+  }, [follow, searching])
+
+  // Jump the current search match into view when it changes.
+  useEffect(() => {
+    if (!searching) return
+    const box = containerRef.current
+    const el = targetRef.current
+    if (!box || !el) return
+    box.scrollTo({
+      top: Math.max(0, el.offsetTop - box.clientHeight / 2 + el.clientHeight / 2),
+      behavior: "smooth",
+    })
+  }, [searching, search.current])
+
+  // Only real user input pauses following — not our own programmatic scrolls.
   function pauseFollow() {
     setFollow(false)
   }
 
   function seekToLine(sec: number) {
     onSeek(sec)
-    setFollow(true) // clicking a line resumes live-follow
+    setFollow(true)
   }
 
   return (
-    <div className="relative">
+    <div className="relative space-y-2">
+      <TranscriptSearchBar search={search} />
+
       <div
         ref={containerRef}
         onWheel={pauseFollow}
         onTouchMove={pauseFollow}
-        className="max-h-[20rem] space-y-1 overflow-y-auto scroll-smooth rounded-lg border bg-muted/20 p-4 font-serif text-lg leading-relaxed"
+        className="max-h-[20rem] space-y-1 overflow-y-auto rounded-lg border bg-muted/20 p-4 font-serif text-lg leading-relaxed"
       >
         {segments.map((s, i) => {
-          const active = i === activeIndex
+          const isMatch = searching && search.matchSet.has(i)
+          const isCurrentMatch = searching && i === search.current
+          const playbackActive = !searching && i === activeIndex
           return (
             <p
               key={s.start ?? i}
-              ref={active ? activeRef : undefined}
+              ref={i === focusIndex ? targetRef : undefined}
               onClick={() => seekToLine(s.start)}
-              className={
-                "cursor-pointer rounded-md px-2 py-1 transition-colors hover:bg-muted/70 " +
-                (active ? "" : "text-muted-foreground")
-              }
+              className={[
+                "cursor-pointer rounded-md px-2 py-1 transition-colors hover:bg-muted/70",
+                !isMatch && !playbackActive ? "text-muted-foreground" : "",
+                isCurrentMatch ? "ring-2 ring-primary/60" : isMatch ? "bg-primary/10" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
             >
               <span className="mr-2 select-none font-sans text-sm tabular-nums text-muted-foreground">
                 {formatTimestamp(s.start)}
               </span>
-              {active && s.words?.length ? (
+              {searching ? (
+                highlightQuery(s.text, search.query)
+              ) : playbackActive && s.words?.length ? (
                 <SegmentWords words={s.words} currentSec={currentSec} />
               ) : (
                 s.text
@@ -85,7 +124,7 @@ export function LiveTranscript({
         })}
       </div>
 
-      {!follow && (
+      {!follow && !searching && (
         <button
           type="button"
           onClick={() => setFollow(true)}

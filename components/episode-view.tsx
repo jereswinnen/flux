@@ -249,20 +249,11 @@ export function EpisodeView({ episode, transcript, insights, entities = [] }: Ep
               </TabsContent>
 
               <TabsContent value="transcript" className="pb-10 pt-2">
-                <div className="space-y-2 font-serif text-lg leading-relaxed">
-                  {transcript.segments.map((s, i) => (
-                    <p key={s.start ?? i}>
-                      <button
-                        type="button"
-                        onClick={() => seek(s.start)}
-                        className="mr-2 font-sans text-sm tabular-nums text-muted-foreground hover:text-foreground hover:underline"
-                      >
-                        {formatTimestamp(s.start)}
-                      </button>
-                      {s.text}
-                    </p>
-                  ))}
-                </div>
+                <LiveTranscript
+                  segments={transcript.segments}
+                  currentSec={player.track?.itemId === episode.id ? player.current : 0}
+                  onSeek={seek}
+                />
               </TabsContent>
             </Tabs>
           )}

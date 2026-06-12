@@ -93,6 +93,11 @@ export function YouTubePlayerProvider({
   const [playing, setPlaying] = useState(false)
   const [started, setStarted] = useState(false) // has playback ever begun?
   const [minimized, setMinimized] = useState(false)
+  const [closing, setClosing] = useState(false)
+  // "docked" = minimized, plus a short tail while the exit animation plays.
+  const docked = minimized || closing
+  const wasOffRef = useRef(false)
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Instantiate once per videoId. The YouTube API REPLACES the element it's given
   // with an <iframe>; handing it a React-managed node makes React's reconciler
@@ -159,15 +164,32 @@ export function YouTubePlayerProvider({
   }, [videoId])
 
   // Dock to bottom-right when the sentinel (the video's in-flow slot) scrolls off.
+  // Enter/exit state is driven from the observer CALLBACK (not synchronously in
+  // the effect body): docking is immediate; un-docking plays a 200ms exit first.
   useEffect(() => {
     const sentinel = sentinelRef.current
     if (!sentinel) return
     const io = new IntersectionObserver(
-      ([entry]) => setMinimized(!entry.isIntersecting),
+      ([entry]) => {
+        const off = !entry.isIntersecting
+        setMinimized(off)
+        if (off) {
+          if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+          setClosing(false)
+        } else if (wasOffRef.current) {
+          if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+          setClosing(true)
+          closeTimerRef.current = setTimeout(() => setClosing(false), 200)
+        }
+        wasOffRef.current = off
+      },
       { threshold: 0 },
     )
     io.observe(sentinel)
-    return () => io.disconnect()
+    return () => {
+      io.disconnect()
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+    }
   }, [])
 
   function seekTo(sec: number) {
@@ -187,11 +209,11 @@ export function YouTubePlayerProvider({
 
   return (
     <Ctx.Provider value={{ currentSec, duration, playing, ready, seekTo, togglePlay }}>
-      <div ref={sentinelRef} className="mb-4 aspect-video w-full" aria-hidden={minimized}>
+      <div ref={sentinelRef} className="mb-4 aspect-video w-full" aria-hidden={docked}>
         <div
           className={
-            minimized
-              ? "group fixed bottom-4 right-4 z-30 aspect-video w-80 overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-black/10 md:w-[28rem]"
+            docked
+              ? `group fixed bottom-4 right-4 z-30 aspect-video w-80 overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-black/10 duration-200 ease-out md:w-[28rem] ${closing ? "fade-out slide-out-to-bottom-3 animate-out" : "fade-in slide-in-from-bottom-3 animate-in"}`
               : "group relative aspect-video w-full overflow-hidden rounded-lg bg-black"
           }
         >
@@ -220,7 +242,7 @@ export function YouTubePlayerProvider({
             </button>
           )}
 
-          {minimized && (
+          {docked && (
             <button
               type="button"
               onClick={() => sentinelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}

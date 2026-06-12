@@ -55,12 +55,21 @@ def transcribe(audio_url: str, episode_id: str, callback_url: str, secret: str):
         )
         if not snapshot_present:
             model_cache.commit()
-        segments_iter, _info = model.transcribe(audio_path, vad_filter=True)
+        # word_timestamps gives per-word timing so the transcript UI can highlight
+        # the current word (shared with the YouTube path).
+        segments_iter, _info = model.transcribe(
+            audio_path, vad_filter=True, word_timestamps=True
+        )
 
         segments = []
         full_text_parts = []
         for s in segments_iter:
-            segments.append({"start": s.start, "end": s.end, "text": s.text.strip()})
+            seg = {"start": s.start, "end": s.end, "text": s.text.strip()}
+            if s.words:
+                seg["words"] = [
+                    {"start": w.start, "end": w.end, "word": w.word} for w in s.words
+                ]
+            segments.append(seg)
             full_text_parts.append(s.text.strip())
 
         payload = {
