@@ -48,9 +48,12 @@ export type TranscriptSearch = ReturnType<typeof useTranscriptSearch>
 
 export function TranscriptSearchBar({
   search,
+  onSelect,
   className,
 }: {
   search: TranscriptSearch
+  /** Called when the user presses Enter — "select" the current match. */
+  onSelect?: () => void
   className?: string
 }) {
   const { query, setQuery, total, activePos, next, prev } = search
@@ -67,7 +70,7 @@ export function TranscriptSearchBar({
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault()
-            if (e.shiftKey) prev()
+            if (onSelect) onSelect()
             else next()
           } else if (e.key === "ArrowDown") {
             e.preventDefault()

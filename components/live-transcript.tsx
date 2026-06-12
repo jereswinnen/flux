@@ -84,7 +84,12 @@ export function LiveTranscript({
 
   return (
     <div className="relative space-y-2">
-      <TranscriptSearchBar search={search} />
+      <TranscriptSearchBar
+        search={search}
+        onSelect={() => {
+          if (search.current >= 0) seekToLine(segments[search.current].start)
+        }}
+      />
 
       <div
         ref={containerRef}

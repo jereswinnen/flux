@@ -93,11 +93,9 @@ export function YouTubePlayerProvider({
   const [playing, setPlaying] = useState(false)
   const [started, setStarted] = useState(false) // has playback ever begun?
   const [minimized, setMinimized] = useState(false)
-  const [closing, setClosing] = useState(false)
-  // "docked" = minimized, plus a short tail while the exit animation plays.
-  const docked = minimized || closing
-  const wasOffRef = useRef(false)
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Dock-in animates; un-dock is instant (you've scrolled back to the inline slot,
+  // so the player should just be there — animating it out caused a flicker).
+  const docked = minimized
 
   // Instantiate once per videoId. The YouTube API REPLACES the element it's given
   // with an <iframe>; handing it a React-managed node makes React's reconciler
@@ -164,32 +162,15 @@ export function YouTubePlayerProvider({
   }, [videoId])
 
   // Dock to bottom-right when the sentinel (the video's in-flow slot) scrolls off.
-  // Enter/exit state is driven from the observer CALLBACK (not synchronously in
-  // the effect body): docking is immediate; un-docking plays a 200ms exit first.
   useEffect(() => {
     const sentinel = sentinelRef.current
     if (!sentinel) return
     const io = new IntersectionObserver(
-      ([entry]) => {
-        const off = !entry.isIntersecting
-        setMinimized(off)
-        if (off) {
-          if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
-          setClosing(false)
-        } else if (wasOffRef.current) {
-          if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
-          setClosing(true)
-          closeTimerRef.current = setTimeout(() => setClosing(false), 200)
-        }
-        wasOffRef.current = off
-      },
+      ([entry]) => setMinimized(!entry.isIntersecting),
       { threshold: 0 },
     )
     io.observe(sentinel)
-    return () => {
-      io.disconnect()
-      if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
-    }
+    return () => io.disconnect()
   }, [])
 
   function seekTo(sec: number) {
@@ -213,7 +194,7 @@ export function YouTubePlayerProvider({
         <div
           className={
             docked
-              ? `group fixed bottom-4 right-4 z-30 aspect-video w-80 overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-black/10 transition-none md:w-[28rem] ${closing ? "fade-out slide-out-to-bottom-3 animate-out" : "fade-in slide-in-from-bottom-3 animate-in"}`
+              ? "group fixed bottom-4 right-4 z-30 aspect-video w-80 overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-black/10 transition-none animate-in fade-in slide-in-from-bottom-3 md:w-[28rem]"
               : "group relative aspect-video w-full overflow-hidden rounded-lg bg-black transition-none"
           }
         >
