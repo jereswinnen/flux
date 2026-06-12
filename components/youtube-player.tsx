@@ -191,7 +191,7 @@ export function YouTubePlayerProvider({
         <div
           className={
             minimized
-              ? "group fixed bottom-4 right-4 z-30 aspect-video w-80 overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-black/10 duration-150 ease-out animate-in fade-in md:w-[28rem]"
+              ? "group fixed bottom-4 right-4 z-30 aspect-video w-80 overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-black/10 md:w-[28rem]"
               : "group relative aspect-video w-full overflow-hidden rounded-lg bg-black"
           }
         >
@@ -302,20 +302,26 @@ function PlayerControls({ chapters }: { chapters?: PlayerChapter[] }) {
             className="absolute inset-y-0 left-0 rounded-full bg-white"
             style={{ width: `${pct}%` }}
           />
-          {/* Chapter markers. */}
+          {/* Chapter markers, each with a hover label above the scrubber. */}
           {chapterTicks.map((c, i) => (
-            <button
+            <div
               key={i}
-              type="button"
-              title={c.title}
-              onClick={(e) => {
-                e.stopPropagation()
-                seekTo(c.startSec)
-              }}
-              aria-label={`Chapter: ${c.title}`}
-              className="absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white ring-1 ring-black/40 transition-transform hover:scale-150"
+              className="group/tick absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
               style={{ left: `${(c.startSec / duration) * 100}%` }}
-            />
+            >
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  seekTo(c.startSec)
+                }}
+                aria-label={`Chapter: ${c.title}`}
+                className="block size-2 rounded-full bg-white ring-1 ring-black/40 transition-transform hover:scale-150"
+              />
+              <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded bg-black/85 px-2 py-1 text-xs font-medium text-white opacity-0 transition-opacity group-hover/tick:opacity-100">
+                {c.title}
+              </span>
+            </div>
           ))}
         </div>
         <span className="shrink-0 text-xs tabular-nums text-white/90">
