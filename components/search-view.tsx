@@ -8,6 +8,7 @@ import remarkGfm from "remark-gfm"
 import { Loader2, Search, Sparkles } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { hiResArtwork } from "@/lib/artwork"
+import { episodeHref } from "@/lib/episode-href"
 import { formatTimestamp } from "@/lib/format"
 
 type Source = {
@@ -86,7 +87,7 @@ function Answer({ text, sources }: { text: string; sources: Source[] }) {
               if (s) {
                 return (
                   <Link
-                    href={`/episodes/${s.itemId}?t=${Math.floor(s.startSec)}`}
+                    href={episodeHref(s.itemId, s.startSec)}
                     title={`${s.itemTitle} · ${formatTimestamp(s.startSec)}`}
                     className="mx-0.5 inline-flex size-4 translate-y-[-0.15em] items-center justify-center rounded bg-primary/15 align-baseline text-[10px] font-medium text-primary no-underline hover:bg-primary/25"
                   >
@@ -278,7 +279,7 @@ export function SearchView({ query }: { query: string }) {
 function Moment({ item }: { item: Source & { n: number } }) {
   return (
     <Link
-      href={`/episodes/${item.itemId}?t=${Math.floor(item.startSec)}`}
+      href={episodeHref(item.itemId, item.startSec)}
       className="flex gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-muted"
     >
       <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded bg-primary/15 text-[10px] font-medium text-primary">

@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm"
 import { Check, Copy, Play } from "lucide-react"
 import { remarkTimestamps } from "@/lib/markdown/timestamps"
 import { hiResArtwork } from "@/lib/artwork"
+import { episodeHref } from "@/lib/episode-href"
 import { parseTimestamp, formatTimestamp } from "@/lib/format"
 import { usePlayer } from "@/components/player-context"
 import { useVideoPlayer } from "@/components/video-player"
@@ -83,7 +84,7 @@ export function ChatMessage({
       )
       return
     }
-    router.push(`/episodes/${s.itemId}?t=${Math.floor(s.startSec)}`)
+    router.push(episodeHref(s.itemId, s.startSec))
   }
 
   if (message.role === "user") {
