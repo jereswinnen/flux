@@ -66,7 +66,7 @@ export function HighlightLayer({ itemId }: { itemId: string }) {
   return (
     <div
       ref={barRef}
-      style={{ left: pending.x, top: pending.y - 44 }}
+      style={{ left: pending.x, top: Math.max(8, pending.y - 44) }}
       className="fixed z-50 -translate-x-1/2"
       onMouseDown={(e) => e.preventDefault()} // keep the selection while clicking
     >

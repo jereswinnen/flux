@@ -39,3 +39,14 @@ test("POST rejects empty text", async () => {
   )
   expect(res.status).toBe(400)
 })
+
+test("POST rejects an unknown kind", async () => {
+  const { POST } = await import("@/app/api/highlights/route")
+  const res = await POST(
+    new Request("http://t/api/highlights", {
+      method: "POST",
+      body: JSON.stringify({ itemId: "i1", kind: "bogus", text: "hi" }),
+    }),
+  )
+  expect(res.status).toBe(400)
+})

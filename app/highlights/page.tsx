@@ -1,5 +1,4 @@
-import { db } from "@/lib/db"
-import { makeHighlightRepo } from "@/lib/db/highlights"
+import { highlightRepo } from "@/lib/db/highlights"
 import { highlightToDTO } from "@/lib/api/highlight-dto"
 import { AppHeader } from "@/components/app-header"
 import { HighlightsFeed } from "@/components/highlights-feed"
@@ -7,7 +6,7 @@ import { HighlightsFeed } from "@/components/highlights-feed"
 export const dynamic = "force-dynamic"
 
 export default async function HighlightsPage() {
-  const rows = await makeHighlightRepo(db).list({})
+  const rows = await highlightRepo.list({})
   const highlights = rows.map(highlightToDTO)
   return (
     <>

@@ -1,5 +1,6 @@
 import { highlightRepo } from "@/lib/db/highlights"
 import { highlightToDTO } from "@/lib/api/highlight-dto"
+import { HIGHLIGHT_KINDS } from "@/lib/highlights/locator"
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
@@ -14,6 +15,9 @@ export async function POST(request: Request) {
   const text = typeof body?.text === "string" ? body.text.trim() : ""
   if (!body?.itemId || !body?.kind || !text) {
     return Response.json({ error: "itemId, kind and text are required" }, { status: 400 })
+  }
+  if (!HIGHLIGHT_KINDS.includes(body.kind)) {
+    return Response.json({ error: "invalid kind" }, { status: 400 })
   }
   const row = await highlightRepo.create({
     itemId: body.itemId,

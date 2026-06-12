@@ -1,4 +1,5 @@
-export type HighlightKind = "transcript" | "takeaway" | "quote" | "article" | "kindle"
+export const HIGHLIGHT_KINDS = ["transcript", "takeaway", "quote", "article", "kindle"] as const
+export type HighlightKind = (typeof HIGHLIGHT_KINDS)[number]
 
 export type HighlightLocator = {
   sec?: number
