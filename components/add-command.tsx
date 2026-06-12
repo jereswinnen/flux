@@ -180,7 +180,10 @@ export function AddCommand() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
       })
-      if (!res.ok) throw new Error((await res.json()).error ?? "Failed to add")
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.error ?? "Failed to add")
+      }
       const { item } = await res.json()
       toast.success("Item queued for transcription")
       setOpen(false)
