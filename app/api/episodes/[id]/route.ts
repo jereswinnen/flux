@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm"
 import { db } from "@/lib/db"
 import { itemRepo } from "@/lib/db/items"
 import { insights, transcripts } from "@/lib/db/schema"
+import { itemToDTO } from "@/lib/api/dto"
 
 export async function GET(
   _request: Request,
@@ -22,7 +23,7 @@ export async function GET(
     .where(eq(insights.itemId, id))
     .limit(1)
 
-  return Response.json({ episode: item, transcript: transcript ?? null, insights: insight ?? null })
+  return Response.json({ item: itemToDTO(item), transcript: transcript ?? null, insights: insight ?? null })
 }
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
