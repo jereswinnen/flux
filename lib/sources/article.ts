@@ -4,11 +4,9 @@ import { itemRepo } from "@/lib/db/items"
 import type { NewItem } from "@/lib/db/items"
 import { processContent } from "@/lib/pipeline/process-content"
 import { extractArticle, paragraphsToSegments } from "@/lib/article/extract"
-import { isUrl, looksLikeFeedUrl } from "@/lib/url"
+import { isUrl, looksLikeFeedUrl, AUDIO_FILE_EXT } from "@/lib/url"
 import { isYouTubeUrl } from "@/lib/sources/youtube-url"
 import type { SourceAdapter } from "./types"
-
-const AUDIO_EXT = /\.(mp3|m4a|aac|ogg|oga|wav|flac)(\?|#|$)/i
 
 export const articleAdapter: SourceAdapter = {
   type: "article",
@@ -16,7 +14,7 @@ export const articleAdapter: SourceAdapter = {
     isUrl(input) &&
     !isYouTubeUrl(input) &&
     !looksLikeFeedUrl(input) &&
-    !AUDIO_EXT.test(input.trim()),
+    !AUDIO_FILE_EXT.test(input.trim()),
   async resolve(input): Promise<NewItem> {
     return {
       type: "article",

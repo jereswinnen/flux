@@ -209,8 +209,9 @@ export function EpisodeView({ episode, transcript, insights, entities = [] }: Ep
   }
   const isYouTube = episode.type === "youtube" && !!episode.videoId
   const isArticle = episode.type === "article"
-  // YouTube items lead with the live transcript; articles lead with the article body; podcasts lead with insights.
-  const [tab, setTab] = useState(isYouTube ? "transcript" : isArticle ? "article" : "insights")
+  const hasArticleBody = isArticle && !!transcript?.contentHtml
+  // YouTube items lead with the live transcript; articles with body lead with the article tab; podcasts lead with insights.
+  const [tab, setTab] = useState(isYouTube ? "transcript" : hasArticleBody ? "article" : "insights")
   const scrollRef = useRef<HTMLDivElement>(null)
   const sections = insightSections(insights, entities.length > 0)
 
@@ -310,7 +311,7 @@ export function EpisodeView({ episode, transcript, insights, entities = [] }: Ep
             </div>
           ) : !transcript ? (
             <div className="text-sm text-muted-foreground">Processing… this page updates automatically.</div>
-          ) : isArticle && transcript.contentHtml ? (
+          ) : hasArticleBody && transcript.contentHtml ? (
             <ArticleBody
               contentHtml={transcript.contentHtml}
               leadImageUrl={episode.artworkUrl}

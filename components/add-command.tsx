@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge"
 import { useCommand } from "@/components/command-context"
 import { hiResArtwork } from "@/lib/artwork"
 import { episodeHref } from "@/lib/episode-href"
-import { isUrl, looksLikeFeedUrl } from "@/lib/url"
+import { isUrl, looksLikeFeedUrl, AUDIO_FILE_EXT } from "@/lib/url"
 import { isYouTubeUrl } from "@/lib/sources/youtube-url"
 import { formatRelativeDate, formatTimestamp } from "@/lib/format"
 
@@ -40,9 +40,8 @@ type Moment = {
   artworkUrl: string | null; content: string; startSec: number; endSec: number
 }
 
-const AUDIO_EXT = /\.(mp3|m4a|aac|ogg|oga|wav|flac)(\?|#|$)/i
 function isArticleUrl(u: string): boolean {
-  return isUrl(u) && !isYouTubeUrl(u) && !looksLikeFeedUrl(u) && !AUDIO_EXT.test(u.trim())
+  return isUrl(u) && !isYouTubeUrl(u) && !looksLikeFeedUrl(u) && !AUDIO_FILE_EXT.test(u.trim())
 }
 
 function Thumb({ src, alt }: { src?: string | null; alt: string }) {

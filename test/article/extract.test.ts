@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { parseArticle, paragraphsToSegments } from "@/lib/article/extract"
+import { parseArticle, paragraphsToSegments, assertFetchableUrl } from "@/lib/article/extract"
 
 const HTML = `<!doctype html><html><head>
-  <title>Site Title</title>
+  <title>The Real Headline</title>
   <meta property="og:image" content="/images/hero.jpg">
   <meta property="og:site_name" content="Example Times">
   <meta name="author" content="Jane Doe">
@@ -55,5 +55,18 @@ describe("paragraphsToSegments", () => {
       { start: 0, end: 0, text: "three four" },
       { start: 0, end: 0, text: "five" },
     ])
+  })
+})
+
+describe("assertFetchableUrl", () => {
+  it("allows public http(s) URLs", () => {
+    expect(assertFetchableUrl("https://example.com/x").hostname).toBe("example.com")
+  })
+  it("rejects local/private/non-http targets", () => {
+    expect(() => assertFetchableUrl("http://localhost/x")).toThrow()
+    expect(() => assertFetchableUrl("http://127.0.0.1/x")).toThrow()
+    expect(() => assertFetchableUrl("http://169.254.169.254/latest")).toThrow()
+    expect(() => assertFetchableUrl("http://192.168.1.1/")).toThrow()
+    expect(() => assertFetchableUrl("file:///etc/passwd")).toThrow()
   })
 })

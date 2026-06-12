@@ -63,7 +63,7 @@ export function parseArticle(html: string, url: string): ExtractedArticle {
   const ogSite = meta('meta[property="og:site_name"]')
   const published = meta('meta[property="article:published_time"]')
   // Capture h1 before Readability mutates the document (it demotes h1→h2).
-  const articleH1 = document.querySelector("article h1, h1")?.textContent?.trim()
+  const articleH1 = document.querySelector("article h1")?.textContent?.trim()
 
   const parsed = new Readability(document as unknown as Document).parse()
   if (!parsed || !parsed.textContent || parsed.textContent.trim().length < 200) {
@@ -73,11 +73,14 @@ export function parseArticle(html: string, url: string): ExtractedArticle {
   const contentHtml = sanitize(parsed.content ?? "", url)
   const contentDoc = parseHTML(contentHtml).document
   const firstImg = contentDoc.querySelector("img")?.getAttribute("src")
+  const leadCandidate = absolutize(ogImage, url) ?? firstImg ?? undefined
+  const leadImageUrl =
+    leadCandidate && /^https?:\/\//i.test(leadCandidate) ? leadCandidate : undefined
   return {
-    title: (articleH1 || parsed.title || (document as unknown as Document).title || url).trim(),
+    title: (parsed.title || articleH1 || (document as unknown as Document).title || url).trim(),
     byline: parsed.byline?.trim() || meta('meta[name="author"]'),
     siteName: parsed.siteName?.trim() || ogSite,
-    leadImageUrl: absolutize(ogImage, url) ?? firstImg ?? undefined,
+    leadImageUrl,
     excerpt: parsed.excerpt?.trim() || undefined,
     publishedAt: published,
     contentHtml,
@@ -85,8 +88,49 @@ export function parseArticle(html: string, url: string): ExtractedArticle {
   }
 }
 
+/** Reject obviously-internal targets before fetching (basic SSRF guard).
+ *  Note: does not resolve DNS or re-check redirect hops — sufficient for a
+ *  single-user self-hosted app; revisit if multi-user. */
+export function assertFetchableUrl(raw: string): URL {
+  let u: URL
+  try {
+    u = new URL(raw)
+  } catch {
+    throw new Error("Invalid URL")
+  }
+  if (u.protocol !== "http:" && u.protocol !== "https:") {
+    throw new Error("Only http(s) URLs are supported")
+  }
+  const host = u.hostname.toLowerCase().replace(/^\[|\]$/g, "")
+  if (
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host === "0.0.0.0" ||
+    host === "::1"
+  ) {
+    throw new Error("Refusing to fetch a local address")
+  }
+  const v4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
+  if (v4) {
+    const a = Number(v4[1]), b = Number(v4[2])
+    if (
+      a === 0 || a === 127 || a === 10 ||
+      (a === 192 && b === 168) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 169 && b === 254)
+    ) {
+      throw new Error("Refusing to fetch a private address")
+    }
+  }
+  if (host.startsWith("fe80") || host.startsWith("fc") || host.startsWith("fd")) {
+    throw new Error("Refusing to fetch a local address")
+  }
+  return u
+}
+
 /** Fetch the page then parse it. Throws on network / non-HTML / empty body. */
 export async function extractArticle(url: string): Promise<ExtractedArticle> {
+  assertFetchableUrl(url)
   const res = await fetch(url, {
     signal: AbortSignal.timeout(15_000),
     headers: {

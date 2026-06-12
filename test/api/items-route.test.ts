@@ -51,10 +51,10 @@ test("ingests a podcast payload by explicit type", async () => {
   expect(created[0]).toMatchObject({ type: "podcast", title: "Ep", audioUrl: "https://x/1.mp3" })
 })
 
-test("rejects an unrecognized url", async () => {
+test("rejects an unrecognized input", async () => {
   const { POST } = await import("@/app/api/items/route")
   const res = await POST(
-    new Request("http://t/api/items", { method: "POST", body: JSON.stringify({ url: "https://example.com" }) }),
+    new Request("http://t/api/items", { method: "POST", body: JSON.stringify({ url: "not a url" }) }),
   )
   expect(res.status).toBe(400)
 })

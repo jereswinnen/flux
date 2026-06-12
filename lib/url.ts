@@ -1,3 +1,5 @@
+export const AUDIO_FILE_EXT = /\.(mp3|m4a|aac|ogg|oga|wav|flac)(\?|#|$)/i
+
 export function isUrl(value: string): boolean {
   const v = value.trim()
   if (!/^https?:\/\//i.test(v)) return false

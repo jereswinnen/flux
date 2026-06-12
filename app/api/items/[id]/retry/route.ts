@@ -15,7 +15,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   if (transcript) {
     await itemRepo.updateStatus(id, "analyzing")
     processContent(
-      { itemId: id, transcript: transcript.fullText, segments: transcript.segments ?? [] },
+      { itemId: id, transcript: transcript.fullText, segments: transcript.segments ?? [], contentHtml: transcript.contentHtml ?? undefined },
       { db },
     ).catch(() => {})
   } else {
