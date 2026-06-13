@@ -1,7 +1,8 @@
-import { desc, eq, ilike, or, sql } from "drizzle-orm"
+import { desc, eq, gt, ilike, or, sql } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import { items, type ItemReadState, type ItemStatus, type ItemType, type SourceMetadata } from "./schema"
+import { deletions, items, type ItemReadState, type ItemStatus, type ItemType, type SourceMetadata } from "./schema"
 import * as schema from "./schema"
+import type { ItemRow } from "@/lib/api/dto"
 
 export interface NewItem {
   type: ItemType
@@ -83,7 +84,14 @@ export function makeItemRepo(db: DB) {
     },
 
     async remove(id: string) {
-      await db.delete(items).where(eq(items.id, id))
+      await db.transaction(async (tx) => {
+        await tx.delete(items).where(eq(items.id, id))
+        await tx.insert(deletions).values({ type: "item", entityId: id })
+      })
+    },
+
+    async listUpdatedSince(since: Date): Promise<ItemRow[]> {
+      return db.select().from(items).where(gt(items.updatedAt, since)).orderBy(desc(items.updatedAt))
     },
   }
 }

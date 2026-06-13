@@ -1,6 +1,6 @@
-import { and, desc, eq, ilike, or } from "drizzle-orm"
+import { and, desc, eq, gt, ilike, or } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import { highlights, items, type ItemType } from "./schema"
+import { deletions, highlights, items, type ItemType } from "./schema"
 import * as schema from "./schema"
 import type { HighlightKind, HighlightLocator } from "@/lib/highlights/locator"
 
@@ -20,6 +20,7 @@ export interface HighlightRow {
   note: string | null
   locator: HighlightLocator | null
   createdAt: Date
+  updatedAt: Date
   item: { id: string; type: ItemType; title: string; source: string | null; artworkUrl: string | null }
 }
 
@@ -58,6 +59,7 @@ export function makeHighlightRepo(db: DB) {
           note: highlights.note,
           locator: highlights.locator,
           createdAt: highlights.createdAt,
+          updatedAt: highlights.updatedAt,
           itemId: items.id,
           itemType: items.type,
           itemTitle: items.title,
@@ -75,6 +77,7 @@ export function makeHighlightRepo(db: DB) {
         note: r.note,
         locator: r.locator,
         createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
         item: {
           id: r.itemId,
           type: r.itemType,
@@ -90,7 +93,48 @@ export function makeHighlightRepo(db: DB) {
     },
 
     async remove(id: string) {
-      await db.delete(highlights).where(eq(highlights.id, id))
+      await db.transaction(async (tx) => {
+        await tx.delete(highlights).where(eq(highlights.id, id))
+        await tx.insert(deletions).values({ type: "highlight", entityId: id })
+      })
+    },
+
+    async listUpdatedSince(since: Date): Promise<HighlightRow[]> {
+      const rows = await db
+        .select({
+          id: highlights.id,
+          kind: highlights.kind,
+          text: highlights.text,
+          note: highlights.note,
+          locator: highlights.locator,
+          createdAt: highlights.createdAt,
+          updatedAt: highlights.updatedAt,
+          itemId: items.id,
+          itemType: items.type,
+          itemTitle: items.title,
+          source: items.podcastName,
+          artworkUrl: items.artworkUrl,
+        })
+        .from(highlights)
+        .innerJoin(items, eq(highlights.itemId, items.id))
+        .where(gt(highlights.updatedAt, since))
+        .orderBy(desc(highlights.updatedAt))
+      return rows.map((r) => ({
+        id: r.id,
+        kind: r.kind,
+        text: r.text,
+        note: r.note,
+        locator: r.locator,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        item: {
+          id: r.itemId,
+          type: r.itemType,
+          title: r.itemTitle,
+          source: r.source,
+          artworkUrl: r.artworkUrl,
+        },
+      }))
     },
   }
 }
