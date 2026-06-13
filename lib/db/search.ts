@@ -1,6 +1,6 @@
-import { cosineDistance, desc, eq, inArray, sql } from "drizzle-orm"
+import { and, cosineDistance, desc, eq, inArray, isNotNull, sql } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import { chunks, items, transcripts } from "./schema"
+import { chunks, highlights, items, transcripts } from "./schema"
 import * as schema from "./schema"
 
 export interface SearchHit {
@@ -85,6 +85,62 @@ export async function hybridSearch(
   // postgres-js via drizzle execute may return the array directly OR { rows }. Normalize:
   const rows = Array.isArray(result) ? result : (result as { rows?: unknown[] }).rows ?? []
   return rows as unknown as SearchHit[]
+}
+
+export interface HighlightHit {
+  highlightId: string
+  itemId: string
+  itemTitle: string
+  podcastName: string | null
+  artworkUrl: string | null
+  audioUrl: string | null
+  videoId: string | null
+  text: string
+  startSec: number
+  similarity: number
+}
+
+export async function searchHighlights(
+  db: PostgresJsDatabase<typeof schema>,
+  queryEmbedding: number[],
+  opts: { limit?: number; minSimilarity?: number; itemId?: string } = {},
+): Promise<HighlightHit[]> {
+  const similarity = sql<number>`(1 - (${cosineDistance(highlights.embedding, queryEmbedding)}))::float8`
+  const conds = [isNotNull(highlights.embedding)]
+  if (opts.itemId) conds.push(eq(highlights.itemId, opts.itemId))
+  const rows = await db
+    .select({
+      highlightId: highlights.id,
+      itemId: items.id,
+      itemTitle: items.title,
+      podcastName: items.podcastName,
+      artworkUrl: items.artworkUrl,
+      audioUrl: items.audioUrl,
+      videoId: sql<string | null>`${items.sourceMetadata}->>'videoId'`,
+      text: highlights.text,
+      locator: highlights.locator,
+      similarity,
+    })
+    .from(highlights)
+    .innerJoin(items, eq(highlights.itemId, items.id))
+    .where(and(...conds))
+    .orderBy(desc(similarity))
+    .limit(opts.limit ?? 3)
+  const min = opts.minSimilarity ?? 0.35
+  return rows
+    .filter((r) => r.similarity >= min)
+    .map((r) => ({
+      highlightId: r.highlightId,
+      itemId: r.itemId,
+      itemTitle: r.itemTitle,
+      podcastName: r.podcastName,
+      artworkUrl: r.artworkUrl,
+      audioUrl: r.audioUrl,
+      videoId: r.videoId,
+      text: r.text,
+      startSec: r.locator?.sec && r.locator.sec > 0 ? Math.floor(r.locator.sec) : 0,
+      similarity: r.similarity,
+    }))
 }
 
 const normalizeText = (s: string) =>

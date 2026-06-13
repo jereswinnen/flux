@@ -8,6 +8,7 @@ import { afterAll, beforeAll, beforeEach, expect, test } from "vitest"
 import * as schema from "@/lib/db/schema"
 import { makeItemRepo } from "@/lib/db/items"
 import { makeHighlightRepo } from "@/lib/db/highlights"
+import { searchHighlights } from "@/lib/db/search"
 
 const client = postgres(process.env.TEST_DATABASE_URL!, { max: 1 })
 const db = drizzle(client, { schema })
@@ -61,4 +62,22 @@ test("list filters by itemId", async () => {
   await repo.create({ itemId: b.id, kind: "transcript", text: "from b" })
   const rows = await repo.list({ itemId: a.id })
   expect(rows.map((r) => r.text)).toEqual(["from a"])
+})
+
+function unit(i: number): number[] {
+  const v = Array(1536).fill(0)
+  v[i] = 1
+  return v
+}
+
+test("searchHighlights ranks by similarity, filters weak + by item", async () => {
+  const a = await items.create({ type: "podcast", title: "A", audioUrl: "https://a/a.mp3" })
+  const b = await items.create({ type: "podcast", title: "B", audioUrl: "https://a/b.mp3" })
+  await repo.create({ itemId: a.id, kind: "transcript", text: "alpha", locator: { sec: 12 }, embedding: unit(0) })
+  await repo.create({ itemId: b.id, kind: "transcript", text: "beta", embedding: unit(1) })
+  const hits = await searchHighlights(db, unit(0), {})
+  expect(hits.map((h) => h.text)).toEqual(["alpha"])
+  expect(hits[0].startSec).toBe(12)
+  const onlyB = await searchHighlights(db, unit(1), { itemId: b.id })
+  expect(onlyB.map((h) => h.text)).toEqual(["beta"])
 })
