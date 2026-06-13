@@ -86,6 +86,9 @@ export function EpisodeInsights({
   entities?: MentionedEntity[]
   onSeek: (sec: number) => void
 }) {
+  // Hook must run before any early return (rules-of-hooks).
+  const hl = useHighlightsOptional()
+
   if (!insights && entities.length === 0)
     return <p className="text-sm text-muted-foreground">No insights yet.</p>
 
@@ -95,7 +98,6 @@ export function EpisodeInsights({
   const topics = insights?.topics ?? []
   const legacyEntities = insights?.entities ?? []
 
-  const hl = useHighlightsOptional()
   const marksFor = (kind: string, index: number) =>
     (hl?.highlights ?? [])
       .filter((h) => h.kind === kind && h.locator?.index === index)
