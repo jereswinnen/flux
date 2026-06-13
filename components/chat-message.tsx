@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm"
 import { Check, ChevronDown, Copy, Loader2, Play } from "lucide-react"
 import { remarkTimestamps } from "@/lib/markdown/timestamps"
 import { hiResArtwork } from "@/lib/artwork"
+import { hostname } from "@/lib/ai/web-sources"
 import { episodeHref } from "@/lib/episode-href"
 import { parseTimestamp, formatTimestamp } from "@/lib/format"
 import { usePlayer } from "@/components/player-context"
@@ -334,7 +335,7 @@ export function ChatMessage({
                       <span className="min-w-0 flex-1 font-sans">
                         <span className="line-clamp-1 text-sm font-medium">{s.itemTitle}</span>
                         <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                          {s.url ? new URL(s.url).hostname.replace(/^www\./, "") : ""}
+                          {s.url ? hostname(s.url) : ""}
                         </span>
                       </span>
                     </a>

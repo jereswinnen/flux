@@ -5,7 +5,7 @@ import { embedQuery } from "@/lib/ai/embeddings"
 import { hybridSearch, refineHitTimestamps, searchHighlights } from "@/lib/db/search"
 import { assembleAskSources, type AskSourceEntry } from "@/lib/ai/ask-sources"
 import { searchEntities } from "@/lib/db/entities"
-import { toWebSources } from "@/lib/ai/web-sources"
+import { toWebSources, type ModelSource } from "@/lib/ai/web-sources"
 
 function entryToSource(e: AskSourceEntry) {
   if (e.kind === "highlight") {
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
       "with the matching [n]. If neither the sources nor the web answer it, say so plainly.",
     prompt: `Question: ${query}\n\nSources:\n${context}`,
   })
-  const sourcesWithWeb = [...sources, ...toWebSources((modelSources ?? []) as never)]
+  const sourcesWithWeb = [...sources, ...toWebSources((modelSources ?? []) as ModelSource[])]
 
   return Response.json({ answer: text, sources: sourcesWithWeb, entities })
 }

@@ -8,7 +8,8 @@ export interface ModelSource {
   title?: string
 }
 
-function domain(url: string): string {
+/** Display host for a URL (drops `www.`); returns the input on parse failure. */
+export function hostname(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, "")
   } catch {
@@ -26,7 +27,7 @@ export function toWebSources(sources: ModelSource[]): ChatSource[] {
     out.push({
       isWeb: true,
       url: s.url,
-      itemTitle: s.title?.trim() || domain(s.url),
+      itemTitle: s.title?.trim() || hostname(s.url),
       itemId: "",
       startSec: 0,
       snippet: null,

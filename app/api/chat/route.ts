@@ -12,7 +12,7 @@ import { groupHitsIntoSources } from "@/lib/ai/group-sources"
 import { transcripts } from "@/lib/db/schema"
 import { formatTimestamp } from "@/lib/format"
 import type { ChatSource } from "@/lib/db/schema"
-import { toWebSources } from "@/lib/ai/web-sources"
+import { toWebSources, type ModelSource } from "@/lib/ai/web-sources"
 
 function entryToChatSource(e: AskSourceEntry): ChatSource {
   const base = {
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
       context,
     messages,
     onFinish: async ({ text, sources: modelSources }) => {
-      const finalSources = [...sources, ...toWebSources((modelSources ?? []) as never)]
+      const finalSources = [...sources, ...toWebSources((modelSources ?? []) as ModelSource[])]
       await conversationRepo.addMessage({ conversationId, role: "assistant", content: text, sources: finalSources })
       await conversationRepo.touch(conversationId)
     },

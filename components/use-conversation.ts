@@ -147,10 +147,16 @@ export function useConversation(
                 const url = part.url as string
                 if (!webSources.some((w) => w.url === url)) {
                   const sid = typeof part.sourceId === "string" ? part.sourceId : ""
+                  // OpenAI web-search results carry the title on the source-url part
+                  // itself; fall back to a source-document title, then the host.
+                  const title =
+                    (typeof part.title === "string" && part.title.trim()) ||
+                    titleById.get(sid) ||
+                    hostname(url)
                   webSources.push({
                     isWeb: true,
                     url,
-                    itemTitle: titleById.get(sid) || hostname(url),
+                    itemTitle: title,
                     itemId: "",
                     startSec: 0,
                     snippet: null,

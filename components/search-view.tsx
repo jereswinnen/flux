@@ -8,6 +8,7 @@ import remarkGfm from "remark-gfm"
 import { Loader2, Search, Sparkles } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { hiResArtwork } from "@/lib/artwork"
+import { hostname } from "@/lib/ai/web-sources"
 import { episodeHref } from "@/lib/episode-href"
 import { formatTimestamp } from "@/lib/format"
 
@@ -304,7 +305,7 @@ export function SearchView({ query }: { query: string }) {
                     <span className="min-w-0 flex-1">
                       <span className="line-clamp-2 text-sm font-medium">{s.itemTitle}</span>
                       <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                        {s.url ? new URL(s.url).hostname.replace(/^www\./, "") : ""}
+                        {s.url ? hostname(s.url) : ""}
                       </span>
                     </span>
                   </a>
