@@ -6,6 +6,7 @@ import { hybridSearch, refineHitTimestamps, searchHighlights } from "@/lib/db/se
 import { assembleAskSources, type AskSourceEntry } from "@/lib/ai/ask-sources"
 import { searchEntities } from "@/lib/db/entities"
 import { toWebSources, type ModelSource } from "@/lib/ai/web-sources"
+import { toSourceDTO } from "@/lib/api/source-dto"
 
 function entryToSource(e: AskSourceEntry) {
   if (e.kind === "highlight") {
@@ -71,5 +72,5 @@ export async function POST(request: Request) {
   })
   const sourcesWithWeb = [...sources, ...toWebSources((modelSources ?? []) as ModelSource[])]
 
-  return Response.json({ answer: text, sources: sourcesWithWeb, entities })
+  return Response.json({ answer: text, sources: sourcesWithWeb.map(toSourceDTO), entities })
 }
