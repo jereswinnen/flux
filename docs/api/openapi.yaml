@@ -1,0 +1,1224 @@
+openapi: "3.1.0"
+info:
+  title: Flux API
+  version: 1.0.0
+  description: >
+    REST API for the Flux personal knowledge-base app (podcasts, YouTube, articles).
+
+    **Authentication**: all `/api/*` routes except `/api/modal/callback` require
+    `Authorization: Bearer <API_AUTH_TOKEN>` when the `API_AUTH_TOKEN` environment
+    variable is set on the server. Same-origin web requests (origin matching `APP_URL`)
+    bypass auth automatically. When `API_AUTH_TOKEN` is unset the API is open.
+
+servers:
+  - url: "{APP_URL}"
+    description: Railway deployment (set the APP_URL env var on the server)
+    variables:
+      APP_URL:
+        default: https://your-app.railway.app
+        description: Public URL of your Railway deployment.
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: >
+        Send `Authorization: Bearer <API_AUTH_TOKEN>` on every request when
+        `API_AUTH_TOKEN` is set server-side. Returns 401 when missing/invalid.
+        Enforced by Next.js middleware matching `/api/((?!modal/callback).*)`.
+
+  schemas:
+
+    # ── Enumerations ─────────────────────────────────────────────────────────
+
+    ItemType:
+      type: string
+      enum: [podcast, youtube, article]
+      description: Media type of the library item.
+
+    ItemStatus:
+      type: string
+      enum: [processing, transcribing, analyzing, ready, failed]
+      description: Current processing-pipeline status.
+
+    ItemReadState:
+      type: string
+      enum: [unread, read, archived]
+
+    HighlightKind:
+      type: string
+      enum: [transcript, takeaway, quote, article, kindle]
+      description: Origin of the highlight text.
+
+    SourceKind:
+      type: string
+      enum: [item, highlight, web]
+      description: >
+        Computed discriminator added by `toSourceDTO()`.
+        `item` = transcript chunk; `highlight` = saved highlight; `web` = web-search result.
+
+    # ── Core DTOs ─────────────────────────────────────────────────────────────
+
+    ItemDTO:
+      type: object
+      required: [id, type, title, createdAt, status, readState, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/ItemType"
+        title:
+          type: string
+        source:
+          type: ["string", "null"]
+          description: >
+            Show / channel / author name. Mapped from the DB `podcast_name` column for
+            all three item types (the JSON key is `source`, not `podcastName`).
+        audioUrl:
+          type: ["string", "null"]
+          format: uri
+        sourceUrl:
+          type: ["string", "null"]
+          format: uri
+        artworkUrl:
+          type: ["string", "null"]
+          format: uri
+        durationSec:
+          type: ["integer", "null"]
+          description: Duration in seconds; null when unknown.
+        publishedAt:
+          type: ["string", "null"]
+          format: date-time
+          description: Original publish date of the episode/video/article. Null if unavailable.
+        createdAt:
+          type: string
+          format: date-time
+          description: When the item was added to the library.
+        status:
+          $ref: "#/components/schemas/ItemStatus"
+        videoId:
+          type: ["string", "null"]
+          description: >
+            YouTube video ID extracted from `sourceMetadata.videoId`.
+            Null for podcasts and articles.
+        readState:
+          $ref: "#/components/schemas/ItemReadState"
+        updatedAt:
+          type: string
+          format: date-time
+
+    HighlightItemRef:
+      type: object
+      required: [id, type, title]
+      description: Minimal item snapshot embedded inside HighlightDTO.
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/ItemType"
+        title:
+          type: string
+        source:
+          type: ["string", "null"]
+          description: Show / channel / author name (same mapping as ItemDTO.source).
+        artworkUrl:
+          type: ["string", "null"]
+          format: uri
+
+    HighlightDTO:
+      type: object
+      required: [id, kind, text, createdAt, updatedAt, item, jumpHref]
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          $ref: "#/components/schemas/HighlightKind"
+        text:
+          type: string
+        note:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        item:
+          $ref: "#/components/schemas/HighlightItemRef"
+        jumpHref:
+          type: string
+          description: >
+            Relative URL to the highlight in the web app.
+            `/items/{id}?t={sec}` for `transcript`/`quote` highlights with a timestamp;
+            `/items/{id}` for all others.
+
+    SourceDTO:
+      type: object
+      required: [kind, source, itemId, itemTitle, startSec]
+      description: >
+        A cited source returned by `/api/answer`. **Additive** over `SourceInput`:
+        every input field is present plus two additions —
+        `kind` (discriminator) and `source` (alias for `podcastName`).
+        Both `podcastName` and `source` carry the same value when `podcastName` is set.
+      properties:
+        kind:
+          $ref: "#/components/schemas/SourceKind"
+        source:
+          type: ["string", "null"]
+          description: Alias for `podcastName`; computed by `toSourceDTO()`.
+        itemId:
+          type: string
+          format: uuid
+        itemTitle:
+          type: string
+        startSec:
+          type: number
+          description: Start timestamp (seconds) within the source media.
+        podcastName:
+          type: ["string", "null"]
+        artworkUrl:
+          type: ["string", "null"]
+          format: uri
+        audioUrl:
+          type: ["string", "null"]
+          format: uri
+        videoId:
+          type: ["string", "null"]
+        url:
+          type: ["string", "null"]
+          format: uri
+          description: URL for `web` sources.
+        snippet:
+          type: ["string", "null"]
+        content:
+          type: ["string", "null"]
+        isHighlight:
+          type: ["boolean", "null"]
+        isWeb:
+          type: ["boolean", "null"]
+
+    # ── Transcript ────────────────────────────────────────────────────────────
+
+    TranscriptWord:
+      type: object
+      required: [start, end, word]
+      properties:
+        start:
+          type: number
+          description: Start time in seconds.
+        end:
+          type: number
+          description: End time in seconds.
+        word:
+          type: string
+
+    TranscriptSegment:
+      type: object
+      required: [start, end, text]
+      properties:
+        start:
+          type: number
+        end:
+          type: number
+        text:
+          type: string
+        words:
+          type: ["array", "null"]
+          items:
+            $ref: "#/components/schemas/TranscriptWord"
+          description: Per-word timing; present for YouTube items only.
+
+    TranscriptDTO:
+      type: object
+      required: [fullText, segments]
+      properties:
+        fullText:
+          type: string
+          description: Full transcript as plain text.
+        segments:
+          type: array
+          items:
+            $ref: "#/components/schemas/TranscriptSegment"
+          description: Empty array when segments are unavailable.
+        contentHtml:
+          type: ["string", "null"]
+          description: HTML-rendered transcript (articles); null for audio/video items.
+
+    # ── Insights ──────────────────────────────────────────────────────────────
+
+    Chapter:
+      type: object
+      required: [title, startSec]
+      properties:
+        title:
+          type: string
+        startSec:
+          type: number
+
+    Quote:
+      type: object
+      required: [text, approxTimestampSec]
+      properties:
+        text:
+          type: string
+        approxTimestampSec:
+          type: number
+
+    InsightEntityMention:
+      type: object
+      required: [name, type]
+      description: >
+        Raw entity mention from the analysis pipeline, stored in the
+        `insights.entities` JSONB column. Distinct from `MentionedEntity`
+        (which are enriched records from the `entities` table).
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          description: Coarse type string ("person", "book", etc.) as extracted by the LLM.
+        context:
+          type: ["string", "null"]
+        approxTimestampSec:
+          type: ["number", "null"]
+
+    InsightsDTO:
+      type: object
+      required: [id, itemId]
+      description: AI-generated analysis row from the `insights` table.
+      properties:
+        id:
+          type: string
+          format: uuid
+        itemId:
+          type: string
+          format: uuid
+        summary:
+          type: ["string", "null"]
+        takeaways:
+          type: ["array", "null"]
+          items:
+            type: string
+        topics:
+          type: ["array", "null"]
+          items:
+            type: string
+        chapters:
+          type: ["array", "null"]
+          items:
+            $ref: "#/components/schemas/Chapter"
+        quotes:
+          type: ["array", "null"]
+          items:
+            $ref: "#/components/schemas/Quote"
+        entities:
+          type: ["array", "null"]
+          items:
+            $ref: "#/components/schemas/InsightEntityMention"
+          description: >
+            Raw entity mentions from the LLM analysis pass. NOT the same as
+            the top-level `entities` array in `ItemDetail`, which are enriched
+            records from the `entities` table.
+
+    # ── Entities ──────────────────────────────────────────────────────────────
+
+    EntityMetadata:
+      type: object
+      properties:
+        author:
+          type: string
+        publishedYear:
+          type: integer
+
+    MentionedEntity:
+      type: object
+      required: [id, name, slug, type, mentionCount]
+      description: >
+        Enriched entity record from the `entities` table, as mentioned in a
+        specific item (returned in `ItemDetail.entities`).
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+          description: URL-safe unique identifier (e.g. `alan-turing`).
+        type:
+          type: string
+          description: "EntityType: person | company | book | product | place | other"
+        description:
+          type: ["string", "null"]
+        imageUrl:
+          type: ["string", "null"]
+          format: uri
+        metadata:
+          oneOf:
+            - $ref: "#/components/schemas/EntityMetadata"
+            - type: "null"
+        context:
+          type: ["string", "null"]
+          description: Sentence from the item where this entity is mentioned.
+        approxTimestampSec:
+          type: ["integer", "null"]
+          description: Approximate timestamp (seconds) of the mention within the item.
+        mentionCount:
+          type: integer
+          description: Library-wide count of items that mention this entity.
+
+    EntitySearchResult:
+      type: object
+      required: [id, name, slug, type, mentionCount]
+      description: Entity card returned alongside answers by `/api/answer`.
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        type:
+          type: string
+        description:
+          type: ["string", "null"]
+        imageUrl:
+          type: ["string", "null"]
+          format: uri
+        mentionCount:
+          type: integer
+
+    # ── Item Detail (GET /api/items/{id} bundle) ──────────────────────────────
+
+    ItemDetail:
+      type: object
+      required: [item, entities, highlights]
+      description: Full bundle returned by `GET /api/items/{id}`.
+      properties:
+        item:
+          $ref: "#/components/schemas/ItemDTO"
+        transcript:
+          oneOf:
+            - $ref: "#/components/schemas/TranscriptDTO"
+            - type: "null"
+          description: Null until the item has been transcribed.
+        insights:
+          oneOf:
+            - $ref: "#/components/schemas/InsightsDTO"
+            - type: "null"
+          description: Null until the analysis pipeline completes.
+        entities:
+          type: array
+          items:
+            $ref: "#/components/schemas/MentionedEntity"
+          description: >
+            Enriched entity records linked to this item (from the `entities` table).
+            Distinct from `insights.entities` (raw LLM mentions).
+        highlights:
+          type: array
+          items:
+            $ref: "#/components/schemas/HighlightDTO"
+
+    # ── Sync ─────────────────────────────────────────────────────────────────
+
+    Deletion:
+      type: object
+      required: [type, id]
+      description: Tombstone record for incremental sync.
+      properties:
+        type:
+          type: string
+          description: "`item` or `highlight`"
+        id:
+          type: string
+          format: uuid
+          description: ID of the deleted entity (`entityId` from the `deletions` table).
+
+    SyncResponse:
+      type: object
+      required: [items, highlights, deletions, syncedAt]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ItemDTO"
+          description: Items updated (created or modified) since `since`.
+        highlights:
+          type: array
+          items:
+            $ref: "#/components/schemas/HighlightDTO"
+          description: Highlights updated since `since`.
+        deletions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Deletion"
+        syncedAt:
+          type: string
+          format: date-time
+          description: >
+            DB-clock timestamp captured **before** the reads. Use this as `since`
+            on the next sync call — never the client clock — to avoid skew.
+
+    # ── Library Search ────────────────────────────────────────────────────────
+
+    SearchMoment:
+      type: object
+      required: [chunkId, itemId, itemTitle, content, startSec, endSec, similarity]
+      description: A relevant transcript chunk returned by `POST /api/library/search`.
+      properties:
+        chunkId:
+          type: string
+          format: uuid
+        itemId:
+          type: string
+          format: uuid
+        itemTitle:
+          type: string
+        podcastName:
+          type: ["string", "null"]
+        artworkUrl:
+          type: ["string", "null"]
+          format: uri
+        audioUrl:
+          type: ["string", "null"]
+          format: uri
+        videoId:
+          type: ["string", "null"]
+        content:
+          type: string
+          description: The matching transcript chunk text (~600 tokens).
+        startSec:
+          type: integer
+          description: Refined start timestamp (seconds) within the item.
+        endSec:
+          type: integer
+          description: End of the chunk window (seconds).
+        similarity:
+          type: number
+          description: Hybrid RRF score (higher = more relevant).
+
+    # ── Raw Highlight (POST /api/highlights response) ─────────────────────────
+
+    HighlightLocator:
+      type: object
+      description: Position of the highlight within the item. All fields optional; present fields depend on `kind`.
+      properties:
+        sec:
+          type: number
+          description: Audio/video timestamp (seconds). Used by `transcript` and `quote` kinds.
+        segmentStart:
+          type: number
+        index:
+          type: integer
+          description: Zero-based index within takeaways/quotes lists.
+        charStart:
+          type: integer
+        charEnd:
+          type: integer
+        location:
+          type: string
+          description: Kindle location string (for `kindle` kind).
+
+    RawHighlight:
+      type: object
+      required: [id, itemId, kind, text, createdAt, updatedAt]
+      description: >
+        Raw DB row returned by `POST /api/highlights` (drizzle `.returning()`).
+        Unlike `HighlightDTO`, this does **not** include the `item` sub-object
+        or `jumpHref`. Refetch from `GET /api/highlights?itemId=` for the full DTO.
+      properties:
+        id:
+          type: string
+          format: uuid
+        itemId:
+          type: string
+          format: uuid
+        kind:
+          $ref: "#/components/schemas/HighlightKind"
+        text:
+          type: string
+        note:
+          type: ["string", "null"]
+        locator:
+          oneOf:
+            - $ref: "#/components/schemas/HighlightLocator"
+            - type: "null"
+        embedding:
+          type: ["array", "null"]
+          items:
+            type: number
+          description: 1536-element pgvector embedding. Large; typically ignored by clients.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    # ── Conversations ─────────────────────────────────────────────────────────
+
+    ConversationRow:
+      type: object
+      required: [id, title, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        itemId:
+          type: ["string", "null"]
+          format: uuid
+          description: Item scope; null for library-wide conversations.
+        title:
+          type: string
+          description: Auto-set from first message; defaults to "New chat".
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    MessageRow:
+      type: object
+      required: [id, conversationId, role, content, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        conversationId:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+        sources:
+          type: ["array", "null"]
+          items:
+            $ref: "#/components/schemas/SourceDTO"
+          description: >
+            Sources cited in assistant messages. Stored as `ChatSource[]` in the DB
+            but mapped through `toSourceDTO()` before serialization, so the response
+            shape is `SourceDTO[]` (includes `kind` and `source` fields).
+        createdAt:
+          type: string
+          format: date-time
+
+    ConversationDetail:
+      type: object
+      required: [conversation, messages]
+      properties:
+        conversation:
+          $ref: "#/components/schemas/ConversationRow"
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageRow"
+
+# ── Paths ──────────────────────────────────────────────────────────────────────
+
+paths:
+
+  /api/items:
+    get:
+      summary: List all library items
+      operationId: listItems
+      responses:
+        "200":
+          description: All items in the library.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ItemDTO"
+        "401":
+          description: Unauthorized.
+
+    post:
+      summary: Add a new item to the library
+      operationId: addItem
+      description: >
+        Accepts two shapes:
+
+        - **URL input** (YouTube video or article): `{"url": "https://..."}`.
+          The server detects the source type from the URL.
+
+        - **Podcast input** (iTunes-driven UI): provide at least `title` and `audioUrl`.
+          Optionally set `"type": "podcast"` to force this branch when `audioUrl`
+          is present but `url` is absent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - title: URL input
+                  type: object
+                  required: [url]
+                  properties:
+                    url:
+                      type: string
+                      format: uri
+                      description: YouTube or article URL to add.
+                - title: Podcast input
+                  type: object
+                  required: [title, audioUrl]
+                  properties:
+                    type:
+                      type: string
+                      enum: [podcast]
+                    title:
+                      type: string
+                    audioUrl:
+                      type: string
+                      format: uri
+                    podcastName:
+                      type: string
+                    sourceUrl:
+                      type: string
+                      format: uri
+                    artworkUrl:
+                      type: string
+                      format: uri
+                    publishedAt:
+                      type: string
+                      format: date-time
+                    durationSec:
+                      type: integer
+                    episodeGuid:
+                      type: string
+                    itunesCollectionId:
+                      type: integer
+                    itunesTrackId:
+                      type: integer
+      responses:
+        "201":
+          description: Item created; processing begins asynchronously.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [item]
+                properties:
+                  item:
+                    $ref: "#/components/schemas/ItemDTO"
+        "400":
+          description: Missing/invalid fields or unrecognized URL.
+        "401":
+          description: Unauthorized.
+
+  /api/items/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      summary: Get item detail bundle
+      operationId: getItem
+      description: >
+        Returns the item plus its transcript, AI-generated insights, enriched entities
+        (from the `entities` table), and saved highlights.
+      responses:
+        "200":
+          description: Full item bundle.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemDetail"
+        "404":
+          description: Item not found.
+        "401":
+          description: Unauthorized.
+
+    patch:
+      summary: Update item read state
+      operationId: setReadState
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [readState]
+              properties:
+                readState:
+                  $ref: "#/components/schemas/ItemReadState"
+      responses:
+        "200":
+          description: Updated item DTO.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [item]
+                properties:
+                  item:
+                    $ref: "#/components/schemas/ItemDTO"
+        "400":
+          description: Invalid readState value.
+        "404":
+          description: Item not found.
+        "401":
+          description: Unauthorized.
+
+    delete:
+      summary: Delete an item
+      operationId: deleteItem
+      description: Hard-deletes the item and all associated transcripts, insights, highlights (cascaded in DB).
+      responses:
+        "204":
+          description: Deleted (no body).
+        "404":
+          description: Item not found.
+        "401":
+          description: Unauthorized.
+
+  /api/items/{id}/retry:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      summary: Retry processing for a failed item
+      operationId: retryItem
+      description: >
+        Re-triggers the processing pipeline. If a transcript already exists the
+        server jumps directly to the analysis step; otherwise it restarts from
+        transcription.
+      responses:
+        "202":
+          description: Retry accepted; processing runs asynchronously.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [retrying]
+        "404":
+          description: Item not found.
+        "401":
+          description: Unauthorized.
+
+  /api/sync:
+    get:
+      summary: Incremental sync
+      operationId: sync
+      description: >
+        Returns all items and highlights updated (or created) since `since`, plus
+        tombstones for items/highlights deleted since then.
+
+        The cursor is the **DB clock** — always use the `syncedAt` value from the
+        previous response as `since`, never the client clock.
+      parameters:
+        - name: since
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: >
+            ISO 8601 timestamp of the last successful sync (`syncedAt` from the
+            previous response). Omit or pass epoch for a full sync.
+      responses:
+        "200":
+          description: Sync payload.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncResponse"
+        "401":
+          description: Unauthorized.
+
+  /api/highlights:
+    get:
+      summary: List highlights
+      operationId: listHighlights
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ItemType"
+          description: Filter by the parent item's type.
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Full-text ILIKE search on highlight text and note.
+        - name: itemId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Return highlights belonging to a specific item only.
+      responses:
+        "200":
+          description: Highlights array.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [highlights]
+                properties:
+                  highlights:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/HighlightDTO"
+        "401":
+          description: Unauthorized.
+
+    post:
+      summary: Create a highlight
+      operationId: createHighlight
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [itemId, kind, text]
+              properties:
+                itemId:
+                  type: string
+                  format: uuid
+                kind:
+                  $ref: "#/components/schemas/HighlightKind"
+                text:
+                  type: string
+                note:
+                  type: string
+                  description: Optional annotation.
+                locator:
+                  $ref: "#/components/schemas/HighlightLocator"
+      responses:
+        "201":
+          description: >
+            Created highlight as a raw DB row. **Note**: the response is `RawHighlight`,
+            NOT `HighlightDTO` — the `item` sub-object and `jumpHref` are absent.
+            The `embedding` field (1536 floats) is also present.
+            Refetch from `GET /api/highlights?itemId=` to get full `HighlightDTO` objects.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [highlight]
+                properties:
+                  highlight:
+                    $ref: "#/components/schemas/RawHighlight"
+        "400":
+          description: Missing or invalid fields (`itemId`, `kind`, or `text`).
+        "401":
+          description: Unauthorized.
+
+  /api/highlights/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    patch:
+      summary: Update highlight note
+      operationId: updateHighlightNote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [note]
+              properties:
+                note:
+                  type: string
+                  description: New note text. Trimmed server-side; empty string clears the note.
+      responses:
+        "200":
+          description: Note updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+        "401":
+          description: Unauthorized.
+
+    delete:
+      summary: Delete a highlight
+      operationId: deleteHighlight
+      description: Also inserts a tombstone row in `deletions` so it appears in the next sync.
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+        "401":
+          description: Unauthorized.
+
+  /api/answer:
+    post:
+      summary: One-shot RAG answer
+      operationId: ask
+      description: >
+        Synthesizes a cited answer from the best matching transcript chunks and
+        highlights across the library, optionally supplemented by web search.
+
+        Returns `answer: null` if `query` is shorter than 2 characters or no
+        sources match (still returns empty `sources` and `entities` arrays).
+
+        Answer text cites library sources as `[1]`, `[2]`, … matching the order
+        of the `sources` array.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                  minLength: 2
+      responses:
+        "200":
+          description: Answer with cited sources and matched entity cards.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sources, entities]
+                properties:
+                  answer:
+                    type: ["string", "null"]
+                    description: Generated answer; null when no sources were found.
+                  sources:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SourceDTO"
+                    description: Cited sources in citation order.
+                  entities:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/EntitySearchResult"
+                    description: Entity cards matching the query.
+        "401":
+          description: Unauthorized.
+
+  /api/library/search:
+    post:
+      summary: Global library search
+      operationId: librarySearch
+      description: >
+        Hybrid vector + full-text search across item titles/shows and transcript chunks.
+        Returns up to 6 matching items and up to 6 transcript moments.
+        Returns empty arrays when `query` is shorter than 2 characters.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                  minLength: 2
+      responses:
+        "200":
+          description: Matching items and transcript moments.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, moments]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ItemDTO"
+                  moments:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SearchMoment"
+        "401":
+          description: Unauthorized.
+
+  /api/conversations:
+    get:
+      summary: List conversations
+      operationId: listConversations
+      description: >
+        Exactly one of `itemId` or `scope=library` must be provided.
+        `scope=library` returns conversations where `itemId IS NULL` (library scope).
+      parameters:
+        - name: itemId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Return conversations scoped to this item.
+        - name: scope
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [library]
+          description: Pass `library` to return library-wide (non-item) conversations.
+      responses:
+        "200":
+          description: Conversations list.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [conversations]
+                properties:
+                  conversations:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ConversationRow"
+        "400":
+          description: Neither `itemId` nor `scope=library` was provided.
+        "401":
+          description: Unauthorized.
+
+    post:
+      summary: Create a conversation
+      operationId: createConversation
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                itemId:
+                  type: ["string", "null"]
+                  format: uuid
+                  description: Scope the conversation to an item. Null or absent for library scope.
+      responses:
+        "201":
+          description: Created conversation.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [conversation]
+                properties:
+                  conversation:
+                    $ref: "#/components/schemas/ConversationRow"
+        "401":
+          description: Unauthorized.
+
+  /api/conversations/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      summary: Get conversation with messages
+      operationId: getConversation
+      description: >
+        Returns the conversation row and all messages in chronological order.
+        Assistant message `sources` are mapped through `toSourceDTO()` so they
+        include the `kind` discriminator and `source` alias.
+      responses:
+        "200":
+          description: Conversation and its messages.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationDetail"
+        "404":
+          description: Conversation not found.
+        "401":
+          description: Unauthorized.
+
+    patch:
+      summary: Rename a conversation
+      operationId: renameConversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title:
+                  type: string
+                  description: New title (trimmed, max 100 chars server-side).
+      responses:
+        "200":
+          description: Renamed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [renamed]
+        "400":
+          description: Title is required (empty string rejected).
+        "401":
+          description: Unauthorized.
+
+    delete:
+      summary: Delete a conversation
+      operationId: deleteConversation
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [deleted]
+        "401":
+          description: Unauthorized.
