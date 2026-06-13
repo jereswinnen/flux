@@ -1,10 +1,11 @@
 import { openai } from "@ai-sdk/openai"
-import { generateText } from "ai"
+import { generateText, stepCountIs } from "ai"
 import { db } from "@/lib/db"
 import { embedQuery } from "@/lib/ai/embeddings"
 import { hybridSearch, refineHitTimestamps, searchHighlights } from "@/lib/db/search"
 import { assembleAskSources, type AskSourceEntry } from "@/lib/ai/ask-sources"
 import { searchEntities } from "@/lib/db/entities"
+import { toWebSources } from "@/lib/ai/web-sources"
 
 function entryToSource(e: AskSourceEntry) {
   if (e.kind === "highlight") {
@@ -56,16 +57,19 @@ export async function POST(request: Request) {
   const { entries, context } = assembleAskSources(chunkHits, hlHits)
   const sources = entries.map(entryToSource)
 
-  const { text } = await generateText({
+  const { text, sources: modelSources } = await generateText({
     model: openai("gpt-5.4-mini-2026-03-17"),
+    tools: { web_search: openai.tools.webSearch() },
+    stopWhen: stepCountIs(3),
     system:
-      "You are a knowledge-base assistant answering questions from a personal podcast library. " +
-      "Answer ONLY from the numbered sources. Be thorough and specific: cover each distinct point, include " +
-      "concrete details (names, numbers, examples), and use a short markdown list when there are several points. " +
-      "Cite every claim with the matching [n] (you may cite multiple, e.g. [1][3]). Don't pad or repeat. " +
-      "If the sources don't contain the answer, say so plainly.",
+      "You are a knowledge-base assistant answering questions from a personal library. " +
+      "Answer primarily from the numbered sources below. If they don't fully cover the question, " +
+      "or it needs current/external information, use the web_search tool and integrate what you find — " +
+      "prefer the library, use the web to supplement. Be thorough and specific; cite library claims " +
+      "with the matching [n]. If neither the sources nor the web answer it, say so plainly.",
     prompt: `Question: ${query}\n\nSources:\n${context}`,
   })
+  const sourcesWithWeb = [...sources, ...toWebSources((modelSources ?? []) as never)]
 
-  return Response.json({ answer: text, sources, entities })
+  return Response.json({ answer: text, sources: sourcesWithWeb, entities })
 }

@@ -22,6 +22,8 @@ type Source = {
   endSec: number
   isHighlight?: boolean
   snippet?: string | null
+  isWeb?: boolean
+  url?: string | null
 }
 
 type EntityHit = {
@@ -158,8 +160,9 @@ export function SearchView({ query }: { query: string }) {
     if (q.length >= 2) router.push(`/search?q=${encodeURIComponent(q)}`)
   }
 
+  const webSources = sources.filter((s) => s.isWeb)
   const highlightSources = sources.filter((s) => s.isHighlight)
-  const groups = groupSources(sources.filter((s) => !s.isHighlight))
+  const groups = groupSources(sources.filter((s) => !s.isHighlight && !s.isWeb))
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8">
@@ -228,7 +231,7 @@ export function SearchView({ query }: { query: string }) {
             )
           )}
 
-          {(groups.length > 0 || highlightSources.length > 0) && (
+          {(groups.length > 0 || highlightSources.length > 0 || webSources.length > 0) && (
             <section className="space-y-4">
               <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Sources
@@ -286,6 +289,25 @@ export function SearchView({ query }: { query: string }) {
                       <span className="mt-0.5 block text-xs text-muted-foreground">{s.itemTitle}</span>
                     </span>
                   </Link>
+                ))}
+                {webSources.map((s, i) => (
+                  <a
+                    key={`web-${i}`}
+                    href={s.url ?? "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-start gap-2 rounded-lg border p-2.5 transition-colors hover:bg-muted"
+                  >
+                    <span className="shrink-0 rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-sky-600 dark:text-sky-400">
+                      Web
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="line-clamp-2 text-sm font-medium">{s.itemTitle}</span>
+                      <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                        {s.url ? new URL(s.url).hostname.replace(/^www\./, "") : ""}
+                      </span>
+                    </span>
+                  </a>
                 ))}
               </div>
             </section>
