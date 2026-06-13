@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const token = process.env.API_AUTH_TOKEN
   if (!token) return NextResponse.next() // open by default (current behavior)
   const origin = req.headers.get("origin") ?? req.headers.get("referer") ?? ""
