@@ -10,6 +10,6 @@ struct FluxApp: App {
             RootView()
                 .environment(config)
         }
-        .modelContainer(for: [Item.self, Highlight.self, PendingChange.self])
+        .modelContainer(for: [Item.self, Highlight.self, PendingChange.self, ItemDetailCache.self])
     }
 }

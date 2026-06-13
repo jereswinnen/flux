@@ -104,14 +104,7 @@ private struct LibraryList: View {
     var body: some View {
         List(items) { item in
             NavigationLink {
-                // P2: real detail view
-                VStack(spacing: 12) {
-                    Text(item.title).font(.headline)
-                    Text(item.status).font(.caption).foregroundStyle(.secondary)
-                }
-                .padding()
-                .navigationTitle(item.title)
-                .navigationBarTitleDisplayMode(.inline)
+                ItemDetailView(item: item)
             } label: {
                 ItemRow(item: item)
             }

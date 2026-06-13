@@ -10,6 +10,19 @@ struct ReadStatePayload: Codable {
     let readState: String
 }
 
+struct CreateHighlightPayload: Codable {
+    let tempId: String       // the optimistic local Highlight.id
+    let itemId: String
+    let kind: String
+    let text: String
+    let note: String?
+    let locator: HighlightLocator?
+}
+
+struct DeleteHighlightPayload: Codable {
+    let id: String
+}
+
 @MainActor @Observable
 final class SyncEngine {
     private let context: ModelContext
@@ -107,19 +120,42 @@ final class SyncEngine {
         for change in pending {
             switch change.kind {
             case "setReadState":
-                if let p = decode(change.payloadJSON, as: ReadStatePayload.self),
-                   let state = ItemReadState(rawValue: p.readState) {
-                    _ = try await client.setReadState(id: p.id, state)
-                }
-            // P2: createHighlight, deleteHighlight, updateNote
+                guard let p = decode(change.payloadJSON, as: ReadStatePayload.self),
+                      let state = ItemReadState(rawValue: p.readState) else { break }
+                _ = try await client.setReadState(id: p.id, state)
+
+            case "createHighlight":
+                guard let p = decode(change.payloadJSON, as: CreateHighlightPayload.self),
+                      let kind = HighlightKind(rawValue: p.kind) else { break }
+                let raw = try await client.createHighlight(
+                    itemId: p.itemId, kind: kind, text: p.text,
+                    note: p.note, locator: p.locator
+                )
+                reconcileCreatedHighlight(tempId: p.tempId, serverId: raw.id)
+
+            case "deleteHighlight":
+                guard let p = decode(change.payloadJSON, as: DeleteHighlightPayload.self) else { break }
+                try await client.deleteHighlight(id: p.id)
+
             default:
                 break
             }
+            // Reached only when the API call above succeeded (a throw exits the loop,
+            // leaving this and later changes queued for the next sync).
             context.delete(change)
         }
         if !pending.isEmpty {
             try context.save()
         }
+    }
+
+    /// Re-key an optimistic highlight from its temp id to the server-assigned id,
+    /// so the next delta-sync upsert matches it instead of inserting a duplicate.
+    private func reconcileCreatedHighlight(tempId: String, serverId: String) {
+        let existing = try? context.fetch(
+            FetchDescriptor<Highlight>(predicate: #Predicate { $0.id == tempId })
+        ).first
+        existing?.id = serverId
     }
 
     // MARK: - Helpers

@@ -6,6 +6,8 @@ struct RootView: View {
     @Environment(AppConfig.self) private var config
     @Environment(\.scenePhase) private var scenePhase
     @State private var sync: SyncEngine?
+    @State private var detail: DetailLoader?
+    @State private var audio = AudioPlayer()
 
     var body: some View {
         TabView {
@@ -25,9 +27,14 @@ struct RootView: View {
             }
         }
         .environment(sync)
+        .environment(detail)
+        .environment(audio)
         .task {
             if sync == nil {
                 sync = SyncEngine(context: context, config: config)
+            }
+            if detail == nil {
+                detail = DetailLoader(context: context, config: config)
             }
             await sync?.sync()
         }

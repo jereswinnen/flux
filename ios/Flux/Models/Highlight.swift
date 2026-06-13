@@ -17,6 +17,24 @@ final class Highlight {
     var itemSource: String?
     var itemArtworkUrl: String?
 
+    init(
+        id: String, itemId: String, kind: String, text: String, note: String?,
+        createdAt: Date, updatedAt: Date, jumpHref: String,
+        itemTitle: String, itemSource: String?, itemArtworkUrl: String?
+    ) {
+        self.id = id
+        self.itemId = itemId
+        self.kind = kind
+        self.text = text
+        self.note = note
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.jumpHref = jumpHref
+        self.itemTitle = itemTitle
+        self.itemSource = itemSource
+        self.itemArtworkUrl = itemArtworkUrl
+    }
+
     init(from dto: HighlightDTO) {
         id = dto.id
         itemId = dto.item.id
