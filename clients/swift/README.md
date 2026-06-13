@@ -1,13 +1,36 @@
 # Flux Swift Client
 
-Two files, zero dependencies — drop them into your Xcode project and you're done.
+A zero-dependency Swift package for the Flux API, built on `URLSession` and Swift structured concurrency.
 
 | File | Contents |
 |------|----------|
-| `FluxModels.swift` | All `Codable` structs/enums mirroring the API DTOs |
-| `FluxClient.swift` | `actor FluxClient` — typed async/await methods for every endpoint |
+| `Sources/FluxAPI/FluxModels.swift` | All `Codable` structs/enums mirroring the API DTOs |
+| `Sources/FluxAPI/FluxClient.swift` | `actor FluxClient` — typed async/await methods for every endpoint |
 
 **Requirements**: Swift 5.9+, iOS 16+ / macOS 13+ (structured concurrency + `URLSession` async).
+
+---
+
+## Adding to your project
+
+### As a local SwiftPM dependency (recommended)
+
+In Xcode: **File → Add Package Dependencies → Add Local…** and point it at the `clients/swift/` directory. Then add **FluxAPI** to your target's frameworks.
+
+Or in your own `Package.swift`:
+
+```swift
+dependencies: [
+    .package(path: "../flux/clients/swift"),
+],
+targets: [
+    .target(name: "MyApp", dependencies: ["FluxAPI"]),
+]
+```
+
+### Copy-paste (no package manager)
+
+Drop the two files in `Sources/FluxAPI/` directly into your Xcode app target. No `import FluxAPI` needed — everything is in the same module.
 
 ---
 
@@ -25,7 +48,7 @@ The middleware enforces `Authorization: Bearer <token>` on all `/api/*` routes
 ## Initialising the client
 
 ```swift
-import Foundation
+import FluxAPI   // omit when copy-pasting files directly into your target
 
 let client = FluxClient(
     baseURL: URL(string: "https://your-flux-app.railway.app")!,
