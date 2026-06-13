@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-import { Check, ChevronDown, Copy, Play } from "lucide-react"
+import { Check, ChevronDown, Copy, Loader2, Play } from "lucide-react"
 import { remarkTimestamps } from "@/lib/markdown/timestamps"
 import { hiResArtwork } from "@/lib/artwork"
 import { episodeHref } from "@/lib/episode-href"
@@ -129,11 +129,12 @@ export function ChatMessage({
   const citedNums = new Set(
     Array.from(message.content.matchAll(/\[(\d+)\]/g), (m) => Number(m[1])),
   )
+  const webSources = sources.filter((s) => s.isWeb)
+  const highlightSources = sources.filter((s) => s.isHighlight)
   const shownSources = sources
     .map((s, i) => ({ s, n: i + 1 }))
-    .filter(({ s }) => !s.isHighlight)
+    .filter(({ s }) => !s.isHighlight && !s.isWeb)
     .filter(({ n }) => citedNums.size === 0 || citedNums.has(n))
-  const highlightSources = sources.filter((s) => s.isHighlight)
 
   const sourceGroups = (() => {
     const order: string[] = []
@@ -205,17 +206,24 @@ export function ChatMessage({
             {content}
           </ReactMarkdown>
         ) : pending ? (
-          <span className="inline-flex gap-1">
-            <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
-            <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
-            <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground" />
-          </span>
+          message.status ? (
+            <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-3.5 animate-spin" />
+              {message.status}
+            </span>
+          ) : (
+            <span className="inline-flex gap-1">
+              <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
+              <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
+              <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground" />
+            </span>
+          )
         ) : null}
       </div>
 
       {message.content && (
         <>
-          {(shownSources.length > 0 || highlightSources.length > 0) && (
+          {(shownSources.length > 0 || highlightSources.length > 0 || webSources.length > 0) && (
             <div className="space-y-2">
               <p className="font-sans text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Sources
@@ -307,6 +315,29 @@ export function ChatMessage({
                         </span>
                       </span>
                     </button>
+                  ))}
+                </div>
+              )}
+              {webSources.length > 0 && (
+                <div className="space-y-2">
+                  {webSources.map((s, i) => (
+                    <a
+                      key={`web-${i}`}
+                      href={s.url ?? "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex w-full items-start gap-3 rounded-xl border p-2.5 text-left transition-colors hover:border-foreground/20 hover:bg-muted/50"
+                    >
+                      <span className="shrink-0 rounded bg-sky-500/15 px-1.5 py-0.5 font-sans text-[10px] font-medium uppercase tracking-wide text-sky-600 dark:text-sky-400">
+                        Web
+                      </span>
+                      <span className="min-w-0 flex-1 font-sans">
+                        <span className="line-clamp-1 text-sm font-medium">{s.itemTitle}</span>
+                        <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                          {s.url ? new URL(s.url).hostname.replace(/^www\./, "") : ""}
+                        </span>
+                      </span>
+                    </a>
                   ))}
                 </div>
               )}
