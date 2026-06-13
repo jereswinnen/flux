@@ -102,38 +102,39 @@ private struct LibraryList: View {
     }
 
     var body: some View {
-        if items.isEmpty {
-            ContentUnavailableView(
-                "Nothing here",
-                systemImage: "tray",
-                description: Text("Pull to refresh, or add items on the web.")
-            )
-        } else {
-            List(items) { item in
-                NavigationLink {
-                    // P2: real detail view
-                    VStack(spacing: 12) {
-                        Text(item.title).font(.headline)
-                        Text(item.status).font(.caption).foregroundStyle(.secondary)
-                    }
-                    .padding()
-                    .navigationTitle(item.title)
-                    .navigationBarTitleDisplayMode(.inline)
-                } label: {
-                    ItemRow(item: item)
+        List(items) { item in
+            NavigationLink {
+                // P2: real detail view
+                VStack(spacing: 12) {
+                    Text(item.title).font(.headline)
+                    Text(item.status).font(.caption).foregroundStyle(.secondary)
                 }
-                .swipeActions(edge: .leading) {
-                    Button(item.readState == "read" ? "Unread" : "Read") {
-                        toggleRead(item)
-                    }
-                    .tint(.blue)
-                }
-                .swipeActions(edge: .trailing) {
-                    Button("Archive") { archive(item) }
-                        .tint(.orange)
-                }
+                .padding()
+                .navigationTitle(item.title)
+                .navigationBarTitleDisplayMode(.inline)
+            } label: {
+                ItemRow(item: item)
             }
-            .listStyle(.plain)
+            .swipeActions(edge: .leading) {
+                Button(item.readState == "read" ? "Unread" : "Read") {
+                    toggleRead(item)
+                }
+                .tint(.blue)
+            }
+            .swipeActions(edge: .trailing) {
+                Button("Archive") { archive(item) }
+                    .tint(.orange)
+            }
+        }
+        .listStyle(.plain)
+        .overlay {
+            if items.isEmpty {
+                ContentUnavailableView(
+                    "Nothing here",
+                    systemImage: "tray",
+                    description: Text("Pull to refresh, or add items on the web.")
+                )
+            }
         }
     }
 

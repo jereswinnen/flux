@@ -41,8 +41,12 @@ struct SettingsView: View {
 
     private func testConnection() async {
         connectionStatus = .testing
+        guard let client = config.makeClient() else {
+            connectionStatus = .failure("No server URL configured.")
+            return
+        }
         do {
-            _ = try await config.makeClient()?.sync()
+            _ = try await client.sync()
             connectionStatus = .success
         } catch {
             connectionStatus = .failure(error.localizedDescription)
