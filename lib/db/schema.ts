@@ -70,6 +70,7 @@ export const highlights = pgTable(
   (t) => [
     index("highlights_item_idx").on(t.itemId),
     index("highlights_created_idx").on(t.createdAt),
+    index("highlights_embedding_idx").using("hnsw", t.embedding.op("vector_cosine_ops")),
   ],
 )
 
