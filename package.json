@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:generate": "drizzle-kit generate",
+    "db:generate:UNSAFE": "drizzle-kit generate",
     "db:migrate": "tsx lib/db/migrate.ts"
   },
   "dependencies": {
