@@ -2,6 +2,7 @@ import { openai } from "@ai-sdk/openai"
 import { generateObject, type LanguageModel } from "ai"
 import { z } from "zod"
 import type { Segment } from "@/lib/ai/chunk"
+import type { ItemType } from "@/lib/db/schema"
 
 export const insightsSchema = z.object({
   summary: z.string().describe("2-3 sentence summary (the TL;DR)"),
@@ -76,29 +77,54 @@ function anchorToSegment(text: string, segments: Segment[], fallbackSec: number)
   return bestScore >= 1 ? bestStart : fallbackSec
 }
 
+export function buildInsightsPrompt(body: string, kind: ItemType | undefined): string {
+  const isArticle = kind === "article"
+
+  const mediaPrompt =
+    "You are a sharp research assistant building reusable notes from a podcast episode. " +
+    "The transcript below is prefixed with [m:ss] timestamps.\n\n" +
+    "Produce structured insights:\n" +
+    "- summary: a tight 2-3 sentence TL;DR of what the episode is actually about.\n" +
+    "- takeaways: the most important, specific lessons or claims — not generic platitudes.\n" +
+    "- chapters: 4-10 chronological sections that map the episode's arc. Give each a short, " +
+    "descriptive title and the startSec (in seconds) taken from the nearest preceding [m:ss] marker.\n" +
+    "- quotes: a few genuinely memorable quotes, each with approxTimestampSec from its marker.\n" +
+    "- topics: concise themes (1-3 words each).\n" +
+    "- entities: notable people, companies, books, products, and places mentioned, each typed, " +
+    "with a short context phrase describing how it came up and the approxTimestampSec of its " +
+    "first mention taken from the nearest preceding [m:ss] marker.\n\n" +
+    "Transcript:\n" +
+    body
+
+  const articlePrompt =
+    "You are a sharp research assistant building reusable notes from a web article.\n\n" +
+    "Produce structured insights:\n" +
+    "- summary: a tight 2-3 sentence TL;DR of what the article is actually about. " +
+    "Refer to it as 'this article' (never 'this episode').\n" +
+    "- takeaways: the most important, specific lessons or claims — not generic platitudes.\n" +
+    "- chapters: return an empty array []. Articles have no timeline; do NOT invent chapters.\n" +
+    "- quotes: a few genuinely memorable quotes. Set approxTimestampSec to 0 for every quote " +
+    "(articles have no timestamps).\n" +
+    "- topics: concise themes (1-3 words each).\n" +
+    "- entities: notable people, companies, books, products, and places mentioned, each typed, " +
+    "with a short context phrase describing how it came up. Set approxTimestampSec to 0 for every entity.\n\n" +
+    "Article:\n" +
+    body
+
+  return isArticle ? articlePrompt : mediaPrompt
+}
+
 export async function generateInsights(
   transcript: string,
-  opts: { model?: LanguageModel; segments?: Segment[] } = {},
+  opts: { model?: LanguageModel; segments?: Segment[]; kind?: ItemType } = {},
 ): Promise<Insights> {
-  const body = timestampedTranscript(opts.segments, transcript)
+  const isArticle = opts.kind === "article"
+  const body = isArticle ? transcript : timestampedTranscript(opts.segments, transcript)
+
   const { object } = await generateObject({
     model: opts.model ?? openai("gpt-5.4-mini-2026-03-17"),
     schema: insightsSchema,
-    prompt:
-      "You are a sharp research assistant building reusable notes from a podcast episode. " +
-      "The transcript below is prefixed with [m:ss] timestamps.\n\n" +
-      "Produce structured insights:\n" +
-      "- summary: a tight 2-3 sentence TL;DR of what the episode is actually about.\n" +
-      "- takeaways: the most important, specific lessons or claims — not generic platitudes.\n" +
-      "- chapters: 4-10 chronological sections that map the episode's arc. Give each a short, " +
-      "descriptive title and the startSec (in seconds) taken from the nearest preceding [m:ss] marker.\n" +
-      "- quotes: a few genuinely memorable quotes, each with approxTimestampSec from its marker.\n" +
-      "- topics: concise themes (1-3 words each).\n" +
-      "- entities: notable people, companies, books, products, and places mentioned, each typed, " +
-      "with a short context phrase describing how it came up and the approxTimestampSec of its " +
-      "first mention taken from the nearest preceding [m:ss] marker.\n\n" +
-      "Transcript:\n" +
-      body,
+    prompt: buildInsightsPrompt(body, opts.kind),
   })
 
   // Quotes are near-verbatim, so snap them onto the real segment they came from

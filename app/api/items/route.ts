@@ -42,7 +42,13 @@ function fireProcessing(adapter: SourceAdapter, item: ItemRow) {
   if (item.status !== "processing") return
   adapter
     .startProcessing(item)
-    .then(() => itemRepo.updateStatus(item.id, "transcribing"))
+    .then(async () => {
+      // Async adapters (podcast/youtube) are still "processing" here, awaiting
+      // their webhook → advance to "transcribing". Inline adapters (article)
+      // have already reached "ready"/"failed" — don't overwrite that.
+      const cur = await itemRepo.getById(item.id)
+      if (cur?.status === "processing") await itemRepo.updateStatus(item.id, "transcribing")
+    })
     .catch((e: unknown) =>
       itemRepo.updateStatus(item.id, "failed", e instanceof Error ? e.message : String(e)),
     )

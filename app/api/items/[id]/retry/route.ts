@@ -22,7 +22,10 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     await itemRepo.updateStatus(id, "processing")
     getAdapter(item.type)
       .startProcessing(item)
-      .then(() => itemRepo.updateStatus(id, "transcribing"))
+      .then(async () => {
+        const cur = await itemRepo.getById(id)
+        if (cur?.status === "processing") await itemRepo.updateStatus(id, "transcribing")
+      })
       .catch((e: unknown) =>
         itemRepo.updateStatus(id, "failed", e instanceof Error ? e.message : String(e)),
       )

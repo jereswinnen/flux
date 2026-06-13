@@ -8,6 +8,7 @@ import {
 } from "@/lib/ai/insights"
 import { makeItemRepo } from "@/lib/db/items"
 import * as schema from "@/lib/db/schema"
+import type { ItemType } from "@/lib/db/schema"
 import { resolveEpisodeEntities, type ExtractedEntity } from "@/lib/entities/resolve"
 
 export interface TranscriptResult {
@@ -15,6 +16,7 @@ export interface TranscriptResult {
   transcript: string
   segments: Segment[]
   contentHtml?: string
+  itemType?: ItemType
 }
 
 export interface PipelineDeps {
@@ -32,7 +34,7 @@ export async function processContent(result: TranscriptResult, deps: PipelineDep
   const { db } = deps
   const repo = makeItemRepo(db)
   const genInsights =
-    deps.generateInsights ?? ((t: string, s: Segment[]) => defaultGenerateInsights(t, { segments: s }))
+    deps.generateInsights ?? ((t: string, s: Segment[]) => defaultGenerateInsights(t, { segments: s, kind: result.itemType }))
   const embed = deps.embedTexts ?? ((t: string[]) => defaultEmbedTexts(t))
   const resolveEntities =
     deps.resolveEntities ??

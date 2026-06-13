@@ -40,6 +40,7 @@ export const articleAdapter: SourceAdapter = {
         transcript: article.textContent,
         segments: paragraphsToSegments(article.textContent),
         contentHtml: article.contentHtml,
+        itemType: "article",
       },
       { db },
     )

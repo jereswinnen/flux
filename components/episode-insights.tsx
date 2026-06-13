@@ -147,13 +147,15 @@ export function EpisodeInsights({
                 className="border-l-2 border-primary/40 pl-4 font-serif text-lg italic leading-relaxed"
               >
                 &ldquo;{q.text}&rdquo;{" "}
-                <button
-                  type="button"
-                  onClick={() => onSeek(q.approxTimestampSec)}
-                  className="align-middle font-sans text-sm not-italic text-muted-foreground hover:text-foreground hover:underline"
-                >
-                  [{formatTimestamp(q.approxTimestampSec)}]
-                </button>
+                {q.approxTimestampSec > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => onSeek(q.approxTimestampSec)}
+                    className="align-middle font-sans text-sm not-italic text-muted-foreground hover:text-foreground hover:underline"
+                  >
+                    [{formatTimestamp(q.approxTimestampSec)}]
+                  </button>
+                )}
               </blockquote>
             ))}
           </div>
@@ -241,7 +243,7 @@ export function EpisodeInsights({
                               )}
                               <p className="text-xs text-muted-foreground">
                                 Mentioned in {e.mentionCount} episode{e.mentionCount === 1 ? "" : "s"}
-                                {e.approxTimestampSec != null && (
+                                {e.approxTimestampSec != null && e.approxTimestampSec > 0 && (
                                   <>
                                     {" · "}
                                     <button
