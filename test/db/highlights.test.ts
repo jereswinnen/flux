@@ -53,3 +53,12 @@ test("updateNote + remove", async () => {
   await repo.remove(h.id)
   expect(await repo.list({})).toEqual([])
 })
+
+test("list filters by itemId", async () => {
+  const a = await items.create({ type: "podcast", title: "A", audioUrl: "https://a/a.mp3" })
+  const b = await items.create({ type: "podcast", title: "B", audioUrl: "https://a/b.mp3" })
+  await repo.create({ itemId: a.id, kind: "transcript", text: "from a" })
+  await repo.create({ itemId: b.id, kind: "transcript", text: "from b" })
+  const rows = await repo.list({ itemId: a.id })
+  expect(rows.map((r) => r.text)).toEqual(["from a"])
+})

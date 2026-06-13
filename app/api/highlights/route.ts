@@ -6,7 +6,8 @@ export async function GET(request: Request) {
   const url = new URL(request.url)
   const type = url.searchParams.get("type") ?? undefined
   const q = url.searchParams.get("q") ?? undefined
-  const rows = await highlightRepo.list({ type, q })
+  const itemId = url.searchParams.get("itemId") ?? undefined
+  const rows = await highlightRepo.list({ type, q, itemId })
   return Response.json({ highlights: rows.map(highlightToDTO) })
 }
 

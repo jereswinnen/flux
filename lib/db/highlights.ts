@@ -40,8 +40,9 @@ export function makeHighlightRepo(db: DB) {
       return row
     },
 
-    async list(opts: { type?: string; q?: string }): Promise<HighlightRow[]> {
+    async list(opts: { type?: string; q?: string; itemId?: string }): Promise<HighlightRow[]> {
       const filters = []
+      if (opts.itemId) filters.push(eq(highlights.itemId, opts.itemId))
       if (opts.type) filters.push(eq(items.type, opts.type as ItemType))
       if (opts.q && opts.q.trim()) {
         const term = `%${opts.q.trim()}%`
