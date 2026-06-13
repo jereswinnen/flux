@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { AudioLines, Highlighter, Library, Loader2, Plus, Sparkles } from "lucide-react"
+import { AudioLines, Highlighter, Library, Loader2, Plus, Search, Sparkles } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -83,6 +83,11 @@ export function AppSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname === "/ask"} tooltip="Ask your library" onClick={close}>
                 <Link href="/ask"><Sparkles className="size-4" /><span>Ask</span></Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={pathname === "/search"} tooltip="Search" onClick={close}>
+                <Link href="/search"><Search className="size-4" /><span>Search</span></Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>

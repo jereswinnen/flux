@@ -234,7 +234,8 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
           stage.style.height = `${rect.height}px`
           stage.style.borderRadius = "0.5rem"
         } else {
-          const w = window.innerWidth >= 768 ? 448 : 288
+          const wRaw = window.innerWidth >= 768 ? 448 : 288
+          const w = Math.min(wRaw, window.innerWidth - 2 * MINI_MARGIN)
           const h = Math.round((w * 9) / 16)
           stage.style.top = `${window.innerHeight - h - MINI_MARGIN}px`
           stage.style.left = `${window.innerWidth - w - MINI_MARGIN}px`
@@ -335,7 +336,7 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
           )}
 
           {docked && (
-            <div className="absolute right-1 top-1 z-40 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="absolute right-1 top-1 z-40 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 pointer-coarse:opacity-100">
               {itemId && (
                 <button
                   type="button"
@@ -379,17 +380,26 @@ function VideoControls({ chapters }: { chapters: PlayerChapter[] }) {
   const pct = duration > 0 ? Math.min(100, (currentSec / duration) * 100) : 0
   const ticks = chapters.filter((c) => c.startSec > 0 && c.startSec <= duration)
 
-  function onScrub(e: React.MouseEvent<HTMLDivElement>) {
+  function seekFromEvent(e: React.PointerEvent<HTMLDivElement>) {
     if (!duration) return
     const rect = e.currentTarget.getBoundingClientRect()
-    const frac = (e.clientX - rect.left) / rect.width
-    seekTo(Math.max(0, Math.min(1, frac)) * duration)
+    const fraction = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+    seekTo(fraction * duration)
+  }
+  function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    seekFromEvent(e)
+  }
+  function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.buttons === 0 && e.pointerType === "mouse") return
+    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return
+    seekFromEvent(e)
   }
 
   return (
     <div
       data-paused={!playing}
-      className="absolute inset-0 z-10 opacity-0 transition-opacity duration-200 group-hover:opacity-100 data-[paused=true]:opacity-100"
+      className="absolute inset-0 z-10 opacity-0 transition-opacity duration-200 group-hover:opacity-100 data-[paused=true]:opacity-100 pointer-coarse:opacity-100"
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/60 to-transparent" />
 
@@ -425,8 +435,9 @@ function VideoControls({ chapters }: { chapters: PlayerChapter[] }) {
           )}
         </button>
         <div
-          className="relative h-1.5 flex-1 cursor-pointer rounded-full bg-white/30"
-          onClick={onScrub}
+          className="relative h-1.5 flex-1 cursor-pointer touch-none rounded-full bg-white/30"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
         >
           <div
             className="absolute inset-y-0 left-0 rounded-full bg-white"

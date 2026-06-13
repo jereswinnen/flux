@@ -37,11 +37,20 @@ export function GlobalPlayer() {
   const { track, playing, current, duration, toggle, seek, scrub } = usePlayer()
   if (!track) return null
 
-  function onScrub(e: React.MouseEvent<HTMLDivElement>) {
+  function seekFromEvent(e: React.PointerEvent<HTMLDivElement>) {
     if (!duration) return
     const rect = e.currentTarget.getBoundingClientRect()
-    const frac = (e.clientX - rect.left) / rect.width
-    scrub(Math.max(0, Math.min(1, frac)) * duration)
+    const fraction = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+    scrub(fraction * duration)
+  }
+  function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    seekFromEvent(e)
+  }
+  function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.buttons === 0 && e.pointerType === "mouse") return
+    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return
+    seekFromEvent(e)
   }
 
   const pct = duration ? (current / duration) * 100 : 0
@@ -78,7 +87,7 @@ export function GlobalPlayer() {
         {formatTimestamp(current)}
       </span>
 
-      <div className="relative h-4 flex-1 cursor-pointer" onClick={onScrub}>
+      <div className="relative h-4 flex-1 cursor-pointer touch-none" onPointerDown={onPointerDown} onPointerMove={onPointerMove}>
         <div className="absolute inset-y-0 my-auto h-1.5 w-full rounded-full bg-muted" />
         <div
           className="absolute inset-y-0 my-auto h-1.5 rounded-full bg-primary"

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Plus } from "lucide-react"
+import { toast } from "sonner"
 import { AppHeader } from "@/components/app-header"
 import { Button } from "@/components/ui/button"
 import { ConversationMenu } from "@/components/conversation-menu"
@@ -52,7 +53,7 @@ export function AskView() {
           })),
         ),
       )
-      .catch(() => {})
+      .catch(() => toast.error("Couldn't load your library"))
   }, [])
 
   const initialAttachment = useMemo(

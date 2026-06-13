@@ -120,6 +120,7 @@ export function SearchView({ query }: { query: string }) {
   const router = useRouter()
   const [input, setInput] = useState(query)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
   const [answer, setAnswer] = useState<string | null>(null)
   const [sources, setSources] = useState<Source[]>([])
   const [entities, setEntities] = useState<EntityHit[]>([])
@@ -136,6 +137,7 @@ export function SearchView({ query }: { query: string }) {
     }
     const mySeq = ++seq.current
     setLoading(true)
+    setError(false)
     setAnswer(null)
     fetch("/api/answer", {
       method: "POST",
@@ -149,7 +151,7 @@ export function SearchView({ query }: { query: string }) {
         setSources(d.sources ?? [])
         setEntities(d.entities ?? [])
       })
-      .catch(() => {})
+      .catch(() => { if (mySeq === seq.current) setError(true) })
       .finally(() => {
         if (mySeq === seq.current) setLoading(false)
       })
@@ -217,7 +219,9 @@ export function SearchView({ query }: { query: string }) {
             </section>
           )}
 
-          {answer ? (
+          {error ? (
+            <p className="text-sm text-destructive">Couldn&apos;t search — try again.</p>
+          ) : answer ? (
             <section className="space-y-3">
               <h2 className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 <Sparkles className="size-3.5" /> Answer

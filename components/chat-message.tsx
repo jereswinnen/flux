@@ -269,7 +269,7 @@ export function ChatMessage({
                             className={`size-4 shrink-0 text-muted-foreground transition-transform ${openGroups.has(g.item.itemId) ? "rotate-180" : ""}`}
                           />
                         ) : (
-                          <Play className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                          <Play className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 pointer-coarse:opacity-100" />
                         )}
                       </button>
                       {multi && openGroups.has(g.item.itemId) && (
@@ -287,7 +287,7 @@ export function ChatMessage({
                                 <span className="flex-1 font-sans tabular-nums text-muted-foreground">
                                   {s.startSec > 0 ? formatTimestamp(s.startSec) : "Reference"}
                                 </span>
-                                <Play className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                                <Play className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 pointer-coarse:opacity-100" />
                               </button>
                             </li>
                           ))}

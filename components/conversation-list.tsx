@@ -74,7 +74,7 @@ export function ConversationList({
               <button type="button" onClick={() => onSelect(c.id)} className="min-w-0 flex-1 truncate text-left">
                 {c.title}
               </button>
-              <div className="ml-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100">
+              <div className="ml-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 group-focus-within:opacity-100">
                 <button type="button" aria-label="Rename conversation" onClick={() => startEdit(c)}>
                   <Pencil className="size-3.5 text-muted-foreground hover:text-foreground" />
                 </button>

@@ -91,7 +91,7 @@ export function HighlightsFeed({ initial }: { initial: HighlightDTO[] }) {
                   type="button"
                   onClick={() => remove(h.id)}
                   aria-label="Delete highlight"
-                  className="ml-auto opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                  className="ml-auto opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100 pointer-coarse:opacity-100 group-focus-within:opacity-100"
                 >
                   <Trash2 className="size-4" />
                 </button>

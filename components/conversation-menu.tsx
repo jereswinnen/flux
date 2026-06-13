@@ -75,7 +75,7 @@ export function ConversationMenu({
                 e.stopPropagation()
                 onDelete(c.id)
               }}
-              className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+              className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 pointer-coarse:opacity-100 group-focus-within:opacity-100"
             >
               <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
             </button>

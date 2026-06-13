@@ -161,7 +161,16 @@ export function useConversation(
           // Stopped by the user — keep the streamed-so-far optimistic content.
         } else {
           toast.error("Chat failed")
-          await reload()
+          // Inject an inline error into the empty assistant bubble so the user
+          // sees feedback. Don't reload — that would overwrite the error message.
+          setMessages((prev) => {
+            const next = [...prev]
+            const last = next[next.length - 1]
+            if (last && last.role === "assistant" && !last.content) {
+              next[next.length - 1] = { ...last, content: "⚠️ Something went wrong. Please try again." }
+            }
+            return next
+          })
         }
       } finally {
         setBusy(false)

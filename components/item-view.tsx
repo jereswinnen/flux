@@ -174,6 +174,7 @@ function ArticleBody({
             loading="lazy"
             decoding="async"
             className="mb-6 aspect-video w-full rounded-lg object-cover"
+            onError={(e) => { e.currentTarget.style.display = "none" }}
           />
         )}
         <HighlightedHtml
