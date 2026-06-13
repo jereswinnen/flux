@@ -6,6 +6,54 @@ import { splitForMarks } from "@/lib/highlights/mark-text"
 const MARK_CLASS =
   "rounded-[3px] bg-primary/15 hover:bg-primary/25 transition-colors cursor-pointer"
 
+/** Wrap the first occurrence of `needle` in `root` in `<mark data-hl-id>`, even
+ *  when it spans multiple text nodes (a sentence crossing a <a>/<strong>). Each
+ *  intersecting text-node portion gets its own <mark> (sharing the id), so a
+ *  click anywhere in the span opens the popover. Text already inside a mark is
+ *  skipped, so overlapping highlights resolve first-wins and never nest. */
+function markRange(root: HTMLElement, needle: string, id: string) {
+  if (!needle) return
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (n) =>
+      (n.parentElement as HTMLElement | null)?.closest("mark[data-hl-id]")
+        ? NodeFilter.FILTER_REJECT
+        : NodeFilter.FILTER_ACCEPT,
+  })
+  let full = ""
+  const spans: { node: Text; start: number }[] = []
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    const node = n as Text
+    spans.push({ node, start: full.length })
+    full += node.nodeValue ?? ""
+  }
+
+  const at = full.indexOf(needle)
+  if (at < 0) return
+  const end = at + needle.length
+
+  // Collect the covered portion of each intersecting text node up front (offsets
+  // are computed before any DOM mutation; distinct nodes don't affect each other).
+  const hits: { node: Text; from: number; to: number }[] = []
+  for (const { node, start } of spans) {
+    const len = node.nodeValue?.length ?? 0
+    const nodeEnd = start + len
+    if (nodeEnd <= at || start >= end) continue
+    hits.push({ node, from: Math.max(0, at - start), to: Math.min(len, end - start) })
+  }
+
+  for (const { node, from, to } of hits) {
+    if (to <= from) continue
+    const range = document.createRange()
+    range.setStart(node, from)
+    range.setEnd(node, to)
+    const mark = document.createElement("mark")
+    mark.setAttribute("data-hl-id", id)
+    mark.className = MARK_CLASS
+    // Single-node range — surroundContents never throws here.
+    range.surroundContents(mark)
+  }
+}
+
 /** Render a plain string with saved highlights wrapped in clickable <mark>s.
  *  For React-controlled text (insights takeaways/quotes). */
 export function MarkedText({
@@ -59,28 +107,7 @@ export function HighlightedHtml({
     if (!root) return
     root.innerHTML = html
     for (const m of marks) {
-      const needle = m.text.trim()
-      if (!needle) continue
-      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
-      let node = walker.nextNode() as Text | null
-      while (node) {
-        const idx = node.nodeValue?.indexOf(needle) ?? -1
-        if (idx >= 0) {
-          const range = document.createRange()
-          range.setStart(node, idx)
-          range.setEnd(node, idx + needle.length)
-          const mark = document.createElement("mark")
-          mark.setAttribute("data-hl-id", m.id)
-          mark.className = MARK_CLASS
-          try {
-            range.surroundContents(mark)
-          } catch {
-            // Selection crossed an element boundary — skip this one.
-          }
-          break
-        }
-        node = walker.nextNode() as Text | null
-      }
+      markRange(root, m.text.trim(), m.id)
     }
   }, [html, marks])
 
