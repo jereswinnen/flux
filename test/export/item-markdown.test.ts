@@ -1,5 +1,5 @@
 import { expect, test } from "vitest"
-import { buildEpisodeMarkdown } from "@/lib/export/episode-markdown"
+import { buildItemMarkdown } from "@/lib/export/item-markdown"
 import { slugify } from "@/lib/export/slug"
 
 const episode = {
@@ -19,7 +19,7 @@ const insights = {
 const transcript = { segments: [{ start: 0, end: 5, text: "hello" }, { start: 65, end: 70, text: "world" }] }
 
 test("builds full markdown with timestamped transcript", () => {
-  const md = buildEpisodeMarkdown(episode, transcript, insights)
+  const md = buildItemMarkdown(episode, transcript, insights)
   expect(md).toContain("# #415 How Elon Thinks")
   expect(md).toContain("Founders · 51:25")
   expect(md).toContain("Source: https://example.com/feed.xml")
@@ -34,7 +34,7 @@ test("builds full markdown with timestamped transcript", () => {
 })
 
 test("omits sections with no data", () => {
-  const md = buildEpisodeMarkdown(
+  const md = buildItemMarkdown(
     { title: "Bare", podcastName: null, durationSec: null, publishedAt: null },
     null,
     null,

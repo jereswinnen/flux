@@ -8,7 +8,7 @@ import postgres from "postgres"
 import { afterAll, beforeAll, beforeEach, expect, test, vi } from "vitest"
 import * as schema from "@/lib/db/schema"
 import { makeItemRepo } from "@/lib/db/items"
-import { resolveEpisodeEntities } from "@/lib/entities/resolve"
+import { resolveItemEntities } from "@/lib/entities/resolve"
 import type { Candidate } from "@/lib/entities/sources"
 
 const client = postgres(process.env.TEST_DATABASE_URL!, { max: 1 })
@@ -50,7 +50,7 @@ test("new entity is enriched, linked, and gets an entity chunk", async () => {
   const ep = await repo.create({ type: "podcast", title: "E1", audioUrl: "https://a/1.mp3" })
   const d = deps()
 
-  await resolveEpisodeEntities(
+  await resolveItemEntities(
     ep.id,
     [{ name: "Steve Jobs", type: "person", context: "discussed re: design", approxTimestampSec: 90 }],
     d,
@@ -87,11 +87,11 @@ test("existing entity is reused: no candidate search, no verify, just a link", a
   const ep1 = await repo.create({ type: "podcast", title: "E1", audioUrl: "https://a/1.mp3" })
   const ep2 = await repo.create({ type: "podcast", title: "E2", audioUrl: "https://a/2.mp3" })
   const d1 = deps()
-  await resolveEpisodeEntities(ep1.id, [{ name: "Steve Jobs", type: "person" }], d1)
+  await resolveItemEntities(ep1.id, [{ name: "Steve Jobs", type: "person" }], d1)
 
   const d2 = deps()
   // Different casing must still match.
-  await resolveEpisodeEntities(
+  await resolveItemEntities(
     ep2.id,
     [{ name: "steve jobs", type: "person", context: "hiring philosophy" }],
     d2,
@@ -116,13 +116,13 @@ test("a failed entity is re-enriched on next encounter", async () => {
   const ep2 = await repo.create({ type: "podcast", title: "E2", audioUrl: "https://a/2.mp3" })
 
   const d1 = deps({ searchCandidates: vi.fn().mockRejectedValue(new Error("boom")) })
-  await resolveEpisodeEntities(ep1.id, [{ name: "Steve Jobs", type: "person" }], d1)
+  await resolveItemEntities(ep1.id, [{ name: "Steve Jobs", type: "person" }], d1)
 
   const [failed] = await db.select().from(schema.entities)
   expect(failed.enrichmentStatus).toBe("failed")
 
   const d2 = deps()
-  await resolveEpisodeEntities(ep2.id, [{ name: "Steve Jobs", type: "person" }], d2)
+  await resolveItemEntities(ep2.id, [{ name: "Steve Jobs", type: "person" }], d2)
 
   expect(d2.searchCandidates).toHaveBeenCalled()
   const rows = await db.select().from(schema.entities)
@@ -140,7 +140,7 @@ test("verifier rejection stores an unmatched entity that is still linked", async
   const ep = await repo.create({ type: "podcast", title: "E1", audioUrl: "https://a/1.mp3" })
   const d = deps({ verifyCandidate: vi.fn(async () => -1) })
 
-  await resolveEpisodeEntities(ep.id, [{ name: "Obscure Startup", type: "company" }], d)
+  await resolveItemEntities(ep.id, [{ name: "Obscure Startup", type: "company" }], d)
 
   const [entity] = await db.select().from(schema.entities)
   expect(entity.enrichmentStatus).toBe("unmatched")
@@ -156,7 +156,7 @@ test("a throwing source still produces a linked 'failed' entity and other entiti
     .mockResolvedValueOnce([jobsCandidate])
   const d = deps({ searchCandidates: search })
 
-  await resolveEpisodeEntities(
+  await resolveItemEntities(
     ep.id,
     [
       { name: "Broken One", type: "company" },
@@ -174,7 +174,7 @@ test("a throwing source still produces a linked 'failed' entity and other entiti
 
 test("duplicate mentions in one episode create a single link", async () => {
   const ep = await repo.create({ type: "podcast", title: "E1", audioUrl: "https://a/1.mp3" })
-  await resolveEpisodeEntities(
+  await resolveItemEntities(
     ep.id,
     [
       { name: "Steve Jobs", type: "person" },
@@ -190,7 +190,7 @@ test("empty extracted array does nothing", async () => {
   const ep = await repo.create({ type: "podcast", title: "E1", audioUrl: "https://a/1.mp3" })
   const d = deps()
 
-  await resolveEpisodeEntities(ep.id, [], d)
+  await resolveItemEntities(ep.id, [], d)
 
   expect(await db.select().from(schema.entities)).toHaveLength(0)
   expect(await db.select().from(schema.itemEntities)).toHaveLength(0)
@@ -201,7 +201,7 @@ test("no-signal mention skips the chunk", async () => {
   const ep = await repo.create({ type: "podcast", title: "E1", audioUrl: "https://a/1.mp3" })
   const d = deps({ verifyCandidate: vi.fn(async () => -1) })
 
-  await resolveEpisodeEntities(ep.id, [{ name: "Obscure Startup", type: "company" }], d)
+  await resolveItemEntities(ep.id, [{ name: "Obscure Startup", type: "company" }], d)
 
   const [entity] = await db.select().from(schema.entities)
   expect(entity.enrichmentStatus).toBe("unmatched")
@@ -216,7 +216,7 @@ test("embedTexts failure does not throw: links persist, no chunks written", asyn
   const d = deps({ embedTexts: vi.fn().mockRejectedValue(new Error("embed outage")) })
 
   await expect(
-    resolveEpisodeEntities(
+    resolveItemEntities(
       ep.id,
       [{ name: "Steve Jobs", type: "person", context: "discussed re: design" }],
       d,
@@ -237,7 +237,7 @@ test("slug collisions get a numeric suffix", async () => {
     enrichmentStatus: "unmatched",
   })
   const d = deps({ verifyCandidate: vi.fn(async () => -1) })
-  await resolveEpisodeEntities(ep.id, [{ name: "Mercury", type: "company" }], d)
+  await resolveItemEntities(ep.id, [{ name: "Mercury", type: "company" }], d)
 
   const rows = await db.select().from(schema.entities)
   expect(rows.map((r) => r.slug).sort()).toEqual(["mercury", "mercury-2"])

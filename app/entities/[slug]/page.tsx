@@ -4,13 +4,13 @@ import { ExternalLink } from "lucide-react"
 import { db } from "@/lib/db"
 import {
   coMentionedEntities,
-  episodesMentioningEntity,
+  itemsMentioningEntity,
   getEntityBySlug,
 } from "@/lib/db/entities"
 import { AppHeader } from "@/components/app-header"
 import { Badge } from "@/components/ui/badge"
 import { hiResArtwork } from "@/lib/artwork"
-import { episodeHref } from "@/lib/episode-href"
+import { itemHref } from "@/lib/item-href"
 import { formatTimestamp } from "@/lib/format"
 
 export const dynamic = "force-dynamic"
@@ -30,7 +30,7 @@ export default async function EntityPage({ params }: { params: Promise<{ slug: s
   if (!entity) notFound()
 
   const [mentions, related] = await Promise.all([
-    episodesMentioningEntity(db, entity.id),
+    itemsMentioningEntity(db, entity.id),
     coMentionedEntities(db, entity.id),
   ])
 
@@ -110,7 +110,7 @@ export default async function EntityPage({ params }: { params: Promise<{ slug: s
                     key={m.id}
                     href={
                       m.approxTimestampSec != null
-                        ? episodeHref(m.id, m.approxTimestampSec)
+                        ? itemHref(m.id, m.approxTimestampSec)
                         : `/episodes/${m.id}`
                     }
                     className="flex items-start gap-3 border-b px-4 py-3 transition-colors last:border-b-0 hover:bg-muted"

@@ -10,8 +10,8 @@ import * as schema from "@/lib/db/schema"
 import { makeItemRepo } from "@/lib/db/items"
 import {
   coMentionedEntities,
-  entitiesForEpisode,
-  episodesMentioningEntity,
+  entitiesForItem,
+  itemsMentioningEntity,
   getEntityBySlug,
   searchEntities,
 } from "@/lib/db/entities"
@@ -118,13 +118,13 @@ async function seedKnowledgeBase() {
   return { ep1, ep2, jobs, apple }
 }
 
-test("getEntityBySlug and entitiesForEpisode return enriched rows with mention counts", async () => {
+test("getEntityBySlug and entitiesForItem return enriched rows with mention counts", async () => {
   const { ep1, jobs } = await seedKnowledgeBase()
 
   expect((await getEntityBySlug(db, "steve-jobs"))?.id).toBe(jobs.id)
   expect(await getEntityBySlug(db, "nope")).toBeNull()
 
-  const forEp = await entitiesForEpisode(db, ep1.id)
+  const forEp = await entitiesForItem(db, ep1.id)
   expect(forEp).toHaveLength(2)
   const jobsRow = forEp.find((e) => e.slug === "steve-jobs")!
   expect(jobsRow.context).toBe("design philosophy")
@@ -132,9 +132,9 @@ test("getEntityBySlug and entitiesForEpisode return enriched rows with mention c
   expect(Number(jobsRow.mentionCount)).toBe(2)
 }, 30_000)
 
-test("episodesMentioningEntity returns episodes with per-episode context", async () => {
+test("itemsMentioningEntity returns items with per-item context", async () => {
   const { jobs } = await seedKnowledgeBase()
-  const eps = await episodesMentioningEntity(db, jobs.id)
+  const eps = await itemsMentioningEntity(db, jobs.id)
   expect(eps).toHaveLength(2)
   expect(eps.map((e) => e.title).sort()).toEqual(["EP One", "EP Two"])
   expect(eps.find((e) => e.title === "EP One")?.context).toBe("design philosophy")
@@ -145,7 +145,7 @@ test("coMentionedEntities surfaces entities sharing episodes", async () => {
   const co = await coMentionedEntities(db, jobs.id, 5)
   expect(co).toHaveLength(1)
   expect(co[0].id).toBe(apple.id)
-  expect(Number(co[0].sharedEpisodes)).toBe(1)
+  expect(Number(co[0].sharedItems)).toBe(1)
 }, 30_000)
 
 test("searchEntities matches name or description, case-insensitively", async () => {

@@ -1,6 +1,6 @@
 import { formatTimestamp } from "@/lib/format"
 
-export type ExportEpisode = {
+export type ExportItem = {
   title: string
   podcastName: string | null
   durationSec: number | null
@@ -16,8 +16,8 @@ export type ExportInsights = {
 } | null
 export type ExportTranscript = { segments: { start: number; end: number; text: string }[] } | null
 
-export function buildEpisodeMarkdown(
-  episode: ExportEpisode,
+export function buildItemMarkdown(
+  episode: ExportItem,
   transcript: ExportTranscript,
   insights: ExportInsights,
 ): string {

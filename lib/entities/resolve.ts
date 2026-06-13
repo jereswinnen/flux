@@ -92,11 +92,11 @@ function entityChunkText(
   return context ? `${base}. Mentioned in this episode: ${context}` : base
 }
 
-// Resolve one episode's extracted entities: reuse existing rows by normalized
+// Resolve one item's extracted entities: reuse existing rows by normalized
 // name + type, enrich new ones (candidates + LLM verification), link them via
-// episode_entities, and write one entity chunk per link for RAG retrieval.
+// item_entities, and write one entity chunk per link for RAG retrieval.
 // Enrichment cost is once per *unique* entity across the library.
-export async function resolveEpisodeEntities(
+export async function resolveItemEntities(
   itemId: string,
   extracted: ExtractedEntity[],
   deps: ResolveDeps,

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db"
-import { episodesMentioning } from "@/lib/db/topics"
+import { itemsMentioning } from "@/lib/db/topics"
 import { AppHeader } from "@/components/app-header"
 import { EpisodeCard, type LibEpisode } from "@/components/episode-card"
 
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic"
 export default async function TopicPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const name = decodeURIComponent(slug)
-  const rows = await episodesMentioning(db, name)
+  const rows = await itemsMentioning(db, name)
   const episodes: LibEpisode[] = rows.map((e) => ({
     id: e.id,
     title: e.title,

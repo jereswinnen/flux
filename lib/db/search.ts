@@ -166,10 +166,10 @@ export async function refineHitTimestamps(
     .select({ itemId: transcripts.itemId, segments: transcripts.segments })
     .from(transcripts)
     .where(inArray(transcripts.itemId, itemIds))
-  const segsByEpisode = new Map(rows.map((r) => [r.itemId, r.segments ?? []]))
+  const segsByItem = new Map(rows.map((r) => [r.itemId, r.segments ?? []]))
 
   return hits.map((h) => {
-    const segs = segsByEpisode.get(h.itemId) ?? []
+    const segs = segsByItem.get(h.itemId) ?? []
     let bestStart = h.startSec
     let bestScore = 0
     for (const s of segs) {

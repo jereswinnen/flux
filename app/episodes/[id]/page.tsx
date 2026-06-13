@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation"
 import { eq } from "drizzle-orm"
 import { db } from "@/lib/db"
-import { entitiesForEpisode } from "@/lib/db/entities"
+import { entitiesForItem } from "@/lib/db/entities"
 import { highlightRepo } from "@/lib/db/highlights"
 import { itemRepo } from "@/lib/db/items"
 import { insights as insightsTable, transcripts as transcriptsTable } from "@/lib/db/schema"
@@ -16,7 +16,7 @@ export default async function EpisodePage({ params }: { params: Promise<{ id: st
 
   const [transcript] = await db.select().from(transcriptsTable).where(eq(transcriptsTable.itemId, id)).limit(1)
   const [insight] = await db.select().from(insightsTable).where(eq(insightsTable.itemId, id)).limit(1)
-  const entities = await entitiesForEpisode(db, id)
+  const entities = await entitiesForItem(db, id)
   const highlightRows = await highlightRepo.list({ itemId: id })
   const highlights = highlightRows.map((h) => ({
     id: h.id,

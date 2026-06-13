@@ -3,8 +3,8 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
 import { insights, items } from "./schema"
 import * as schema from "./schema"
 
-// Episodes whose insights list `name` as a topic, or mention it as a named entity.
-export async function episodesMentioning(
+// Items whose insights list `name` as a topic, or mention it as a named entity.
+export async function itemsMentioning(
   db: PostgresJsDatabase<typeof schema>,
   name: string,
 ) {

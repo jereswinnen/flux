@@ -9,7 +9,7 @@ vi.mock("@/lib/db/items", () => ({
   },
 }))
 vi.mock("@/lib/db/highlights", () => ({ highlightRepo: { list: vi.fn(async () => []) } }))
-vi.mock("@/lib/db/entities", () => ({ entitiesForEpisode: vi.fn(async () => []) }))
+vi.mock("@/lib/db/entities", () => ({ entitiesForItem: vi.fn(async () => []) }))
 vi.mock("@/lib/db", () => ({ db: { select: () => ({ from: () => ({ where: () => ({ limit: async () => [] }) }) }) } }))
 
 afterEach(() => vi.clearAllMocks())

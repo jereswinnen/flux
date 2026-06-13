@@ -8,7 +8,7 @@ import { Check, ChevronDown, Copy, Loader2, Play } from "lucide-react"
 import { remarkTimestamps } from "@/lib/markdown/timestamps"
 import { hiResArtwork } from "@/lib/artwork"
 import { hostname } from "@/lib/ai/web-sources"
-import { episodeHref } from "@/lib/episode-href"
+import { itemHref } from "@/lib/item-href"
 import { parseTimestamp, formatTimestamp } from "@/lib/format"
 import { usePlayer } from "@/components/player-context"
 import { useVideoPlayer } from "@/components/video-player"
@@ -103,7 +103,7 @@ export function ChatMessage({
       )
       return
     }
-    router.push(episodeHref(s.itemId, s.startSec))
+    router.push(itemHref(s.itemId, s.startSec))
   }
 
   if (message.role === "user") {

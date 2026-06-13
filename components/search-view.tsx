@@ -9,7 +9,7 @@ import { Loader2, Search, Sparkles } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { hiResArtwork } from "@/lib/artwork"
 import { hostname } from "@/lib/ai/web-sources"
-import { episodeHref } from "@/lib/episode-href"
+import { itemHref } from "@/lib/item-href"
 import { formatTimestamp } from "@/lib/format"
 
 type Source = {
@@ -92,7 +92,7 @@ function Answer({ text, sources }: { text: string; sources: Source[] }) {
               if (s) {
                 return (
                   <Link
-                    href={episodeHref(s.itemId, s.startSec)}
+                    href={itemHref(s.itemId, s.startSec)}
                     title={`${s.itemTitle} · ${formatTimestamp(s.startSec)}`}
                     className="mx-0.5 inline-flex size-4 translate-y-[-0.15em] items-center justify-center rounded bg-primary/15 align-baseline text-[10px] font-medium text-primary no-underline hover:bg-primary/25"
                   >
@@ -277,7 +277,7 @@ export function SearchView({ query }: { query: string }) {
                 {highlightSources.map((s, i) => (
                   <Link
                     key={`hl-${i}`}
-                    href={episodeHref(s.itemId, s.startSec)}
+                    href={itemHref(s.itemId, s.startSec)}
                     className="flex items-start gap-2 rounded-lg border p-2.5 transition-colors hover:bg-muted"
                   >
                     <span className="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary">
@@ -322,7 +322,7 @@ export function SearchView({ query }: { query: string }) {
 function Moment({ item }: { item: Source & { n: number } }) {
   return (
     <Link
-      href={episodeHref(item.itemId, item.startSec)}
+      href={itemHref(item.itemId, item.startSec)}
       className="flex gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-muted"
     >
       <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded bg-primary/15 text-[10px] font-medium text-primary">

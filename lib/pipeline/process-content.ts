@@ -9,7 +9,7 @@ import {
 import { makeItemRepo } from "@/lib/db/items"
 import * as schema from "@/lib/db/schema"
 import type { ItemType } from "@/lib/db/schema"
-import { resolveEpisodeEntities, type ExtractedEntity } from "@/lib/entities/resolve"
+import { resolveItemEntities, type ExtractedEntity } from "@/lib/entities/resolve"
 
 export interface TranscriptResult {
   itemId: string
@@ -39,7 +39,7 @@ export async function processContent(result: TranscriptResult, deps: PipelineDep
   const resolveEntities =
     deps.resolveEntities ??
     ((itemId: string, extracted: ExtractedEntity[], opts: { itemTitle?: string }) =>
-      resolveEpisodeEntities(itemId, extracted, { db, embedTexts: embed }, opts))
+      resolveItemEntities(itemId, extracted, { db, embedTexts: embed }, opts))
 
   try {
     // 1. Compute the slow, network-bound work FIRST — before touching stored data.

@@ -23,11 +23,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import {
-  buildEpisodeMarkdown,
-  type ExportEpisode,
+  buildItemMarkdown,
+  type ExportItem,
   type ExportInsights,
   type ExportTranscript,
-} from "@/lib/export/episode-markdown"
+} from "@/lib/export/item-markdown"
 import { slugify } from "@/lib/export/slug"
 
 export function EpisodeActions({
@@ -37,14 +37,14 @@ export function EpisodeActions({
   insights,
 }: {
   itemId: string
-  episode: ExportEpisode
+  episode: ExportItem
   transcript: ExportTranscript
   insights: ExportInsights
 }) {
   const router = useRouter()
   const [confirmOpen, setConfirmOpen] = useState(false)
 
-  const markdown = () => buildEpisodeMarkdown(episode, transcript, insights)
+  const markdown = () => buildItemMarkdown(episode, transcript, insights)
 
   async function copy() {
     try {

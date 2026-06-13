@@ -18,7 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { useCommand } from "@/components/command-context"
 import { hiResArtwork } from "@/lib/artwork"
-import { episodeHref } from "@/lib/episode-href"
+import { itemHref } from "@/lib/item-href"
 import { isUrl, looksLikeFeedUrl, AUDIO_FILE_EXT } from "@/lib/url"
 import { isYouTubeUrl } from "@/lib/sources/youtube-url"
 import { formatRelativeDate, formatTimestamp } from "@/lib/format"
@@ -338,7 +338,7 @@ export function AddCommand() {
                   <CommandItem
                     key={`moment-${m.chunkId}`}
                     value={`moment-${m.chunkId}`}
-                    onSelect={() => goTo(episodeHref(m.itemId, m.startSec))}
+                    onSelect={() => goTo(itemHref(m.itemId, m.startSec))}
                   >
                     <Thumb src={m.artworkUrl} alt={m.itemTitle} />
                     <div className="min-w-0 flex-1">

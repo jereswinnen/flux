@@ -1,5 +1,5 @@
 import { expect, test } from "vitest"
-import { buildTranscriptContext, estimateTokens } from "@/lib/ai/episode-context"
+import { buildTranscriptContext, estimateTokens } from "@/lib/ai/transcript-context"
 
 test("formats segments as [mm:ss] lines", () => {
   const ctx = buildTranscriptContext([

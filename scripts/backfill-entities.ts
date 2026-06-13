@@ -10,7 +10,7 @@ import { eq } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/postgres-js"
 import postgres from "postgres"
 import * as schema from "@/lib/db/schema"
-import { resolveEpisodeEntities } from "@/lib/entities/resolve"
+import { resolveItemEntities } from "@/lib/entities/resolve"
 
 async function main() {
   const client = postgres(process.env.DATABASE_URL!, { max: 1 })
@@ -40,7 +40,7 @@ async function main() {
     // Old insights rows predate per-entity context; the verifier falls back to
     // the episode title. One bad episode shouldn't abandon the rest of the queue.
     try {
-      await resolveEpisodeEntities(row.itemId, extracted, { db }, { itemTitle: row.title })
+      await resolveItemEntities(row.itemId, extracted, { db }, { itemTitle: row.title })
       done++
       console.log(`done  ${row.title} (${extracted.length} entities)`)
     } catch (e) {
