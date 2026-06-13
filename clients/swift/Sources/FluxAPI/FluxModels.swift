@@ -287,6 +287,22 @@ public struct HighlightLocator: Codable {
     public let charEnd: Int?
     /// Kindle location string (for `kindle` kind).
     public let location: String?
+
+    public init(
+        sec: Double? = nil,
+        segmentStart: Double? = nil,
+        index: Int? = nil,
+        charStart: Int? = nil,
+        charEnd: Int? = nil,
+        location: String? = nil
+    ) {
+        self.sec = sec
+        self.segmentStart = segmentStart
+        self.index = index
+        self.charStart = charStart
+        self.charEnd = charEnd
+        self.location = location
+    }
 }
 
 /// Raw DB row returned by POST /api/highlights (drizzle .returning()).
