@@ -10,6 +10,7 @@ export interface NewHighlight {
   text: string
   note?: string
   locator?: HighlightLocator
+  embedding?: number[]
 }
 
 export interface HighlightRow {
@@ -35,6 +36,7 @@ export function makeHighlightRepo(db: DB) {
           text: input.text,
           note: input.note ?? null,
           locator: input.locator,
+          embedding: input.embedding,
         })
         .returning()
       return row

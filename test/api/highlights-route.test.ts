@@ -1,5 +1,9 @@
 import { afterEach, expect, test, vi } from "vitest"
 
+vi.mock("@/lib/ai/embeddings", () => ({
+  embedQuery: vi.fn(async () => Array(1536).fill(0.1)),
+}))
+
 const created: Record<string, unknown>[] = []
 vi.mock("@/lib/db/highlights", () => ({
   highlightRepo: {
@@ -49,4 +53,15 @@ test("POST rejects an unknown kind", async () => {
     }),
   )
   expect(res.status).toBe(400)
+})
+
+test("POST embeds the highlight text and stores the vector", async () => {
+  const { POST } = await import("@/app/api/highlights/route")
+  await POST(
+    new Request("http://t/api/highlights", {
+      method: "POST",
+      body: JSON.stringify({ itemId: "i1", kind: "transcript", text: "hello", locator: { sec: 5 } }),
+    }),
+  )
+  expect(created[0].embedding).toHaveLength(1536)
 })

@@ -1,6 +1,7 @@
 import { highlightRepo } from "@/lib/db/highlights"
 import { highlightToDTO } from "@/lib/api/highlight-dto"
 import { HIGHLIGHT_KINDS } from "@/lib/highlights/locator"
+import { embedQuery } from "@/lib/ai/embeddings"
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
@@ -20,12 +21,19 @@ export async function POST(request: Request) {
   if (!HIGHLIGHT_KINDS.includes(body.kind)) {
     return Response.json({ error: "invalid kind" }, { status: 400 })
   }
+  let embedding: number[] | undefined
+  try {
+    embedding = await embedQuery(text)
+  } catch (e) {
+    console.error("highlight embedding failed", e)
+  }
   const row = await highlightRepo.create({
     itemId: body.itemId,
     kind: body.kind,
     text,
     note: typeof body.note === "string" && body.note.trim() ? body.note.trim() : undefined,
     locator: body.locator ?? undefined,
+    embedding,
   })
   return Response.json({ highlight: row }, { status: 201 })
 }
