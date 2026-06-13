@@ -14,9 +14,14 @@ export async function GET(request: Request) {
   // stamps `updated_at` with) — using the app clock risks skew that permanently
   // drops changes. Captured before the reads, so a write landing mid-request is
   // re-sent next pull (a harmless duplicate) rather than missed.
-  const nowRows = await db.execute(sql<{ now: Date }>`select now()`)
+  // Strict ISO-8601 (UTC, millisecond precision) straight from Postgres — `db.execute`
+  // returns timestamps as raw strings, so format it in SQL to match every other date
+  // field (JS `.toISOString()`) and give the client one consistent shape to decode.
+  const nowRows = await db.execute(
+    sql`select to_char(now() at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as now`,
+  )
   const nowList = Array.isArray(nowRows) ? nowRows : ((nowRows as { rows?: unknown[] }).rows ?? [])
-  const syncedAt = (nowList[0] as { now: Date } | undefined)?.now ?? new Date()
+  const syncedAt = (nowList[0] as { now?: string } | undefined)?.now ?? new Date().toISOString()
   const [items, highlights, dels] = await Promise.all([
     itemRepo.listUpdatedSince(since),
     highlightRepo.listUpdatedSince(since),
@@ -26,6 +31,6 @@ export async function GET(request: Request) {
     items: items.map(itemToDTO),
     highlights: highlights.map(highlightToDTO),
     deletions: dels.map((d) => ({ type: d.type, id: d.entityId })),
-    syncedAt: syncedAt.toISOString(),
+    syncedAt,
   })
 }

@@ -34,10 +34,32 @@ public actor FluxClient {
         self.session = session
 
         let dec = JSONDecoder()
-        dec.dateDecodingStrategy = .iso8601
+        // The API emits ISO-8601 with fractional seconds (JS `.toISOString()` →
+        // `2026-06-13T20:56:28.714Z`). `.iso8601` can't parse the fractional part,
+        // so decode by hand: try with fractional seconds first, then without.
+        dec.dateDecodingStrategy = .custom { decoder in
+            let raw = try decoder.singleValueContainer().decode(String.self)
+            let withFractional = ISO8601DateFormatter()
+            withFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = withFractional.date(from: raw) { return date }
+            let plain = ISO8601DateFormatter()
+            plain.formatOptions = [.withInternetDateTime]
+            if let date = plain.date(from: raw) { return date }
+            throw DecodingError.dataCorrupted(
+                .init(codingPath: decoder.codingPath, debugDescription: "Invalid ISO-8601 date: \(raw)")
+            )
+        }
         self.decoder = dec
 
-        self.encoder = JSONEncoder()
+        // Match the server's wire format on the way out, too.
+        let enc = JSONEncoder()
+        enc.dateEncodingStrategy = .custom { date, encoder in
+            let fmt = ISO8601DateFormatter()
+            fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            var container = encoder.singleValueContainer()
+            try container.encode(fmt.string(from: date))
+        }
+        self.encoder = enc
     }
 
     // MARK: - Private Helpers
