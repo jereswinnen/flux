@@ -4,6 +4,7 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { hiResArtwork } from "@/lib/artwork"
 import { formatRelativeDate } from "@/lib/format"
+import { statusVariant } from "@/lib/item-status"
 
 export type LibItem = {
   id: string
@@ -13,12 +14,6 @@ export type LibItem = {
   status: string
   publishedAt: string | null
   createdAt?: string
-}
-
-function statusVariant(status: string): "default" | "secondary" | "destructive" {
-  if (status === "ready") return "default"
-  if (status === "failed") return "destructive"
-  return "secondary"
 }
 
 export function ItemCard({ episode }: { episode: LibItem }) {

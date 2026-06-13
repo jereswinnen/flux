@@ -4,10 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ExternalLink, Play, Sparkles } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AppHeader } from "@/components/app-header"
+import { StatusBadge } from "@/components/status-badge"
+import { StickyTabBar } from "@/components/sticky-tab-bar"
 import { usePlayer, type AudioMarker, type Track } from "@/components/player-context"
 import { hiResArtwork } from "@/lib/artwork"
 import { formatRelativeDate, formatTimestamp } from "@/lib/format"
@@ -97,12 +98,12 @@ function YouTubeBody({
       {/* The global video player overlays this slot while it's visible. */}
       <div ref={slotRef} className="mb-4 aspect-video w-full rounded-lg bg-black" />
       <Tabs value={tab} onValueChange={onTabChange}>
-        <div className="sticky top-0 z-10 -mx-4 mb-2 bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:-mx-6 md:px-6">
+        <StickyTabBar>
           <TabsList>
             <TabsTrigger value="transcript">Live Transcript</TabsTrigger>
             <TabsTrigger value="insights">Insights</TabsTrigger>
           </TabsList>
-        </div>
+        </StickyTabBar>
         <TabsContent value="transcript" className="pb-10 pt-2">
           <LiveTranscriptBound segments={transcript.segments} />
         </TabsContent>
@@ -150,12 +151,12 @@ function ArticleBody({
   )
   return (
     <Tabs value={tab} onValueChange={onTabChange}>
-      <div className="sticky top-0 z-10 -mx-4 mb-2 bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:-mx-6 md:px-6">
+      <StickyTabBar>
         <TabsList>
           <TabsTrigger value="article">Article</TabsTrigger>
           <TabsTrigger value="insights">Insights</TabsTrigger>
         </TabsList>
-      </div>
+      </StickyTabBar>
       <TabsContent value="article" className="pb-10 pt-2">
         {sourceUrl && (
           <a
@@ -189,12 +190,6 @@ function ArticleBody({
       </TabsContent>
     </Tabs>
   )
-}
-
-function statusVariant(status: string): "default" | "secondary" | "destructive" {
-  if (status === "ready") return "default"
-  if (status === "failed") return "destructive"
-  return "secondary"
 }
 
 export function ItemView({ episode, transcript, insights, entities = [], highlights = [] }: ItemViewProps) {
@@ -254,9 +249,7 @@ export function ItemView({ episode, transcript, insights, entities = [], highlig
         actions={
           <>
             {episode.status !== "ready" && (
-              <Badge variant={statusVariant(episode.status)} className={inFlight ? "animate-pulse" : ""}>
-                {episode.status}
-              </Badge>
+              <StatusBadge status={episode.status} inFlight={inFlight} />
             )}
             <Button asChild variant="outline" size="sm" className="gap-1.5">
               <Link href={`/ask?attach=${episode.id}`}>
@@ -347,12 +340,12 @@ export function ItemView({ episode, transcript, insights, entities = [], highlig
           ) : (
             <Tabs value={tab} onValueChange={setTab}>
               {/* Tab bar sticks just under the breadcrumb while content scrolls. */}
-              <div className="sticky top-0 z-10 -mx-4 mb-2 bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:-mx-6 md:px-6">
+              <StickyTabBar>
                 <TabsList>
                   <TabsTrigger value="insights">Insights</TabsTrigger>
                   <TabsTrigger value="transcript">Transcript</TabsTrigger>
                 </TabsList>
-              </div>
+              </StickyTabBar>
 
               <TabsContent value="insights" className="pb-10 pt-2">
                 <ItemInsights insights={insights} entities={entities} onSeek={seek} />

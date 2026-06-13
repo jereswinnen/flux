@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { hiResArtwork } from "@/lib/artwork"
 import { hostname } from "@/lib/ai/web-sources"
 import { itemHref } from "@/lib/item-href"
+import { SourceBadge } from "@/components/source-badge"
 import { formatTimestamp } from "@/lib/format"
 
 type Source = {
@@ -284,9 +285,7 @@ export function SearchView({ query }: { query: string }) {
                     href={itemHref(s.itemId, s.startSec)}
                     className="flex items-start gap-2 rounded-lg border p-2.5 transition-colors hover:bg-muted"
                   >
-                    <span className="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary">
-                      Highlight
-                    </span>
+                    <SourceBadge kind="highlight" />
                     <span className="min-w-0 flex-1">
                       <span className="line-clamp-2 font-serif text-sm italic">
                         &ldquo;{s.snippet ?? s.content}&rdquo;
@@ -303,9 +302,7 @@ export function SearchView({ query }: { query: string }) {
                     rel="noopener noreferrer"
                     className="flex items-start gap-2 rounded-lg border p-2.5 transition-colors hover:bg-muted"
                   >
-                    <span className="shrink-0 rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-sky-600 dark:text-sky-400">
-                      Web
-                    </span>
+                    <SourceBadge kind="web" />
                     <span className="min-w-0 flex-1">
                       <span className="line-clamp-2 text-sm font-medium">{s.itemTitle}</span>
                       <span className="mt-0.5 block truncate text-xs text-muted-foreground">

@@ -8,6 +8,7 @@ import { Check, ChevronDown, Copy, Loader2, Play } from "lucide-react"
 import { remarkTimestamps } from "@/lib/markdown/timestamps"
 import { hiResArtwork } from "@/lib/artwork"
 import { hostname } from "@/lib/ai/web-sources"
+import { SourceBadge } from "@/components/source-badge"
 import { itemHref } from "@/lib/item-href"
 import { parseTimestamp, formatTimestamp } from "@/lib/format"
 import { usePlayer } from "@/components/player-context"
@@ -306,9 +307,7 @@ export function ChatMessage({
                       onClick={() => openSource(s)}
                       className="group flex w-full items-start gap-3 rounded-xl border p-2.5 text-left transition-colors hover:border-foreground/20 hover:bg-muted/50"
                     >
-                      <span className="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 font-sans text-[10px] font-medium uppercase tracking-wide text-primary">
-                        Highlight
-                      </span>
+                      <SourceBadge kind="highlight" />
                       <span className="min-w-0 flex-1 font-serif text-sm italic leading-snug">
                         &ldquo;{s.snippet ?? s.itemTitle}&rdquo;
                         <span className="mt-1 block font-sans text-xs not-italic text-muted-foreground">
@@ -329,9 +328,7 @@ export function ChatMessage({
                       rel="noopener noreferrer"
                       className="group flex w-full items-start gap-3 rounded-xl border p-2.5 text-left transition-colors hover:border-foreground/20 hover:bg-muted/50"
                     >
-                      <span className="shrink-0 rounded bg-sky-500/15 px-1.5 py-0.5 font-sans text-[10px] font-medium uppercase tracking-wide text-sky-600 dark:text-sky-400">
-                        Web
-                      </span>
+                      <SourceBadge kind="web" />
                       <span className="min-w-0 flex-1 font-sans">
                         <span className="line-clamp-1 text-sm font-medium">{s.itemTitle}</span>
                         <span className="mt-0.5 block truncate text-xs text-muted-foreground">

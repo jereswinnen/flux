@@ -3,14 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import type { UIMessage } from "@/components/chat-message"
-
-function hostname(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "")
-  } catch {
-    return url
-  }
-}
+import { hostname } from "@/lib/ai/web-sources"
 
 export function useConversation(
   conversationId: string | null,
