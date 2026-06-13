@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import { buildLocator, type HighlightKind } from "@/lib/highlights/locator"
 import { useHighlights } from "@/components/highlights-context"
 
-type Pending = { x: number; y: number; kind: HighlightKind; text: string; data: Record<string, string | undefined> }
+type Pending = { x: number; bottom: number; kind: HighlightKind; text: string; data: Record<string, string | undefined> }
 
 /** Mounted once on a detail view. Watches for a text selection that lands inside a
  *  [data-hl-kind] region and offers a floating "Highlight" button that POSTs it. */
@@ -32,7 +32,7 @@ export function HighlightLayer({ itemId }: { itemId: string }) {
       const rect = sel.getRangeAt(0).getBoundingClientRect()
       setPending({
         x: rect.left + rect.width / 2,
-        y: rect.top,
+        bottom: rect.bottom,
         kind: (el.dataset.hlKind as HighlightKind) ?? "transcript",
         text,
         data: { hlSec: el.dataset.hlSec, hlIndex: el.dataset.hlIndex },
@@ -86,7 +86,9 @@ export function HighlightLayer({ itemId }: { itemId: string }) {
   return (
     <div
       ref={barRef}
-      style={{ left: pending.x, top: Math.max(8, pending.y - 44) }}
+      // Sit just *below* the selection — iOS shows its cut/copy/paste callout
+      // above the selection, so anchoring there would be covered by it.
+      style={{ left: pending.x, top: pending.bottom + 8 }}
       className="fixed z-50 -translate-x-1/2"
       onMouseDown={(e) => e.preventDefault()} // keep the selection while clicking
       onPointerDown={(e) => e.preventDefault()} // covers touch events on iOS
