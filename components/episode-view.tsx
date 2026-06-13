@@ -312,7 +312,7 @@ export function EpisodeView({ episode, transcript, insights, entities = [], high
                 size="sm"
                 variant="outline"
                 onClick={async () => {
-                  await fetch(`/api/episodes/${episode.id}/retry`, { method: "POST" })
+                  await fetch(`/api/items/${episode.id}/retry`, { method: "POST" })
                   router.refresh()
                 }}
               >

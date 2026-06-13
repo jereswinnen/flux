@@ -68,7 +68,7 @@ export function EpisodeActions({
   }
 
   async function reanalyze() {
-    const res = await fetch(`/api/episodes/${itemId}/retry`, { method: "POST" })
+    const res = await fetch(`/api/items/${itemId}/retry`, { method: "POST" })
     if (res.ok) {
       toast.success("Re-analyzing — insights will refresh shortly")
       router.refresh()
@@ -78,7 +78,7 @@ export function EpisodeActions({
   }
 
   async function remove() {
-    const res = await fetch(`/api/episodes/${itemId}`, { method: "DELETE" })
+    const res = await fetch(`/api/items/${itemId}`, { method: "DELETE" })
     if (res.ok) {
       toast.success("Episode deleted")
       router.push("/")

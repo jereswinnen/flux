@@ -9,13 +9,13 @@ import { hiResArtwork } from "@/lib/artwork"
 type ShowGroup = { name: string; artworkUrl: string | null; episodes: LibEpisode[] }
 
 function episodeTime(e: LibEpisode): number {
-  return new Date(e.publishedAt ?? e.createdAt).getTime()
+  return e.publishedAt ? new Date(e.publishedAt).getTime() : 0
 }
 
 function groupByShow(episodes: LibEpisode[]): ShowGroup[] {
   const groups = new Map<string, ShowGroup>()
   for (const e of episodes) {
-    const name = e.podcastName ?? "Unknown show"
+    const name = e.source ?? "Unknown show"
     let g = groups.get(name)
     if (!g) {
       g = { name, artworkUrl: e.artworkUrl, episodes: [] }
@@ -39,7 +39,7 @@ export function Library({ initialEpisodes }: { initialEpisodes: LibEpisode[] }) 
   useEffect(() => {
     if (!anyInFlight) return
     const t = setInterval(() => {
-      fetch("/api/episodes").then((r) => r.json()).then((d) => setEpisodes(d.episodes ?? [])).catch(() => {})
+      fetch("/api/items").then((r) => r.json()).then((d) => setEpisodes(d.items ?? [])).catch(() => {})
     }, 6000)
     return () => clearInterval(t)
   }, [anyInFlight])

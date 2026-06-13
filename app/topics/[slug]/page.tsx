@@ -12,11 +12,10 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
   const episodes: LibEpisode[] = rows.map((e) => ({
     id: e.id,
     title: e.title,
-    podcastName: e.podcastName,
+    source: e.podcastName,
     artworkUrl: e.artworkUrl,
     status: e.status,
     publishedAt: e.publishedAt ? e.publishedAt.toISOString() : null,
-    createdAt: e.createdAt.toISOString(),
   }))
 
   return (

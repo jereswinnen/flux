@@ -8,11 +8,10 @@ import { formatRelativeDate } from "@/lib/format"
 export type LibEpisode = {
   id: string
   title: string
-  podcastName: string | null
+  source: string | null
   artworkUrl: string | null
   status: string
   publishedAt: string | null
-  createdAt: string
 }
 
 function statusVariant(status: string): "default" | "secondary" | "destructive" {

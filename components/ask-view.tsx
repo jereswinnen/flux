@@ -33,22 +33,22 @@ export function AskView() {
     type Row = {
       id: string
       title: string
-      podcastName?: string | null
+      source?: string | null
       artworkUrl?: string | null
       audioUrl?: string | null
-      sourceMetadata?: { videoId?: string } | null
+      videoId?: string | null
     }
-    fetch("/api/episodes")
+    fetch("/api/items")
       .then((r) => r.json())
       .then((d) =>
         setEpisodes(
-          (d.episodes ?? []).map((e: Row) => ({
+          (d.items ?? []).map((e: Row) => ({
             id: e.id,
             title: e.title,
-            podcastName: e.podcastName,
+            podcastName: e.source,
             artworkUrl: e.artworkUrl,
             audioUrl: e.audioUrl,
-            videoId: e.sourceMetadata?.videoId ?? null,
+            videoId: e.videoId ?? null,
           })),
         ),
       )

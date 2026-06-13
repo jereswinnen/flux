@@ -32,9 +32,9 @@ export function AppSidebar() {
 
   useEffect(() => {
     let active = true
-    fetch("/api/episodes")
+    fetch("/api/items")
       .then((r) => r.json())
-      .then((d) => { if (active) setRecent((d.episodes ?? []).slice(0, 6)) })
+      .then((d) => { if (active) setRecent((d.items ?? []).slice(0, 6)) })
       .catch(() => {})
     return () => { active = false }
   }, [pathname])
@@ -44,9 +44,9 @@ export function AppSidebar() {
   useEffect(() => {
     if (!anyInFlight) return
     const t = setInterval(() => {
-      fetch("/api/episodes")
+      fetch("/api/items")
         .then((r) => r.json())
-        .then((d) => setRecent((d.episodes ?? []).slice(0, 6)))
+        .then((d) => setRecent((d.items ?? []).slice(0, 6)))
         .catch(() => {})
     }, 5000)
     return () => clearInterval(t)

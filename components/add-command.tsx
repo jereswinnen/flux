@@ -32,7 +32,7 @@ type FeedEpisode = {
   title: string; guid?: string; audioUrl: string; publishedAt?: string; durationSec?: number
 }
 type LibEpisode = {
-  id: string; title: string; podcastName: string | null; artworkUrl: string | null
+  id: string; title: string; source: string | null; artworkUrl: string | null
   status: string; publishedAt: string | null
 }
 type Moment = {
@@ -95,10 +95,10 @@ export function AddCommand() {
       setLibEpisodes([]); setMoments([]); setContext({}); setActive("")
       return
     }
-    // Load recent episodes for the empty state.
-    fetch("/api/episodes")
+    // Load recent items for the empty state.
+    fetch("/api/items")
       .then((r) => r.json())
-      .then((d) => setRecents((d.episodes ?? []).slice(0, 6)))
+      .then((d) => setRecents((d.items ?? []).slice(0, 6)))
       .catch(() => {})
   }, [open])
 
@@ -122,7 +122,7 @@ export function AddCommand() {
         .then((r) => r.json())
         .then((d) => {
           if (seq !== searchSeq.current) return
-          setLibEpisodes(d.episodes ?? [])
+          setLibEpisodes(d.items ?? [])
           setMoments(d.moments ?? [])
         })
         .catch(() => {})
@@ -160,16 +160,16 @@ export function AddCommand() {
   async function ingest(payload: Record<string, unknown>) {
     setSubmitting(true)
     try {
-      const res = await fetch("/api/episodes", {
+      const res = await fetch("/api/items", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ type: "podcast", ...payload }),
       })
       if (!res.ok) throw new Error((await res.json()).error ?? "Failed to add")
-      const { episode } = await res.json()
+      const { item } = await res.json()
       toast.success("Episode queued for transcription")
       setOpen(false)
-      router.push(`/episodes/${episode.id}`)
+      router.push(`/episodes/${item.id}`)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to add")
     } finally {
@@ -263,7 +263,7 @@ export function AddCommand() {
                     <Thumb src={e.artworkUrl} alt={e.title} />
                     <div className="min-w-0">
                       <div className="truncate">{e.title}</div>
-                      <div className="truncate text-xs text-muted-foreground">{e.podcastName}</div>
+                      <div className="truncate text-xs text-muted-foreground">{e.source}</div>
                     </div>
                   </CommandItem>
                 ))}
@@ -322,7 +322,7 @@ export function AddCommand() {
                     <Thumb src={e.artworkUrl} alt={e.title} />
                     <div className="min-w-0 flex-1">
                       <div className="truncate">{e.title}</div>
-                      <div className="truncate text-xs text-muted-foreground">{e.podcastName}</div>
+                      <div className="truncate text-xs text-muted-foreground">{e.source}</div>
                     </div>
                     {e.status !== "ready" && (
                       <Badge variant={e.status === "failed" ? "destructive" : "secondary"}>{e.status}</Badge>
