@@ -18,11 +18,11 @@ describe("buildLocator", () => {
 
 describe("highlightJumpHref", () => {
   it("transcript/quote with sec → ?t=", () => {
-    expect(highlightJumpHref("i1", "transcript", { sec: 42.7 })).toBe("/episodes/i1?t=42")
-    expect(highlightJumpHref("i1", "quote", { index: 1, sec: 90 })).toBe("/episodes/i1?t=90")
+    expect(highlightJumpHref("i1", "transcript", { sec: 42.7 })).toBe("/items/i1?t=42")
+    expect(highlightJumpHref("i1", "quote", { index: 1, sec: 90 })).toBe("/items/i1?t=90")
   })
   it("takeaway / no sec → bare item", () => {
-    expect(highlightJumpHref("i1", "takeaway", { index: 2 })).toBe("/episodes/i1")
-    expect(highlightJumpHref("i1", "transcript", null)).toBe("/episodes/i1")
+    expect(highlightJumpHref("i1", "takeaway", { index: 2 })).toBe("/items/i1")
+    expect(highlightJumpHref("i1", "transcript", null)).toBe("/items/i1")
   })
 })

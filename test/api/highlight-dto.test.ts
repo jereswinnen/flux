@@ -18,7 +18,7 @@ describe("highlightToDTO", () => {
       text: "hello",
       note: null,
       createdAt: "2026-01-02T03:04:05.000Z",
-      jumpHref: "/episodes/i1?t=42",
+      jumpHref: "/items/i1?t=42",
       item: { id: "i1", type: "youtube", title: "Vid", source: "Chan", artworkUrl: null },
     })
   })
@@ -32,6 +32,6 @@ describe("highlightToDTO", () => {
       createdAt: new Date("2026-01-01T00:00:00Z"),
       item: { id: "i2", type: "podcast", title: "Ep", source: null, artworkUrl: null },
     })
-    expect(dto.jumpHref).toBe("/episodes/i2")
+    expect(dto.jumpHref).toBe("/items/i2")
   })
 })
