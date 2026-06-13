@@ -156,6 +156,8 @@ export function useConversation(
           toast.error("Chat failed")
           // Inject an inline error into the empty assistant bubble so the user
           // sees feedback. Don't reload — that would overwrite the error message.
+          // (Trade-off: a mid-stream failure keeps the partial text rather than
+          // re-syncing the server's persisted full answer.)
           setMessages((prev) => {
             const next = [...prev]
             const last = next[next.length - 1]
