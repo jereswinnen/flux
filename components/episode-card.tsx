@@ -12,6 +12,7 @@ export type LibEpisode = {
   artworkUrl: string | null
   status: string
   publishedAt: string | null
+  createdAt?: string
 }
 
 function statusVariant(status: string): "default" | "secondary" | "destructive" {

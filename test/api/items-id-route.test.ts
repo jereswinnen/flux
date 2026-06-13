@@ -1,6 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest"
 
-const item = { id: "i1", type: "podcast", title: "Ep", podcastName: "Show", audioUrl: "a", sourceUrl: null, artworkUrl: null, durationSec: null, publishedAt: null, status: "ready", readState: "unread", sourceMetadata: null }
+const item = { id: "i1", type: "podcast", title: "Ep", podcastName: "Show", audioUrl: "a", sourceUrl: null, artworkUrl: null, durationSec: null, publishedAt: null, createdAt: new Date(), status: "ready", readState: "unread", sourceMetadata: null }
 vi.mock("@/lib/db/items", () => ({
   itemRepo: {
     getById: vi.fn(async (id: string) => (id === "i1" ? item : null)),

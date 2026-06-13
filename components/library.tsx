@@ -9,7 +9,10 @@ import { hiResArtwork } from "@/lib/artwork"
 type ShowGroup = { name: string; artworkUrl: string | null; episodes: LibEpisode[] }
 
 function episodeTime(e: LibEpisode): number {
-  return e.publishedAt ? new Date(e.publishedAt).getTime() : 0
+  // Prefer publish date; fall back to when it was added so undated items
+  // (articles, feeds without dates) keep their recency instead of sinking.
+  const t = e.publishedAt ?? e.createdAt
+  return t ? new Date(t).getTime() : 0
 }
 
 function groupByShow(episodes: LibEpisode[]): ShowGroup[] {
