@@ -201,6 +201,8 @@ export type ChatSource = {
   artworkUrl?: string | null
   audioUrl?: string | null
   videoId?: string | null
+  isHighlight?: boolean
+  snippet?: string | null
 }
 
 export const messages = pgTable(

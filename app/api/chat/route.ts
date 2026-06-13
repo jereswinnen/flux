@@ -6,11 +6,25 @@ import { condenseQuery } from "@/lib/ai/condense"
 import { buildTranscriptContext, estimateTokens, MAX_TRANSCRIPT_TOKENS } from "@/lib/ai/episode-context"
 import { db } from "@/lib/db"
 import { conversationRepo } from "@/lib/db/conversations"
-import { searchChunks, hybridSearch, refineHitTimestamps } from "@/lib/db/search"
+import { searchChunks, hybridSearch, refineHitTimestamps, searchHighlights } from "@/lib/db/search"
+import { assembleAskSources, type AskSourceEntry } from "@/lib/ai/ask-sources"
 import { groupHitsIntoSources } from "@/lib/ai/group-sources"
 import { transcripts } from "@/lib/db/schema"
 import { formatTimestamp } from "@/lib/format"
 import type { ChatSource } from "@/lib/db/schema"
+
+function entryToChatSource(e: AskSourceEntry): ChatSource {
+  const base = {
+    itemId: e.hit.itemId,
+    itemTitle: e.hit.itemTitle,
+    startSec: e.hit.startSec,
+    podcastName: e.hit.podcastName,
+    artworkUrl: e.hit.artworkUrl,
+    audioUrl: e.hit.audioUrl,
+    videoId: e.hit.videoId,
+  }
+  return e.kind === "highlight" ? { ...base, isHighlight: true, snippet: e.hit.text } : base
+}
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null)
@@ -73,23 +87,22 @@ export async function POST(request: Request) {
         podcastName: h.podcastName, artworkUrl: h.artworkUrl, audioUrl: h.audioUrl, videoId: h.videoId,
       }))
     }
+    const hlHits = await searchHighlights(db, await embedQuery(content), { itemId, limit: 3 })
+    if (hlHits.length) {
+      context += "\n\nHighlights you saved on this item:\n" + hlHits.map((h) => `- ${h.text}`).join("\n")
+      sources = [...sources, ...hlHits.map((h) => entryToChatSource({ kind: "highlight", n: 0, hit: h }))]
+    }
   } else {
     const searchQuery = await condenseQuery(priorTurns, content)
-    const rawHits = await hybridSearch(db, await embedQuery(searchQuery), searchQuery, { limit: 8 })
-    const hits = await refineHitTimestamps(db, rawHits, searchQuery)
-    const { sources: grouped, numberFor } = groupHitsIntoSources(hits)
-    context = hits
-      .map((h) => `[${numberFor(h)}] (${h.itemTitle} — ${formatTimestamp(h.startSec)}) ${h.content}`)
-      .join("\n\n")
-    sources = grouped.map((h) => ({
-      itemId: h.itemId,
-      itemTitle: h.itemTitle,
-      startSec: h.startSec,
-      podcastName: h.podcastName,
-      artworkUrl: h.artworkUrl,
-      audioUrl: h.audioUrl,
-      videoId: h.videoId,
-    }))
+    const qe = await embedQuery(searchQuery)
+    const [rawHits, hlHits] = await Promise.all([
+      hybridSearch(db, qe, searchQuery, { limit: 8 }),
+      searchHighlights(db, qe, {}),
+    ])
+    const chunkHits = await refineHitTimestamps(db, rawHits, searchQuery)
+    const assembled = assembleAskSources(chunkHits, hlHits)
+    context = assembled.context
+    sources = assembled.entries.map(entryToChatSource)
   }
 
   const result = streamText({

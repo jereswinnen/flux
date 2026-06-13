@@ -20,6 +20,8 @@ export type ChatSourceRef = {
   artworkUrl?: string | null
   audioUrl?: string | null
   videoId?: string | null
+  isHighlight?: boolean
+  snippet?: string | null
 }
 
 export type UIMessage = {
@@ -126,7 +128,9 @@ export function ChatMessage({
   )
   const shownSources = sources
     .map((s, i) => ({ s, n: i + 1 }))
+    .filter(({ s }) => !s.isHighlight)
     .filter(({ n }) => citedNums.size === 0 || citedNums.has(n))
+  const highlightSources = sources.filter((s) => s.isHighlight)
 
   const sourceGroups = (() => {
     const order: string[] = []
@@ -208,7 +212,7 @@ export function ChatMessage({
 
       {message.content && (
         <>
-          {sourceGroups.length > 0 && (
+          {(shownSources.length > 0 || highlightSources.length > 0) && (
             <div className="space-y-2">
               <p className="font-sans text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Sources
@@ -281,6 +285,28 @@ export function ChatMessage({
                   )
                 })}
               </div>
+              {highlightSources.length > 0 && (
+                <div className="space-y-2">
+                  {highlightSources.map((s, i) => (
+                    <button
+                      key={`hl-${i}`}
+                      type="button"
+                      onClick={() => openSource(s)}
+                      className="group flex w-full items-start gap-3 rounded-xl border p-2.5 text-left transition-colors hover:border-foreground/20 hover:bg-muted/50"
+                    >
+                      <span className="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 font-sans text-[10px] font-medium uppercase tracking-wide text-primary">
+                        Highlight
+                      </span>
+                      <span className="min-w-0 flex-1 font-serif text-sm italic leading-snug">
+                        &ldquo;{s.snippet ?? s.itemTitle}&rdquo;
+                        <span className="mt-1 block font-sans text-xs not-italic text-muted-foreground">
+                          {s.itemTitle}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           <div className="font-sans">
