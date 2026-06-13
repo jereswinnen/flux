@@ -11,8 +11,8 @@ import { AppHeader } from "@/components/app-header"
 import { usePlayer, type AudioMarker, type Track } from "@/components/player-context"
 import { hiResArtwork } from "@/lib/artwork"
 import { formatRelativeDate, formatTimestamp } from "@/lib/format"
-import { EpisodeActions } from "@/components/episode-actions"
-import { EpisodeInsights, insightSections, type MentionedEntity } from "@/components/episode-insights"
+import { ItemActions } from "@/components/item-actions"
+import { ItemInsights, insightSections, type MentionedEntity } from "@/components/item-insights"
 import { InsightsNav } from "@/components/insights-nav"
 import { useVideoPlayer } from "@/components/video-player"
 import { LiveTranscript } from "@/components/live-transcript"
@@ -35,7 +35,7 @@ type Insights = {
   entities?: { name: string; type: string }[] | null
 } | null
 
-export type EpisodeViewProps = {
+export type ItemViewProps = {
   episode: {
     id: string
     title: string
@@ -107,7 +107,7 @@ function YouTubeBody({
           <LiveTranscriptBound segments={transcript.segments} />
         </TabsContent>
         <TabsContent value="insights" className="pb-10 pt-2">
-          <EpisodeInsightsBound insights={insights} entities={entities} />
+          <ItemInsightsBound insights={insights} entities={entities} />
         </TabsContent>
       </Tabs>
     </>
@@ -119,9 +119,9 @@ function LiveTranscriptBound({ segments }: { segments: Segment[] }) {
   return <LiveTranscript segments={segments} currentSec={currentSec} onSeek={seekTo} />
 }
 
-function EpisodeInsightsBound({ insights, entities }: { insights: Insights; entities: MentionedEntity[] }) {
+function ItemInsightsBound({ insights, entities }: { insights: Insights; entities: MentionedEntity[] }) {
   const { seekTo } = useVideoPlayer()
-  return <EpisodeInsights insights={insights} entities={entities} onSeek={seekTo} />
+  return <ItemInsights insights={insights} entities={entities} onSeek={seekTo} />
 }
 
 function ArticleBody({
@@ -184,7 +184,7 @@ function ArticleBody({
         />
       </TabsContent>
       <TabsContent value="insights" className="pb-10 pt-2">
-        <EpisodeInsights insights={insights} entities={entities} onSeek={() => {}} />
+        <ItemInsights insights={insights} entities={entities} onSeek={() => {}} />
       </TabsContent>
     </Tabs>
   )
@@ -196,7 +196,7 @@ function statusVariant(status: string): "default" | "secondary" | "destructive" 
   return "secondary"
 }
 
-export function EpisodeView({ episode, transcript, insights, entities = [], highlights = [] }: EpisodeViewProps) {
+export function ItemView({ episode, transcript, insights, entities = [], highlights = [] }: ItemViewProps) {
   const router = useRouter()
   const inFlight = !["ready", "failed"].includes(episode.status)
   const player = usePlayer()
@@ -224,7 +224,7 @@ export function EpisodeView({ episode, transcript, insights, entities = [], high
   const scrollRef = useRef<HTMLDivElement>(null)
   const sections = insightSections(insights, entities.length > 0)
 
-  // Deep-link: /episodes/[id]?t=<sec> cues the player to that moment on load.
+  // Deep-link: /items/[id]?t=<sec> cues the player to that moment on load.
   const searchParams = useSearchParams()
   const tParam = searchParams.get("t")
   useEffect(() => {
@@ -267,7 +267,7 @@ export function EpisodeView({ episode, transcript, insights, entities = [], high
                 <Play className="size-4" /> Play
               </Button>
             )}
-            <EpisodeActions
+            <ItemActions
               itemId={episode.id}
               episode={{
                 title: episode.title,
@@ -354,7 +354,7 @@ export function EpisodeView({ episode, transcript, insights, entities = [], high
               </div>
 
               <TabsContent value="insights" className="pb-10 pt-2">
-                <EpisodeInsights insights={insights} entities={entities} onSeek={seek} />
+                <ItemInsights insights={insights} entities={entities} onSeek={seek} />
               </TabsContent>
 
               <TabsContent value="transcript" className="pb-10 pt-2">

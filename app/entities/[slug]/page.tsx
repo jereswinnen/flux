@@ -111,7 +111,7 @@ export default async function EntityPage({ params }: { params: Promise<{ slug: s
                     href={
                       m.approxTimestampSec != null
                         ? itemHref(m.id, m.approxTimestampSec)
-                        : `/episodes/${m.id}`
+                        : `/items/${m.id}`
                     }
                     className="flex items-start gap-3 border-b px-4 py-3 transition-colors last:border-b-0 hover:bg-muted"
                   >

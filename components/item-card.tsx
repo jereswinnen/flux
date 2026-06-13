@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { hiResArtwork } from "@/lib/artwork"
 import { formatRelativeDate } from "@/lib/format"
 
-export type LibEpisode = {
+export type LibItem = {
   id: string
   title: string
   source: string | null
@@ -21,11 +21,11 @@ function statusVariant(status: string): "default" | "secondary" | "destructive" 
   return "secondary"
 }
 
-export function EpisodeCard({ episode }: { episode: LibEpisode }) {
+export function ItemCard({ episode }: { episode: LibItem }) {
   const inFlight = !["ready", "failed"].includes(episode.status)
   const art = hiResArtwork(episode.artworkUrl)
   return (
-    <Link href={`/episodes/${episode.id}`} className="group block w-40 shrink-0">
+    <Link href={`/items/${episode.id}`} className="group block w-40 shrink-0">
       <div className="relative aspect-square w-full overflow-hidden rounded-lg border bg-muted">
         {art ? (
           <img

@@ -12,7 +12,7 @@ import { hiResArtwork } from "@/lib/artwork"
 import { cn } from "@/lib/utils"
 import type { useConversation } from "@/components/use-conversation"
 
-export type AttachableEpisode = {
+export type AttachableItem = {
   id: string
   title: string
   podcastName?: string | null
@@ -33,14 +33,14 @@ export function ConversationView({
   onSeek?: (sec: number) => void
   emptyHint?: string
   disabled?: boolean
-  episodes?: AttachableEpisode[]
-  initialAttachment?: AttachableEpisode | null
+  episodes?: AttachableItem[]
+  initialAttachment?: AttachableItem | null
 }) {
   const { messages, busy, send, stop } = chat
   const audio = usePlayer()
   const video = useVideoPlayer()
   const [draft, setDraft] = useState("")
-  const [attached, setAttached] = useState<AttachableEpisode | null>(
+  const [attached, setAttached] = useState<AttachableItem | null>(
     initialAttachment
   )
   const [prevAttachId, setPrevAttachId] = useState(
@@ -113,7 +113,7 @@ export function ConversationView({
     setHighlight(0)
   }
 
-  function attachEpisode(e: AttachableEpisode) {
+  function attachEpisode(e: AttachableItem) {
     setAttached(e)
     setDraft((d) => d.replace(/@[^\s@]*$/, "").replace(/\s+$/, ""))
     setMention(null)

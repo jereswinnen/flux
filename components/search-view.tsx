@@ -243,7 +243,7 @@ export function SearchView({ query }: { query: string }) {
                   return (
                     <div key={g.itemId} className="rounded-lg border p-3">
                       <Link
-                        href={`/episodes/${g.itemId}`}
+                        href={`/items/${g.itemId}`}
                         className="mb-2 flex items-center gap-2.5"
                       >
                         <div className="size-8 shrink-0 overflow-hidden rounded bg-muted">

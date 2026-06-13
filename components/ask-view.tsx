@@ -6,7 +6,7 @@ import { Plus } from "lucide-react"
 import { AppHeader } from "@/components/app-header"
 import { Button } from "@/components/ui/button"
 import { ConversationMenu } from "@/components/conversation-menu"
-import { ConversationView, type AttachableEpisode } from "@/components/conversation-view"
+import { ConversationView, type AttachableItem } from "@/components/conversation-view"
 import { useConversation } from "@/components/use-conversation"
 import { useConversationList } from "@/components/use-conversation-list"
 
@@ -17,7 +17,7 @@ export function AskView() {
   // last conversation); otherwise resume the most recent one.
   const list = useConversationList(undefined, { autoStart: !attachId })
   const chat = useConversation(list.activeId, { onStreamEnd: () => void list.refresh() })
-  const [episodes, setEpisodes] = useState<AttachableEpisode[]>([])
+  const [episodes, setEpisodes] = useState<AttachableItem[]>([])
   const startedFresh = useRef(false)
 
   useEffect(() => {

@@ -50,7 +50,7 @@ export function GlobalPlayer() {
     <div className="pointer-events-none mx-auto w-[calc(100%-1.5rem)] max-w-3xl shrink-0 pb-4 md:pb-6">
       <div className="pointer-events-auto flex items-center gap-3 rounded-2xl border bg-background/80 px-3 py-2 shadow-lg ring-1 ring-black/5 backdrop-blur-md supports-[backdrop-filter]:bg-background/70 md:px-4">
       <Link
-        href={`/episodes/${track.itemId}`}
+        href={`/items/${track.itemId}`}
         className="flex min-w-0 max-w-[28%] items-center gap-2 shrink-0"
       >
         <ProgressRing pct={pct}>

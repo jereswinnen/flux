@@ -20,7 +20,7 @@ import {
 import { useCommand } from "@/components/command-context"
 import { ThemeToggle } from "@/components/theme-toggle"
 
-type RecentEpisode = { id: string; title: string; artworkUrl: string | null; status: string }
+type RecentItem = { id: string; title: string; artworkUrl: string | null; status: string }
 
 export function AppSidebar() {
   const pathname = usePathname()
@@ -28,7 +28,7 @@ export function AppSidebar() {
   const { setOpenMobile } = useSidebar()
   // Close the mobile sidebar sheet on any navigation/action (no-op on desktop).
   const close = () => setOpenMobile(false)
-  const [recent, setRecent] = useState<RecentEpisode[]>([])
+  const [recent, setRecent] = useState<RecentItem[]>([])
 
   useEffect(() => {
     let active = true
@@ -91,7 +91,7 @@ export function AppSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton onClick={() => { close(); openCommand() }} tooltip="Add episode (⌘K)">
+              <SidebarMenuButton onClick={() => { close(); openCommand() }} tooltip="Add to library (⌘K)">
                 <Plus className="size-4" /><span>Add episode</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -104,8 +104,8 @@ export function AppSidebar() {
             <SidebarMenu>
               {recent.map((e) => (
                 <SidebarMenuItem key={e.id}>
-                  <SidebarMenuButton asChild isActive={pathname === `/episodes/${e.id}`} tooltip={e.title} onClick={close}>
-                    <Link href={`/episodes/${e.id}`}>
+                  <SidebarMenuButton asChild isActive={pathname === `/items/${e.id}`} tooltip={e.title} onClick={close}>
+                    <Link href={`/items/${e.id}`}>
                       {!["ready", "failed"].includes(e.status) ? (
                         <Loader2 className="size-4 animate-spin text-muted-foreground" />
                       ) : e.artworkUrl ? (

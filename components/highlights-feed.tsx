@@ -75,7 +75,7 @@ export function HighlightsFeed({ initial }: { initial: HighlightDTO[] }) {
               </button>
               {h.note && <p className="mt-2 text-sm text-muted-foreground">{h.note}</p>}
               <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                <Link href={`/episodes/${h.item.id}`} className="flex min-w-0 items-center gap-2 hover:text-foreground">
+                <Link href={`/items/${h.item.id}`} className="flex min-w-0 items-center gap-2 hover:text-foreground">
                   <span className="size-6 shrink-0 overflow-hidden rounded bg-muted">
                     {h.item.artworkUrl ? (
                       <img src={hiResArtwork(h.item.artworkUrl, 60)} alt="" className="size-full object-cover" />

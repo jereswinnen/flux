@@ -77,7 +77,7 @@ function Section({
   )
 }
 
-export function EpisodeInsights({
+export function ItemInsights({
   insights,
   entities = [],
   onSeek,
@@ -254,7 +254,7 @@ export function EpisodeInsights({
                                 </p>
                               )}
                               <p className="text-xs text-muted-foreground">
-                                Mentioned in {e.mentionCount} episode{e.mentionCount === 1 ? "" : "s"}
+                                Mentioned in {e.mentionCount} item{e.mentionCount === 1 ? "" : "s"}
                                 {e.approxTimestampSec != null && e.approxTimestampSec > 0 && (
                                   <>
                                     {" · "}

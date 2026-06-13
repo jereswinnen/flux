@@ -167,9 +167,9 @@ export function AddCommand() {
       })
       if (!res.ok) throw new Error((await res.json()).error ?? "Failed to add")
       const { item } = await res.json()
-      toast.success("Episode queued for transcription")
+      toast.success("Added to your library")
       setOpen(false)
-      router.push(`/episodes/${item.id}`)
+      router.push(`/items/${item.id}`)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to add")
     } finally {
@@ -192,7 +192,7 @@ export function AddCommand() {
       const { item } = await res.json()
       toast.success("Item queued for transcription")
       setOpen(false)
-      router.push(`/episodes/${item.id}`)
+      router.push(`/items/${item.id}`)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to add")
     } finally {
@@ -259,7 +259,7 @@ export function AddCommand() {
             {!typing && !urlQuery && recents.length > 0 && (
               <CommandGroup heading="Recent">
                 {recents.map((e) => (
-                  <CommandItem key={`recent-${e.id}`} value={`recent-${e.id}`} onSelect={() => goTo(`/episodes/${e.id}`)}>
+                  <CommandItem key={`recent-${e.id}`} value={`recent-${e.id}`} onSelect={() => goTo(`/items/${e.id}`)}>
                     <Thumb src={e.artworkUrl} alt={e.title} />
                     <div className="min-w-0">
                       <div className="truncate">{e.title}</div>
@@ -318,7 +318,7 @@ export function AddCommand() {
             {libEpisodes.length > 0 && (
               <CommandGroup heading="In your library">
                 {libEpisodes.map((e) => (
-                  <CommandItem key={`lib-${e.id}`} value={`lib-${e.id}`} onSelect={() => goTo(`/episodes/${e.id}`)}>
+                  <CommandItem key={`lib-${e.id}`} value={`lib-${e.id}`} onSelect={() => goTo(`/items/${e.id}`)}>
                     <Thumb src={e.artworkUrl} alt={e.title} />
                     <div className="min-w-0 flex-1">
                       <div className="truncate">{e.title}</div>

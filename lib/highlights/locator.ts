@@ -45,7 +45,7 @@ export function highlightJumpHref(
 ): string {
   const sec = locator?.sec
   if ((kind === "transcript" || kind === "quote") && typeof sec === "number" && sec > 0) {
-    return `/episodes/${itemId}?t=${Math.floor(sec)}`
+    return `/items/${itemId}?t=${Math.floor(sec)}`
   }
-  return `/episodes/${itemId}`
+  return `/items/${itemId}`
 }

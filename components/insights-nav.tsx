@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
-import type { InsightSection } from "@/components/episode-insights"
+import type { InsightSection } from "@/components/item-insights"
 
 // Sticky "on this page" nav with scroll-spy. Observes the section anchors within
 // the given scroll container and highlights the one currently at the top.

@@ -339,7 +339,7 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
               {itemId && (
                 <button
                   type="button"
-                  onClick={() => router.push(`/episodes/${itemId}`)}
+                  onClick={() => router.push(`/items/${itemId}`)}
                   aria-label="Open video page"
                   className="rounded bg-black/60 p-1 text-white hover:bg-black/80"
                 >

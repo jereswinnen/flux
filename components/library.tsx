@@ -2,20 +2,20 @@
 
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { EpisodeCard, type LibEpisode } from "@/components/episode-card"
+import { ItemCard, type LibItem } from "@/components/item-card"
 import { useCommand } from "@/components/command-context"
 import { hiResArtwork } from "@/lib/artwork"
 
-type ShowGroup = { name: string; artworkUrl: string | null; episodes: LibEpisode[] }
+type ShowGroup = { name: string; artworkUrl: string | null; episodes: LibItem[] }
 
-function episodeTime(e: LibEpisode): number {
+function episodeTime(e: LibItem): number {
   // Prefer publish date; fall back to when it was added so undated items
   // (articles, feeds without dates) keep their recency instead of sinking.
   const t = e.publishedAt ?? e.createdAt
   return t ? new Date(t).getTime() : 0
 }
 
-function groupByShow(episodes: LibEpisode[]): ShowGroup[] {
+function groupByShow(episodes: LibItem[]): ShowGroup[] {
   const groups = new Map<string, ShowGroup>()
   for (const e of episodes) {
     const name = e.source ?? "Unknown show"
@@ -34,7 +34,7 @@ function groupByShow(episodes: LibEpisode[]): ShowGroup[] {
   return result
 }
 
-export function Library({ initialEpisodes }: { initialEpisodes: LibEpisode[] }) {
+export function Library({ initialEpisodes }: { initialEpisodes: LibItem[] }) {
   const { openCommand } = useCommand()
   const [episodes, setEpisodes] = useState(initialEpisodes)
 
@@ -77,7 +77,7 @@ export function Library({ initialEpisodes }: { initialEpisodes: LibEpisode[] }) 
               </div>
               <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-2">
                 {g.episodes.map((e) => (
-                  <EpisodeCard key={e.id} episode={e} />
+                  <ItemCard key={e.id} episode={e} />
                 ))}
               </div>
             </section>

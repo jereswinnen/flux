@@ -30,7 +30,7 @@ import {
 } from "@/lib/export/item-markdown"
 import { slugify } from "@/lib/export/slug"
 
-export function EpisodeActions({
+export function ItemActions({
   itemId,
   episode,
   transcript,
