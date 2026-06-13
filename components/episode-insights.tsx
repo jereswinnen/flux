@@ -5,6 +5,8 @@ import { Hash, Lightbulb, ListOrdered, Quote, Users } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { formatTimestamp } from "@/lib/format"
+import { useHighlightsOptional } from "@/components/highlights-context"
+import { MarkedText } from "@/components/highlight-marks"
 
 export type InsightsData = {
   summary?: string | null
@@ -93,6 +95,12 @@ export function EpisodeInsights({
   const topics = insights?.topics ?? []
   const legacyEntities = insights?.entities ?? []
 
+  const hl = useHighlightsOptional()
+  const marksFor = (kind: string, index: number) =>
+    (hl?.highlights ?? [])
+      .filter((h) => h.kind === kind && h.locator?.index === index)
+      .map((h) => ({ id: h.id, text: h.text }))
+
   return (
     <div className="space-y-10">
       {insights?.summary && (
@@ -128,7 +136,9 @@ export function EpisodeInsights({
             {takeaways.map((t, i) => (
               <li key={i} data-hl-kind="takeaway" data-hl-index={String(i)} className="flex gap-3 font-serif text-lg leading-relaxed">
                 <span aria-hidden className="mt-2.5 size-1.5 shrink-0 rounded-full bg-primary" />
-                <span>{t}</span>
+                <span>
+                  {hl ? <MarkedText text={t} marks={marksFor("takeaway", i)} onMarkClick={hl.openMark} /> : t}
+                </span>
               </li>
             ))}
           </ul>
@@ -146,7 +156,7 @@ export function EpisodeInsights({
                 data-hl-sec={String(q.approxTimestampSec)}
                 className="border-l-2 border-primary/40 pl-4 font-serif text-lg italic leading-relaxed"
               >
-                &ldquo;{q.text}&rdquo;{" "}
+                &ldquo;{hl ? <MarkedText text={q.text} marks={marksFor("quote", i)} onMarkClick={hl.openMark} /> : q.text}&rdquo;{" "}
                 {q.approxTimestampSec > 0 && (
                   <button
                     type="button"

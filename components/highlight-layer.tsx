@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { buildLocator, type HighlightKind } from "@/lib/highlights/locator"
+import { useHighlights } from "@/components/highlights-context"
 
 type Pending = { x: number; y: number; kind: HighlightKind; text: string; data: Record<string, string | undefined> }
 
 /** Mounted once on a detail view. Watches for a text selection that lands inside a
  *  [data-hl-kind] region and offers a floating "Highlight" button that POSTs it. */
 export function HighlightLayer({ itemId }: { itemId: string }) {
+  const { add } = useHighlights()
   const [pending, setPending] = useState<Pending | null>(null)
   const barRef = useRef<HTMLDivElement>(null)
 
@@ -66,6 +68,14 @@ export function HighlightLayer({ itemId }: { itemId: string }) {
         body: JSON.stringify(body),
       })
       if (!res.ok) throw new Error()
+      const { highlight } = await res.json()
+      add({
+        id: highlight.id,
+        kind: highlight.kind,
+        text: highlight.text,
+        note: highlight.note ?? null,
+        locator: highlight.locator ?? null,
+      })
       toast.success("Highlighted")
     } catch {
       toast.error("Couldn't save highlight")
