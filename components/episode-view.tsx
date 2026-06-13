@@ -168,7 +168,7 @@ function ArticleBody({
         )}
         <div
           data-hl-kind="article"
-          className="prose prose-neutral max-w-none dark:prose-invert prose-img:rounded-lg"
+          className="prose prose-lg prose-neutral max-w-none font-serif leading-relaxed dark:prose-invert prose-img:rounded-lg"
           // Content is pre-sanitized server-side via sanitize-html before storage
           // eslint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{ __html: contentHtml }}
