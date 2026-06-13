@@ -131,7 +131,5 @@ export async function POST(request: Request) {
     },
   })
 
-  return result.toUIMessageStreamResponse({
-    headers: { "x-sources": encodeURIComponent(JSON.stringify(sources)) },
-  })
+  return result.toUIMessageStreamResponse()
 }

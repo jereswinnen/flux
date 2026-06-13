@@ -1,9 +1,15 @@
 import { fetchAndParseFeed } from "@/lib/rss/fetch"
+import { assertFetchableUrl } from "@/lib/article/extract"
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const feedUrl = searchParams.get("feedUrl")
   if (!feedUrl) return Response.json({ error: "missing feedUrl" }, { status: 400 })
+  try {
+    assertFetchableUrl(feedUrl)
+  } catch {
+    return Response.json({ error: "invalid feed URL" }, { status: 400 })
+  }
   try {
     const feed = await fetchAndParseFeed(feedUrl)
     return Response.json({

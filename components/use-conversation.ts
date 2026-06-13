@@ -77,25 +77,13 @@ export function useConversation(
           signal: ac.signal,
         })
         if (!res.ok) throw new Error("Chat failed")
-        let sources: UIMessage["sources"] = null
-        const header = res.headers.get("x-sources")
-        if (header) {
-          try {
-            sources = JSON.parse(decodeURIComponent(header))
-          } catch {
-            /* ignore */
-          }
-        }
         const reader = res.body?.getReader()
         const decoder = new TextDecoder()
         let buffer = ""
         const webSources: NonNullable<UIMessage["sources"]> = []
         const titleById = new Map<string, string>()
 
-        const mergedSources = (): UIMessage["sources"] => [
-          ...(sources ?? []),
-          ...webSources,
-        ]
+        const mergedSources = (): UIMessage["sources"] => [...webSources]
         const patchLast = (patch: Partial<UIMessage>) =>
           setMessages((prev) => {
             const next = [...prev]
