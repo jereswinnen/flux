@@ -22,6 +22,8 @@ export type ChatSourceRef = {
   videoId?: string | null
   isHighlight?: boolean
   snippet?: string | null
+  isWeb?: boolean
+  url?: string | null
 }
 
 export type UIMessage = {
@@ -29,6 +31,7 @@ export type UIMessage = {
   role: "user" | "assistant"
   content: string
   sources?: ChatSourceRef[] | null
+  status?: string | null
 }
 
 function CopyButton({ text }: { text: string }) {

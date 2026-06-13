@@ -4,6 +4,14 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import type { UIMessage } from "@/components/chat-message"
 
+function hostname(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "")
+  } catch {
+    return url
+  }
+}
+
 export function useConversation(
   conversationId: string | null,
   opts: { onStreamEnd?: () => void } = {},
@@ -80,17 +88,77 @@ export function useConversation(
         }
         const reader = res.body?.getReader()
         const decoder = new TextDecoder()
+        let buffer = ""
+        const webSources: NonNullable<UIMessage["sources"]> = []
+        const titleById = new Map<string, string>()
+
+        const mergedSources = (): UIMessage["sources"] => [
+          ...(sources ?? []),
+          ...webSources,
+        ]
+        const patchLast = (patch: Partial<UIMessage>) =>
+          setMessages((prev) => {
+            const next = [...prev]
+            const last = next[next.length - 1]
+            next[next.length - 1] = { ...last, ...patch }
+            return next
+          })
+
         if (reader) {
           for (;;) {
             const { done, value } = await reader.read()
             if (done) break
-            const chunk = decoder.decode(value)
-            setMessages((prev) => {
-              const next = [...prev]
-              const last = next[next.length - 1]
-              next[next.length - 1] = { ...last, content: last.content + chunk, sources }
-              return next
-            })
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split("\n")
+            buffer = lines.pop() ?? ""
+            for (const line of lines) {
+              const t = line.trim()
+              if (!t.startsWith("data:")) continue
+              const data = t.slice(5).trim()
+              if (!data || data === "[DONE]") continue
+              let part: Record<string, unknown>
+              try {
+                part = JSON.parse(data)
+              } catch {
+                continue
+              }
+              const type = part.type as string
+              if (type === "text-delta" && typeof part.delta === "string") {
+                const delta = part.delta as string
+                setMessages((prev) => {
+                  const next = [...prev]
+                  const last = next[next.length - 1]
+                  next[next.length - 1] = {
+                    ...last,
+                    content: last.content + delta,
+                    status: null,
+                    sources: mergedSources(),
+                  }
+                  return next
+                })
+              } else if (type === "tool-input-available" && part.toolName === "web_search") {
+                const input = part.input as { query?: string } | undefined
+                patchLast({
+                  status: input?.query ? `Searching the web for "${input.query}"` : "Searching the web…",
+                })
+              } else if (type === "source-document" && typeof part.sourceId === "string" && typeof part.title === "string") {
+                titleById.set(part.sourceId, part.title as string)
+              } else if (type === "source-url" && typeof part.url === "string") {
+                const url = part.url as string
+                if (!webSources.some((w) => w.url === url)) {
+                  const sid = typeof part.sourceId === "string" ? part.sourceId : ""
+                  webSources.push({
+                    isWeb: true,
+                    url,
+                    itemTitle: titleById.get(sid) || hostname(url),
+                    itemId: "",
+                    startSec: 0,
+                    snippet: null,
+                  })
+                  patchLast({ sources: mergedSources() })
+                }
+              }
+            }
           }
         }
         await syncAfterStream()
