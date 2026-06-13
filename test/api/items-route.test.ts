@@ -9,7 +9,7 @@ const created: Record<string, unknown>[] = []
 vi.mock("@/lib/db/items", () => ({
   itemRepo: {
     create: vi.fn(async (v: Record<string, unknown>) => {
-      const row = { id: "new-id", status: "processing", ...v }
+      const row = { id: "new-id", status: "processing", createdAt: new Date(), ...v }
       created.push(row)
       return row
     }),
