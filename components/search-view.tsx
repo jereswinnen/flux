@@ -20,6 +20,8 @@ type Source = {
   content: string
   startSec: number
   endSec: number
+  isHighlight?: boolean
+  snippet?: string | null
 }
 
 type EntityHit = {
@@ -156,7 +158,8 @@ export function SearchView({ query }: { query: string }) {
     if (q.length >= 2) router.push(`/search?q=${encodeURIComponent(q)}`)
   }
 
-  const groups = groupSources(sources)
+  const highlightSources = sources.filter((s) => s.isHighlight)
+  const groups = groupSources(sources.filter((s) => !s.isHighlight))
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8">
@@ -225,7 +228,7 @@ export function SearchView({ query }: { query: string }) {
             )
           )}
 
-          {groups.length > 0 && (
+          {(groups.length > 0 || highlightSources.length > 0) && (
             <section className="space-y-4">
               <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Sources
@@ -267,6 +270,23 @@ export function SearchView({ query }: { query: string }) {
                     </div>
                   )
                 })}
+                {highlightSources.map((s, i) => (
+                  <Link
+                    key={`hl-${i}`}
+                    href={episodeHref(s.itemId, s.startSec)}
+                    className="flex items-start gap-2 rounded-lg border p-2.5 transition-colors hover:bg-muted"
+                  >
+                    <span className="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary">
+                      Highlight
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="line-clamp-2 font-serif text-sm italic">
+                        &ldquo;{s.snippet ?? s.content}&rdquo;
+                      </span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">{s.itemTitle}</span>
+                    </span>
+                  </Link>
+                ))}
               </div>
             </section>
           )}
