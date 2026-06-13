@@ -1,5 +1,5 @@
 import { openai } from "@ai-sdk/openai"
-import { streamText, type ModelMessage } from "ai"
+import { streamText, stepCountIs, type ModelMessage } from "ai"
 import { eq } from "drizzle-orm"
 import { embedQuery } from "@/lib/ai/embeddings"
 import { condenseQuery } from "@/lib/ai/condense"
@@ -12,6 +12,7 @@ import { groupHitsIntoSources } from "@/lib/ai/group-sources"
 import { transcripts } from "@/lib/db/schema"
 import { formatTimestamp } from "@/lib/format"
 import type { ChatSource } from "@/lib/db/schema"
+import { toWebSources } from "@/lib/ai/web-sources"
 
 function entryToChatSource(e: AskSourceEntry): ChatSource {
   const base = {
@@ -110,24 +111,27 @@ export async function POST(request: Request) {
 
   const result = streamText({
     model: openai("gpt-5.4-mini-2026-03-17"),
+    tools: { web_search: openai.tools.webSearch() },
+    stopWhen: stepCountIs(3),
     system:
-      "You are answering questions about podcast transcripts using ONLY the provided excerpts. " +
-      "Be thorough and well-organized: cover each distinct point the excerpts make and include concrete specifics " +
-      "(names, numbers, examples, direct phrasing). When there are several distinct points, use a short markdown " +
-      "list; otherwise a tight paragraph. Don't pad or repeat yourself. " +
+      "You are answering questions about a personal podcast/article library using the provided excerpts. " +
+      "Answer primarily from them. If they don't fully cover the question, or it needs current/external " +
+      "information, use the web_search tool and integrate what you find — prefer the library, use the web " +
+      "to supplement. Be thorough and specific. " +
       (libraryWide
-        ? "The excerpts are numbered; cite the claims you rely on with the matching [n] (e.g. [1], [2][3]). Do not write out episode titles inline. "
+        ? "The excerpts are numbered; cite the claims you rely on with the matching [n]. Do not write episode titles inline. "
         : "Cite the [timestamp] you rely on. ") +
-      "If the answer isn't in the excerpts, say so.\n\nExcerpts:\n" +
+      "If neither the excerpts nor the web answer it, say so.\n\nExcerpts:\n" +
       context,
     messages,
-    onFinish: async ({ text }) => {
-      await conversationRepo.addMessage({ conversationId, role: "assistant", content: text, sources })
+    onFinish: async ({ text, sources: modelSources }) => {
+      const finalSources = [...sources, ...toWebSources((modelSources ?? []) as never)]
+      await conversationRepo.addMessage({ conversationId, role: "assistant", content: text, sources: finalSources })
       await conversationRepo.touch(conversationId)
     },
   })
 
-  return result.toTextStreamResponse({
+  return result.toUIMessageStreamResponse({
     headers: { "x-sources": encodeURIComponent(JSON.stringify(sources)) },
   })
 }
