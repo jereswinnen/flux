@@ -17,6 +17,8 @@ import { InsightsNav } from "@/components/insights-nav"
 import { useVideoPlayer } from "@/components/video-player"
 import { LiveTranscript } from "@/components/live-transcript"
 import { HighlightLayer } from "@/components/highlight-layer"
+import { HighlightsProvider, useHighlights, type InlineHighlight } from "@/components/highlights-context"
+import { HighlightedHtml } from "@/components/highlight-marks"
 
 type Segment = {
   start: number
@@ -51,6 +53,7 @@ export type EpisodeViewProps = {
   transcript: { fullText: string; segments: Segment[]; contentHtml?: string | null } | null
   insights: Insights
   entities?: MentionedEntity[]
+  highlights?: InlineHighlight[]
 }
 
 function YouTubeBody({
@@ -138,6 +141,10 @@ function ArticleBody({
   tab: string
   onTabChange: (v: string) => void
 }) {
+  const { highlights, openMark } = useHighlights()
+  const articleMarks = highlights
+    .filter((h) => h.kind === "article")
+    .map((h) => ({ id: h.id, text: h.text }))
   return (
     <Tabs value={tab} onValueChange={onTabChange}>
       <div className="sticky top-0 z-10 -mx-4 mb-2 bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:-mx-6 md:px-6">
@@ -166,12 +173,11 @@ function ArticleBody({
             className="mb-6 aspect-video w-full rounded-lg object-cover"
           />
         )}
-        <div
-          data-hl-kind="article"
+        <HighlightedHtml
+          html={contentHtml}
+          marks={articleMarks}
+          onMarkClick={openMark}
           className="prose prose-lg prose-neutral max-w-none font-serif leading-relaxed dark:prose-invert prose-img:rounded-lg"
-          // Content is pre-sanitized server-side via sanitize-html before storage
-          // eslint-disable-next-line react/no-danger
-          dangerouslySetInnerHTML={{ __html: contentHtml }}
         />
       </TabsContent>
       <TabsContent value="insights" className="pb-10 pt-2">
@@ -187,7 +193,7 @@ function statusVariant(status: string): "default" | "secondary" | "destructive" 
   return "secondary"
 }
 
-export function EpisodeView({ episode, transcript, insights, entities = [] }: EpisodeViewProps) {
+export function EpisodeView({ episode, transcript, insights, entities = [], highlights = [] }: EpisodeViewProps) {
   const router = useRouter()
   const inFlight = !["ready", "failed"].includes(episode.status)
   const player = usePlayer()
@@ -237,7 +243,8 @@ export function EpisodeView({ episode, transcript, insights, entities = [] }: Ep
   ].filter(Boolean) as string[]
 
   return (
-    <>
+    <HighlightsProvider initial={highlights}>
+      <>
       <AppHeader
         breadcrumbs={[{ label: "Library", href: "/" }, { label: episode.title }]}
         actions={
@@ -367,6 +374,7 @@ export function EpisodeView({ episode, transcript, insights, entities = [] }: Ep
         </div>
       )}
       <HighlightLayer itemId={episode.id} />
-    </>
+      </>
+    </HighlightsProvider>
   )
 }
