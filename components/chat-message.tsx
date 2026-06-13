@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-import { Check, Copy, Play } from "lucide-react"
+import { Check, ChevronDown, Copy, Play } from "lucide-react"
 import { remarkTimestamps } from "@/lib/markdown/timestamps"
 import { hiResArtwork } from "@/lib/artwork"
 import { episodeHref } from "@/lib/episode-href"
@@ -59,9 +59,22 @@ export function ChatMessage({
   const player = usePlayer()
   const video = useVideoPlayer()
   const router = useRouter()
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set())
 
   // Start playback at a source's moment — cue the relevant global player in place
   // (video mini for YouTube, audio bar for podcasts); fall back to navigating.
+  function toggleGroup(id: string) {
+    setOpenGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
   function openSource(s: ChatSourceRef) {
     if (s.videoId) {
       video.cue(s.videoId, {
@@ -114,6 +127,21 @@ export function ChatMessage({
   const shownSources = sources
     .map((s, i) => ({ s, n: i + 1 }))
     .filter(({ n }) => citedNums.size === 0 || citedNums.has(n))
+
+  const sourceGroups = (() => {
+    const order: string[] = []
+    const map = new Map<string, { item: ChatSourceRef; refs: { s: ChatSourceRef; n: number }[] }>()
+    for (const { s, n } of shownSources) {
+      let g = map.get(s.itemId)
+      if (!g) {
+        g = { item: s, refs: [] }
+        map.set(s.itemId, g)
+        order.push(s.itemId)
+      }
+      g.refs.push({ s, n })
+    }
+    return order.map((id) => map.get(id)!)
+  })()
 
   return (
     <div className="space-y-3">
@@ -180,36 +208,78 @@ export function ChatMessage({
 
       {message.content && (
         <>
-          {shownSources.length > 0 && (
+          {sourceGroups.length > 0 && (
             <div className="space-y-2">
               <p className="font-sans text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Sources
               </p>
               <div className="grid gap-2 sm:grid-cols-2">
-                {shownSources.map(({ s, n }) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => openSource(s)}
-                    className="group flex items-center gap-3 rounded-xl border p-2.5 text-left transition-colors hover:border-foreground/20 hover:bg-muted/50"
-                  >
-                    <span className="flex size-5 shrink-0 items-center justify-center rounded bg-primary/15 font-sans text-[11px] font-medium text-primary">
-                      {n}
-                    </span>
-                    <div className="size-9 shrink-0 overflow-hidden rounded-md bg-muted">
-                      {s.artworkUrl ? (
-                        <img src={hiResArtwork(s.artworkUrl, 120)} alt="" className="size-full object-cover" />
-                      ) : null}
+                {sourceGroups.map((g) => {
+                  const multi = g.refs.length > 1
+                  const first = g.refs[0]
+                  const meta = [
+                    g.item.podcastName,
+                    multi
+                      ? `${g.refs.length} references`
+                      : first.s.startSec > 0
+                        ? formatTimestamp(first.s.startSec)
+                        : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")
+                  return (
+                    <div key={g.item.itemId} className="rounded-xl border">
+                      <button
+                        type="button"
+                        onClick={() => (multi ? toggleGroup(g.item.itemId) : openSource(first.s))}
+                        className="group flex w-full items-center gap-3 p-2.5 text-left transition-colors hover:bg-muted/50"
+                      >
+                        {!multi && (
+                          <span className="flex size-5 shrink-0 items-center justify-center rounded bg-primary/15 font-sans text-[11px] font-medium text-primary">
+                            {first.n}
+                          </span>
+                        )}
+                        <div className="size-9 shrink-0 overflow-hidden rounded-md bg-muted">
+                          {g.item.artworkUrl ? (
+                            <img src={hiResArtwork(g.item.artworkUrl, 120)} alt="" className="size-full object-cover" />
+                          ) : null}
+                        </div>
+                        <div className="min-w-0 flex-1 font-sans">
+                          <div className="line-clamp-1 text-sm font-medium">{g.item.itemTitle}</div>
+                          <div className="truncate text-xs text-muted-foreground">{meta}</div>
+                        </div>
+                        {multi ? (
+                          <ChevronDown
+                            className={`size-4 shrink-0 text-muted-foreground transition-transform ${openGroups.has(g.item.itemId) ? "rotate-180" : ""}`}
+                          />
+                        ) : (
+                          <Play className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                        )}
+                      </button>
+                      {multi && openGroups.has(g.item.itemId) && (
+                        <ul className="border-t">
+                          {g.refs.map(({ s, n }) => (
+                            <li key={n} className="border-b last:border-b-0">
+                              <button
+                                type="button"
+                                onClick={() => openSource(s)}
+                                className="group flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50"
+                              >
+                                <span className="flex size-5 shrink-0 items-center justify-center rounded bg-primary/15 font-sans text-[11px] font-medium text-primary">
+                                  {n}
+                                </span>
+                                <span className="flex-1 font-sans tabular-nums text-muted-foreground">
+                                  {s.startSec > 0 ? formatTimestamp(s.startSec) : "Reference"}
+                                </span>
+                                <Play className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
-                    <div className="min-w-0 flex-1 font-sans">
-                      <div className="line-clamp-1 text-sm font-medium">{s.itemTitle}</div>
-                      <div className="truncate text-xs text-muted-foreground">
-                        {[s.podcastName, formatTimestamp(s.startSec)].filter(Boolean).join(" · ")}
-                      </div>
-                    </div>
-                    <Play className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                  </button>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}
