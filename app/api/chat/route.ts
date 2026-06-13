@@ -76,10 +76,12 @@ export async function POST(request: Request) {
   if (itemId) {
     const [t] = await db.select().from(transcripts).where(eq(transcripts.itemId, itemId)).limit(1)
     const full = t?.segments ? buildTranscriptContext(t.segments) : ""
+    // One query embedding, reused for chunk fallback (if needed) + highlights.
+    const qe = await embedQuery(content)
     if (full && estimateTokens(full) <= MAX_TRANSCRIPT_TOKENS) {
       context = full
     } else {
-      const hits = await searchChunks(db, await embedQuery(content), { limit: 10, itemId })
+      const hits = await searchChunks(db, qe, { limit: 10, itemId })
       const { sources: grouped } = groupHitsIntoSources(hits)
       context = hits.map((h) => `[${formatTimestamp(h.startSec)}] ${h.content}`).join("\n\n")
       sources = grouped.map((h) => ({
@@ -87,9 +89,10 @@ export async function POST(request: Request) {
         podcastName: h.podcastName, artworkUrl: h.artworkUrl, audioUrl: h.audioUrl, videoId: h.videoId,
       }))
     }
-    const hlHits = await searchHighlights(db, await embedQuery(content), { itemId, limit: 3 })
+    const hlHits = await searchHighlights(db, qe, { itemId, limit: 3 })
     if (hlHits.length) {
       context += "\n\nHighlights you saved on this item:\n" + hlHits.map((h) => `- ${h.text}`).join("\n")
+      // n is unused for highlight entries (entryToChatSource ignores it).
       sources = [...sources, ...hlHits.map((h) => entryToChatSource({ kind: "highlight", n: 0, hit: h }))]
     }
   } else {
