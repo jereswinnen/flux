@@ -8,6 +8,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   vector,
 } from "drizzle-orm/pg-core"
@@ -74,15 +75,19 @@ export const highlights = pgTable(
   ],
 )
 
-export const transcripts = pgTable("transcripts", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  itemId: uuid("item_id")
-    .notNull()
-    .references(() => items.id, { onDelete: "cascade" }),
-  fullText: text("full_text").notNull(),
-  segments: jsonb("segments").$type<TranscriptSegment[]>(),
-  contentHtml: text("content_html"),
-})
+export const transcripts = pgTable(
+  "transcripts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    fullText: text("full_text").notNull(),
+    segments: jsonb("segments").$type<TranscriptSegment[]>(),
+    contentHtml: text("content_html"),
+  },
+  (t) => [uniqueIndex("transcripts_item_unique").on(t.itemId)],
+)
 
 export type TranscriptWord = { start: number; end: number; word: string }
 export type TranscriptSegment = {
