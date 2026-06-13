@@ -7,6 +7,7 @@ import { buildTranscriptContext, estimateTokens, MAX_TRANSCRIPT_TOKENS } from "@
 import { db } from "@/lib/db"
 import { conversationRepo } from "@/lib/db/conversations"
 import { searchChunks, hybridSearch, refineHitTimestamps } from "@/lib/db/search"
+import { groupHitsIntoSources } from "@/lib/ai/group-sources"
 import { transcripts } from "@/lib/db/schema"
 import { formatTimestamp } from "@/lib/format"
 import type { ChatSource } from "@/lib/db/schema"
@@ -65,31 +66,29 @@ export async function POST(request: Request) {
       context = full
     } else {
       const hits = await searchChunks(db, await embedQuery(content), { limit: 10, itemId })
+      const { sources: grouped } = groupHitsIntoSources(hits)
       context = hits.map((h) => `[${formatTimestamp(h.startSec)}] ${h.content}`).join("\n\n")
-      sources = hits.map((h) => ({
-        itemId: h.itemId,
-        itemTitle: h.itemTitle,
-        startSec: h.startSec,
-        podcastName: h.podcastName,
-        artworkUrl: h.artworkUrl,
-        audioUrl: h.audioUrl,
-        videoId: h.videoId,
+      sources = grouped.map((h) => ({
+        itemId: h.itemId, itemTitle: h.itemTitle, startSec: h.startSec,
+        podcastName: h.podcastName, artworkUrl: h.artworkUrl, audioUrl: h.audioUrl, videoId: h.videoId,
       }))
     }
   } else {
     const searchQuery = await condenseQuery(priorTurns, content)
     const rawHits = await hybridSearch(db, await embedQuery(searchQuery), searchQuery, { limit: 8 })
     const hits = await refineHitTimestamps(db, rawHits, searchQuery)
+    const { sources: grouped, numberFor } = groupHitsIntoSources(hits)
     context = hits
-      .map((h, i) => `[${i + 1}] (${h.itemTitle} — ${formatTimestamp(h.startSec)}) ${h.content}`)
+      .map((h) => `[${numberFor(h)}] (${h.itemTitle} — ${formatTimestamp(h.startSec)}) ${h.content}`)
       .join("\n\n")
-    sources = hits.map((h) => ({
+    sources = grouped.map((h) => ({
       itemId: h.itemId,
       itemTitle: h.itemTitle,
       startSec: h.startSec,
       podcastName: h.podcastName,
       artworkUrl: h.artworkUrl,
       audioUrl: h.audioUrl,
+      videoId: h.videoId,
     }))
   }
 

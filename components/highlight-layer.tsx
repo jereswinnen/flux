@@ -13,7 +13,8 @@ export function HighlightLayer({ itemId }: { itemId: string }) {
   const barRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    function onUp() {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    function compute() {
       const sel = window.getSelection()
       const text = sel?.toString().trim() ?? ""
       if (!sel || sel.rangeCount === 0 || !text) {
@@ -35,8 +36,17 @@ export function HighlightLayer({ itemId }: { itemId: string }) {
         data: { hlSec: el.dataset.hlSec, hlIndex: el.dataset.hlIndex },
       })
     }
-    document.addEventListener("mouseup", onUp)
-    return () => document.removeEventListener("mouseup", onUp)
+    function onSelectionChange() {
+      clearTimeout(timer)
+      timer = setTimeout(compute, 350)
+    }
+    document.addEventListener("mouseup", compute)
+    document.addEventListener("selectionchange", onSelectionChange)
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener("mouseup", compute)
+      document.removeEventListener("selectionchange", onSelectionChange)
+    }
   }, [])
 
   async function save() {
@@ -69,6 +79,7 @@ export function HighlightLayer({ itemId }: { itemId: string }) {
       style={{ left: pending.x, top: Math.max(8, pending.y - 44) }}
       className="fixed z-50 -translate-x-1/2"
       onMouseDown={(e) => e.preventDefault()} // keep the selection while clicking
+      onPointerDown={(e) => e.preventDefault()} // covers touch events on iOS
     >
       <button
         type="button"

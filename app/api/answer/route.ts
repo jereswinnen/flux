@@ -3,6 +3,7 @@ import { generateText } from "ai"
 import { db } from "@/lib/db"
 import { embedQuery } from "@/lib/ai/embeddings"
 import { hybridSearch, refineHitTimestamps } from "@/lib/db/search"
+import { groupHitsIntoSources } from "@/lib/ai/group-sources"
 import { searchEntities } from "@/lib/db/entities"
 import { formatTimestamp } from "@/lib/format"
 
@@ -19,10 +20,11 @@ export async function POST(request: Request) {
     searchEntities(db, query, 5).catch(() => []),
   ])
   if (rawSources.length === 0) return Response.json({ answer: null, sources: [], entities })
-  const sources = await refineHitTimestamps(db, rawSources, query)
+  const allHits = await refineHitTimestamps(db, rawSources, query)
+  const { sources, numberFor } = groupHitsIntoSources(allHits)
 
-  const numbered = sources
-    .map((s, i) => `[${i + 1}] (${s.itemTitle} @ ${formatTimestamp(s.startSec)}) ${s.content}`)
+  const numbered = allHits
+    .map((h) => `[${numberFor(h)}] (${h.itemTitle} @ ${formatTimestamp(h.startSec)}) ${h.content}`)
     .join("\n\n")
 
   const { text } = await generateText({
