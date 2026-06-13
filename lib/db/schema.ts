@@ -54,6 +54,7 @@ export const items = pgTable("items", {
   readState: text("read_state").$type<ItemReadState>().notNull().default("unread"),
   sourceMetadata: jsonb("source_metadata").$type<SourceMetadata>(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 })
 
 export const highlights = pgTable(
@@ -69,6 +70,7 @@ export const highlights = pgTable(
     locator: jsonb("locator").$type<HighlightLocator>(),
     embedding: vector("embedding", { dimensions: 1536 }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [
     index("highlights_item_idx").on(t.itemId),
@@ -228,4 +230,15 @@ export const messages = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [index("messages_conversation_created_idx").on(t.conversationId, t.createdAt)],
+)
+
+export const deletions = pgTable(
+  "deletions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    type: text("type").notNull(),
+    entityId: uuid("entity_id").notNull(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("deletions_deleted_at_idx").on(t.deletedAt)],
 )
