@@ -64,6 +64,7 @@ export const highlights = pgTable(
     text: text("text").notNull(),
     note: text("note"),
     locator: jsonb("locator").$type<HighlightLocator>(),
+    embedding: vector("embedding", { dimensions: 1536 }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [
