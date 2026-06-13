@@ -17,6 +17,7 @@ export interface ItemDTO {
   status: ItemStatus
   videoId: string | null // youtube only, from sourceMetadata
   readState: ItemReadState
+  updatedAt: string
 }
 
 export function itemToDTO(row: ItemRow): ItemDTO {
@@ -34,5 +35,6 @@ export function itemToDTO(row: ItemRow): ItemDTO {
     status: row.status,
     videoId: row.sourceMetadata?.videoId ?? null,
     readState: row.readState,
+    updatedAt: row.updatedAt.toISOString(),
   }
 }

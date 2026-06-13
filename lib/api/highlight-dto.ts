@@ -8,6 +8,7 @@ export interface HighlightDTO {
   text: string
   note: string | null
   createdAt: string
+  updatedAt: string
   item: { id: string; type: ItemType; title: string; source: string | null; artworkUrl: string | null }
   jumpHref: string
 }
@@ -19,6 +20,7 @@ export function highlightToDTO(row: HighlightRow): HighlightDTO {
     text: row.text,
     note: row.note,
     createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
     item: row.item,
     jumpHref: highlightJumpHref(row.item.id, row.kind as HighlightKind, row.locator),
   }
