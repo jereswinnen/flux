@@ -48,3 +48,22 @@ test("persists content_html and marks the item ready", async () => {
   const after = await items.getById(item.id)
   expect(after?.status).toBe("ready")
 }, 30_000)
+
+test("re-processing replaces the transcript row, not duplicates it", async () => {
+  const item = await items.create({ type: "article", title: "A", sourceUrl: "https://x/y" })
+  const run = (html: string) =>
+    processContent(
+      { itemId: item.id, transcript: "body", segments: [{ start: 0, end: 0, text: "body" }], contentHtml: html },
+      {
+        db,
+        generateInsights: async () => ({ summary: "s", takeaways: [], topics: [], chapters: [], quotes: [], entities: [] }),
+        embedTexts: async (t) => t.map(() => Array(1536).fill(0)),
+        resolveEntities: async () => {},
+      },
+    )
+  await run("<p>one</p>")
+  await run("<p>two</p>")
+  const rows = await db.select().from(schema.transcripts).where(eq(schema.transcripts.itemId, item.id))
+  expect(rows).toHaveLength(1)
+  expect(rows[0].contentHtml).toBe("<p>two</p>")
+}, 30_000)

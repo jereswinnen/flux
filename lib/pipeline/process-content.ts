@@ -42,54 +42,51 @@ export async function processContent(result: TranscriptResult, deps: PipelineDep
       resolveEpisodeEntities(itemId, extracted, { db, embedTexts: embed }, opts))
 
   try {
-    // 0. Make re-processing idempotent (retry, or a duplicate Modal callback).
-    await db.delete(schema.insights).where(eq(schema.insights.itemId, result.itemId))
-    await db.delete(schema.chunks).where(eq(schema.chunks.itemId, result.itemId))
-    await db.delete(schema.itemEntities).where(eq(schema.itemEntities.itemId, result.itemId))
-    await db.delete(schema.transcripts).where(eq(schema.transcripts.itemId, result.itemId))
-
-    // 1. Store transcript
-    await db.insert(schema.transcripts).values({
-      itemId: result.itemId,
-      fullText: result.transcript,
-      segments: result.segments,
-      contentHtml: result.contentHtml,
-    })
-
-    // 2. Insights
+    // 1. Compute the slow, network-bound work FIRST — before touching stored data.
     await repo.updateStatus(result.itemId, "analyzing")
     const insights = await genInsights(result.transcript, result.segments)
-    await db.insert(schema.insights).values({
-      itemId: result.itemId,
-      summary: insights.summary,
-      takeaways: insights.takeaways,
-      topics: insights.topics,
-      chapters: insights.chapters,
-      quotes: insights.quotes,
-      entities: insights.entities,
+    const chunks = chunkSegments(result.segments, { targetTokens: 600, overlapSegments: 1 })
+    const vectors = chunks.length > 0 ? await embed(chunks.map((c) => c.content)) : []
+
+    // 2. Atomically swap derived data (brief — no network calls inside the txn).
+    await db.transaction(async (tx) => {
+      await tx.delete(schema.insights).where(eq(schema.insights.itemId, result.itemId))
+      await tx.delete(schema.chunks).where(eq(schema.chunks.itemId, result.itemId))
+      await tx.delete(schema.itemEntities).where(eq(schema.itemEntities.itemId, result.itemId))
+      await tx.delete(schema.transcripts).where(eq(schema.transcripts.itemId, result.itemId))
+
+      await tx.insert(schema.transcripts).values({
+        itemId: result.itemId,
+        fullText: result.transcript,
+        segments: result.segments,
+        contentHtml: result.contentHtml,
+      })
+      await tx.insert(schema.insights).values({
+        itemId: result.itemId,
+        summary: insights.summary,
+        takeaways: insights.takeaways,
+        topics: insights.topics,
+        chapters: insights.chapters,
+        quotes: insights.quotes,
+        entities: insights.entities,
+      })
+      if (chunks.length > 0) {
+        await tx.insert(schema.chunks).values(
+          chunks.map((c, i) => ({
+            itemId: result.itemId,
+            content: c.content,
+            startSec: c.startSec,
+            endSec: c.endSec,
+            embedding: vectors[i],
+          })),
+        )
+      }
     })
 
-    // 3. Chunk + embed
-    const chunks = chunkSegments(result.segments, { targetTokens: 600, overlapSegments: 1 })
-    if (chunks.length > 0) {
-      const vectors = await embed(chunks.map((c) => c.content))
-      await db.insert(schema.chunks).values(
-        chunks.map((c, i) => ({
-          itemId: result.itemId,
-          content: c.content,
-          startSec: c.startSec,
-          endSec: c.endSec,
-          embedding: vectors[i],
-        })),
-      )
-    }
-
-    // 3.5. Canonical entities — best-effort.
+    // 3. Canonical entities — best-effort, after the swap (re-populates item_entities).
     try {
       const item = await repo.getById(result.itemId)
-      await resolveEntities(result.itemId, insights.entities ?? [], {
-        itemTitle: item?.title,
-      })
+      await resolveEntities(result.itemId, insights.entities ?? [], { itemTitle: item?.title })
     } catch (e) {
       console.error(`entity resolution failed for item ${result.itemId}`, e)
     }
@@ -97,11 +94,7 @@ export async function processContent(result: TranscriptResult, deps: PipelineDep
     // 4. Ready
     await repo.updateStatus(result.itemId, "ready")
   } catch (e) {
-    await repo.updateStatus(
-      result.itemId,
-      "failed",
-      e instanceof Error ? e.message : String(e),
-    )
+    await repo.updateStatus(result.itemId, "failed", e instanceof Error ? e.message : String(e))
     throw e
   }
 }
