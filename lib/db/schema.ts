@@ -21,6 +21,7 @@ export type ItemStatus =
   | "failed"
 
 export type ItemType = "podcast" | "youtube" | "article"
+export type ItemReadState = "unread" | "read" | "archived"
 
 // Source-specific identifiers. Callers must populate the fields relevant to the
 // item's `type` (e.g. youtube items set `videoId`). The display "source name"
@@ -50,6 +51,7 @@ export const items = pgTable("items", {
   durationSec: integer("duration_sec"),
   status: text("status").$type<ItemStatus>().notNull().default("processing"),
   errorMessage: text("error_message"),
+  readState: text("read_state").$type<ItemReadState>().notNull().default("unread"),
   sourceMetadata: jsonb("source_metadata").$type<SourceMetadata>(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 })

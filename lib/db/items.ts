@@ -1,6 +1,6 @@
 import { desc, eq, ilike, or, sql } from "drizzle-orm"
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js"
-import { items, type ItemStatus, type ItemType, type SourceMetadata } from "./schema"
+import { items, type ItemReadState, type ItemStatus, type ItemType, type SourceMetadata } from "./schema"
 import * as schema from "./schema"
 
 export interface NewItem {
@@ -57,6 +57,10 @@ export function makeItemRepo(db: DB) {
         .where(or(ilike(items.title, term), ilike(items.podcastName, term)))
         .orderBy(desc(items.createdAt))
         .limit(limit)
+    },
+
+    async setReadState(id: string, readState: ItemReadState) {
+      await db.update(items).set({ readState }).where(eq(items.id, id))
     },
 
     async updateStatus(id: string, status: ItemStatus, errorMessage?: string) {

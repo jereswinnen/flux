@@ -1,5 +1,5 @@
 import type { InferSelectModel } from "drizzle-orm"
-import type { items, ItemStatus, ItemType } from "@/lib/db/schema"
+import type { items, ItemReadState, ItemStatus, ItemType } from "@/lib/db/schema"
 
 export type ItemRow = InferSelectModel<typeof items>
 
@@ -15,6 +15,7 @@ export interface ItemDTO {
   publishedAt: string | null // ISO 8601
   status: ItemStatus
   videoId: string | null // youtube only, from sourceMetadata
+  readState: ItemReadState
 }
 
 export function itemToDTO(row: ItemRow): ItemDTO {
@@ -30,5 +31,6 @@ export function itemToDTO(row: ItemRow): ItemDTO {
     publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
     status: row.status,
     videoId: row.sourceMetadata?.videoId ?? null,
+    readState: row.readState,
   }
 }
