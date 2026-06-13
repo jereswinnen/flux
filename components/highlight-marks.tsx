@@ -95,5 +95,15 @@ export function HighlightedHtml({
     return () => root.removeEventListener("click", onClick)
   }, [onMarkClick])
 
-  return <div ref={ref} data-hl-kind="article" className={className} />
+  // Render the (server-sanitized) HTML directly so the article body is in the
+  // initial SSR payload; the effect above re-applies it and wraps marks on the
+  // client. Content is pre-sanitized server-side via sanitize-html.
+  return (
+    <div
+      ref={ref}
+      data-hl-kind="article"
+      className={className}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  )
 }
