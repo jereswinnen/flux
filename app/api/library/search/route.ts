@@ -2,13 +2,14 @@ import { db } from "@/lib/db"
 import { itemRepo } from "@/lib/db/items"
 import { embedQuery } from "@/lib/ai/embeddings"
 import { hybridSearch, refineHitTimestamps } from "@/lib/db/search"
+import { itemToDTO } from "@/lib/api/dto"
 
 // Global ⌘K library search: matching episodes (by title/show) + transcript
 // moments (hybrid vector + full-text), resolved in parallel.
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null)
   const query = typeof body?.query === "string" ? body.query.trim() : ""
-  if (query.length < 2) return Response.json({ episodes: [], moments: [] })
+  if (query.length < 2) return Response.json({ items: [], moments: [] })
 
   const [episodes, moments] = await Promise.all([
     itemRepo.search(query, 6),
@@ -18,15 +19,5 @@ export async function POST(request: Request) {
       .catch(() => []),
   ])
 
-  return Response.json({
-    episodes: episodes.map((e) => ({
-      id: e.id,
-      title: e.title,
-      podcastName: e.podcastName,
-      artworkUrl: e.artworkUrl,
-      status: e.status,
-      publishedAt: e.publishedAt ? e.publishedAt.toISOString() : null,
-    })),
-    moments,
-  })
+  return Response.json({ items: episodes.map(itemToDTO), moments })
 }
