@@ -204,6 +204,8 @@ export type ChatSource = {
   videoId?: string | null
   isHighlight?: boolean
   snippet?: string | null
+  isWeb?: boolean
+  url?: string | null
 }
 
 export const messages = pgTable(
