@@ -18,6 +18,7 @@ describe("itemToDTO", () => {
       readState: "unread",
       sourceMetadata: { guid: "g1", itunesCollectionId: 99 },
       createdAt: new Date("2026-01-01T00:00:00Z"),
+      updatedAt: new Date("2026-01-01T00:00:00Z"),
     })
     expect(dto).toMatchObject({
       id: "i1",
@@ -50,6 +51,7 @@ describe("itemToDTO", () => {
       readState: "unread",
       sourceMetadata: { videoId: "abc", channelId: "c1" },
       createdAt: new Date("2026-01-01T00:00:00Z"),
+      updatedAt: new Date("2026-01-01T00:00:00Z"),
     })
     expect(dto.videoId).toBe("abc")
     expect(dto.publishedAt).toBeNull()

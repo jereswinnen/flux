@@ -10,6 +10,7 @@ describe("highlightToDTO", () => {
       note: null,
       locator: { sec: 42 },
       createdAt: new Date("2026-01-02T03:04:05Z"),
+      updatedAt: new Date("2026-01-02T03:04:05Z"),
       item: { id: "i1", type: "youtube", title: "Vid", source: "Chan", artworkUrl: null },
     })
     expect(dto).toMatchObject({
@@ -30,6 +31,7 @@ describe("highlightToDTO", () => {
       note: "n",
       locator: { index: 1 },
       createdAt: new Date("2026-01-01T00:00:00Z"),
+      updatedAt: new Date("2026-01-01T00:00:00Z"),
       item: { id: "i2", type: "podcast", title: "Ep", source: null, artworkUrl: null },
     })
     expect(dto.jumpHref).toBe("/items/i2")
