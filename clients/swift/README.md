@@ -64,16 +64,12 @@ network-level `URLError`.
 
 ## Example workflows
 
-### List the library
+### Read the library
 
-```swift
-let items: [ItemDTO] = try await client.items()
-for item in items {
-    print(item.title, item.status, item.readState)
-    // item.source = show/channel/author (JSON key is "source", not "podcastName")
-    // item.videoId = non-nil only for youtube items
-}
-```
+The library is hydrated through `sync()` (see "Incremental sync loop" below) into your
+local store; there is no separate list-all call. Each `ItemDTO` carries `title`, `status`,
+`readState`, `source` (show/channel/author — JSON key is `source`, not `podcastName`), and
+`videoId` (non-nil only for youtube items).
 
 ### Load item detail and mark as read
 
@@ -109,18 +105,42 @@ let input = PodcastItemInput(
 let item = try await client.addPodcastItem(input)
 ```
 
-### Ask a question (one-shot RAG)
+### Find a podcast to add (iTunes search → episodes)
 
 ```swift
-let response: AskResponse = try await client.ask(query: "What did they say about sleep quality?")
-if let answer = response.answer {
-    // answer cites library sources as [1], [2], … matching response.sources array order
-    print(answer)
-    for source in response.sources {
-        print(source.itemTitle, source.startSec, source.kind) // .item / .highlight / .web
+let shows = try await client.searchPodcasts(query: "founders")
+guard let show = shows.first, let feedUrl = show.feedUrl else { return }
+
+let feed = try await client.episodesForFeed(feedUrl: feedUrl)
+for episode in feed.episodes {
+    print(episode.title, episode.publishedAt ?? "")
+}
+// Add a chosen episode via addPodcastItem(...) using the episode + show fields.
+```
+
+### Ask a question (streaming)
+
+```swift
+let convo = try await client.createConversation()          // or createConversation(itemId:)
+let stream = await client.streamChat(conversationId: convo.id, content: "What did they say about sleep quality?")
+for try await part in stream {
+    switch part {
+    case .textDelta(let delta):        print(delta, terminator: "")
+    case .webSearchStatus(let query):  print("[searching: \(query ?? "")]")
+    case .webSource(let url, _):       print("[web: \(url)]")
     }
 }
-// response.entities — matched entity cards (name, slug, type, mentionCount)
+// Library [n] sources aren't streamed — refetch conversation(id:) afterwards for
+// the canonical MessageRow.sources (library + web).
+```
+
+### Entity detail
+
+```swift
+let detail = try await client.entity(slug: "steve-jobs")
+print(detail.entity.name, detail.entity.type)
+for mention in detail.mentions { print(mention.title, mention.approxTimestampSec ?? 0) }
+for related in detail.relatedEntities { print(related.name, related.sharedItems) }
 ```
 
 ### Global library search
@@ -166,31 +186,18 @@ Subsequent calls pass the stored `syncedAt`.
 
 ### Highlights
 
+Highlights arrive through `sync()` as `HighlightDTO`s (with item snapshot + `jumpHref`);
+the client wraps create and delete.
+
 ```swift
-// List all highlights
-let all: [HighlightDTO] = try await client.highlights()
-
-// Filter by item type or item ID
-let podcastHighlights = try await client.highlights(type: .podcast)
-let itemHighlights    = try await client.highlights(itemId: someItemId)
-
-// Search highlight text/notes
-let found = try await client.highlights(q: "dopamine")
-
-// Create (returns RawHighlight, NOT HighlightDTO)
+// Create (returns RawHighlight, NOT HighlightDTO — no `.item`/`.jumpHref`)
 let raw: RawHighlight = try await client.createHighlight(
     itemId: itemId,
     kind: .transcript,
     text: "The brain consolidates memories during slow-wave sleep.",
-    locator: HighlightLocator(sec: 312, segmentStart: nil, index: nil,
-                              charStart: nil, charEnd: nil, location: nil)
+    locator: HighlightLocator(sec: 312)
 )
-// raw.id, raw.itemId, raw.kind, raw.text — no `.item` or `.jumpHref`
-// Refetch for the full DTO with item snapshot and jumpHref:
-let dtos = try await client.highlights(itemId: itemId)
-
-// Update note
-try await client.updateHighlightNote(id: raw.id, note: "Remember to check this study.")
+// The full HighlightDTO (with item snapshot + jumpHref) appears on the next sync().
 
 // Delete (inserts a tombstone for sync consumers)
 try await client.deleteHighlight(id: raw.id)
@@ -243,19 +250,11 @@ try await client.retry(id: itemId)
 
 ---
 
-## What is NOT wrapped (v1)
-
-**Streaming chat (`/api/chat`)** — the streaming endpoint uses Server-Sent Events and
-is intentionally omitted from this v1 client. For one-shot question answering use
-`ask(query:)` instead. Full SSE support will be added in a future version.
-
----
-
 ## Error handling
 
 ```swift
 do {
-    let items = try await client.items()
+    let detail = try await client.item(id: itemId)
 } catch FluxError.httpError(let code, let body) {
     switch code {
     case 401: print("Check your API token")

@@ -113,12 +113,6 @@ public actor FluxClient {
 
     // MARK: - Items
 
-    /// List all library items.
-    public func items() async throws -> [ItemDTO] {
-        let res: Envelope<[ItemDTO]> = try await perform(try request("GET", path: "/api/items"))
-        return res.items
-    }
-
     /// Add a YouTube video or article by URL.
     public func addItem(url itemURL: String) async throws -> ItemDTO {
         struct Body: Encodable { let url: String }
@@ -178,28 +172,6 @@ public actor FluxClient {
 
     // MARK: - Highlights
 
-    /// List highlights, optionally filtered.
-    ///
-    /// - Parameters:
-    ///   - type: Filter by parent item type ("podcast" | "youtube" | "article").
-    ///   - q: ILIKE search on highlight text and note.
-    ///   - itemId: Restrict to highlights belonging to a specific item.
-    public func highlights(
-        type: ItemType? = nil,
-        q: String? = nil,
-        itemId: String? = nil
-    ) async throws -> [HighlightDTO] {
-        let query: [String: String?] = [
-            "type": type?.rawValue,
-            "q": q,
-            "itemId": itemId
-        ]
-        let res: HighlightsEnvelope = try await perform(
-            try request("GET", path: "/api/highlights", query: query)
-        )
-        return res.highlights
-    }
-
     /// Create a highlight.
     ///
     /// **Returns `RawHighlight`** (the raw DB insert result), NOT `HighlightDTO`.
@@ -228,29 +200,10 @@ public actor FluxClient {
         return res.highlight
     }
 
-    /// Update a highlight's note. Pass an empty string to clear the note.
-    public func updateHighlightNote(id: String, note: String) async throws {
-        struct Body: Encodable { let note: String }
-        let _: StatusResponse = try await perform(
-            try request("PATCH", path: "/api/highlights/\(id)", body: Body(note: note))
-        )
-    }
-
     /// Delete a highlight (also inserts a tombstone for sync).
     public func deleteHighlight(id: String) async throws {
         let _: StatusResponse = try await perform(
             try request("DELETE", path: "/api/highlights/\(id)")
-        )
-    }
-
-    // MARK: - Ask
-
-    /// One-shot RAG answer with cited sources.
-    /// Returns `answer == nil` when no library sources match or the query is too short.
-    public func ask(query: String) async throws -> AskResponse {
-        struct Body: Encodable { let query: String }
-        return try await perform(
-            try request("POST", path: "/api/answer", body: Body(query: query))
         )
     }
 
@@ -364,6 +317,31 @@ public actor FluxClient {
             continuation.onTermination = { _ in task.cancel() }
         }
     }
+
+    // MARK: - Podcast add flow
+
+    /// Search iTunes for podcast shows.
+    public func searchPodcasts(query: String) async throws -> [PodcastShow] {
+        struct Env: Decodable { let results: [PodcastShow] }
+        let res: Env = try await perform(
+            try request("GET", path: "/api/itunes/search", query: ["q": query, "type": "podcast"])
+        )
+        return res.results
+    }
+
+    /// Fetch a show's episodes by parsing its RSS feed.
+    public func episodesForFeed(feedUrl: String) async throws -> EpisodesResponse {
+        try await perform(
+            try request("GET", path: "/api/itunes/episodes", query: ["feedUrl": feedUrl])
+        )
+    }
+
+    // MARK: - Entities
+
+    /// Fetch an entity with its mentions and co-mentioned entities.
+    public func entity(slug: String) async throws -> EntityDetail {
+        try await perform(try request("GET", path: "/api/entities/\(slug)"))
+    }
 }
 
 /// A parsed event from the `/api/chat` UI-message SSE stream.
@@ -378,12 +356,7 @@ public enum ChatStreamPart: Sendable {
 
 // MARK: - Private Response Envelopes
 
-private struct Envelope<T: Decodable>: Decodable {
-    let items: T
-}
-
 private struct SingleItem: Decodable { let item: ItemDTO }
-private struct HighlightsEnvelope: Decodable { let highlights: [HighlightDTO] }
 private struct RawHighlightEnvelope: Decodable { let highlight: RawHighlight }
 private struct StatusResponse: Decodable { let status: String }
 private struct ConversationsEnvelope: Decodable { let conversations: [ConversationRow] }

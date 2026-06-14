@@ -215,7 +215,7 @@ public struct InsightsDTO: Codable {
 
 // MARK: - MentionedEntity
 
-public struct EntityMetadata: Codable {
+public struct EntityMetadata: Codable, Sendable {
     public let author: String?
     public let publishedYear: Int?
 }
@@ -237,17 +237,6 @@ public struct MentionedEntity: Codable {
     /// Approximate timestamp (seconds) of the mention within the item.
     public let approxTimestampSec: Int?
     /// Library-wide count of items mentioning this entity.
-    public let mentionCount: Int
-}
-
-/// Entity card returned alongside answers by /api/answer.
-public struct EntitySearchResult: Codable {
-    public let id: String
-    public let name: String
-    public let slug: String
-    public let type: String
-    public let description: String?
-    public let imageUrl: String?
     public let mentionCount: Int
 }
 
@@ -426,20 +415,82 @@ public struct PodcastItemInput: Encodable {
     }
 }
 
-/// Response from POST /api/answer.
-public struct AskResponse: Decodable {
-    /// Generated answer text; nil if no sources were found or query was too short.
-    public let answer: String?
-    /// Cited sources in citation order ([1], [2], … matching inline citations in `answer`).
-    public let sources: [SourceDTO]
-    /// Entity cards matching the query.
-    public let entities: [EntitySearchResult]
-}
-
 /// Response from POST /api/library/search.
 public struct SearchResponse: Decodable {
     /// Matching items (up to 6).
     public let items: [ItemDTO]
     /// Matching transcript moments (up to 6).
     public let moments: [SearchMoment]
+}
+
+// MARK: - Podcasts (iTunes add flow)
+
+public struct PodcastShow: Codable, Hashable, Sendable {
+    public let collectionId: Int
+    public let name: String
+    public let artistName: String
+    public let artworkUrl: String?
+    public let feedUrl: String?
+}
+
+public struct FeedEpisode: Codable, Sendable {
+    public let title: String
+    public let guid: String?
+    public let audioUrl: String
+    public let audioType: String?
+    public let publishedAt: String?
+    public let durationSec: Int?
+    public let description: String?
+}
+
+public struct EpisodesResponse: Decodable, Sendable {
+    public let showName: String?
+    public let artworkUrl: String?
+    public let episodes: [FeedEpisode]
+}
+
+// MARK: - Entity detail
+
+public struct EntityExternalIds: Codable, Sendable {
+    public let itunesId: Int?
+    public let isbn: String?
+    public let googleBooksId: String?
+}
+
+public struct EntityRecord: Codable, Sendable {
+    public let id: String
+    public let name: String
+    public let slug: String
+    public let type: String
+    public let description: String?
+    public let summary: String?
+    public let imageUrl: String?
+    public let wikipediaUrl: String?
+    public let externalIds: EntityExternalIds?
+    public let metadata: EntityMetadata?
+}
+
+public struct EntityMention: Codable, Sendable {
+    /// The item id.
+    public let id: String
+    public let title: String
+    public let podcastName: String?
+    public let artworkUrl: String?
+    public let context: String?
+    public let approxTimestampSec: Int?
+}
+
+public struct RelatedEntity: Codable, Sendable {
+    public let id: String
+    public let name: String
+    public let slug: String
+    public let type: String
+    public let imageUrl: String?
+    public let sharedItems: Int
+}
+
+public struct EntityDetail: Codable, Sendable {
+    public let entity: EntityRecord
+    public let mentions: [EntityMention]
+    public let relatedEntities: [RelatedEntity]
 }
