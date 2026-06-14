@@ -67,7 +67,7 @@ struct AskView: View {
         guard let client = config.makeClient() else { return }
         loading = true
         defer { loading = false }
-        do { conversations = try await client.conversations(); error = nil }
+        do { conversations = try await client.conversations(scope: "library"); error = nil }
         catch { self.error = error.localizedDescription }
     }
 
