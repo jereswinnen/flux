@@ -121,6 +121,38 @@ public struct SourceDTO: Codable {
     public let content: String?
     public let isHighlight: Bool?
     public let isWeb: Bool?
+
+    public init(
+        kind: SourceKind,
+        source: String?,
+        itemId: String,
+        itemTitle: String,
+        startSec: Double,
+        podcastName: String?,
+        artworkUrl: String?,
+        audioUrl: String?,
+        videoId: String?,
+        url: String?,
+        snippet: String?,
+        content: String?,
+        isHighlight: Bool?,
+        isWeb: Bool?
+    ) {
+        self.kind = kind
+        self.source = source
+        self.itemId = itemId
+        self.itemTitle = itemTitle
+        self.startSec = startSec
+        self.podcastName = podcastName
+        self.artworkUrl = artworkUrl
+        self.audioUrl = audioUrl
+        self.videoId = videoId
+        self.url = url
+        self.snippet = snippet
+        self.content = content
+        self.isHighlight = isHighlight
+        self.isWeb = isWeb
+    }
 }
 
 // MARK: - TranscriptDTO

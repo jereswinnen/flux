@@ -307,6 +307,73 @@ public actor FluxClient {
             try request("DELETE", path: "/api/conversations/\(id)")
         )
     }
+
+    /// Stream an assistant turn for a conversation. POSTs to `/api/chat` and yields parsed
+    /// SSE parts. Finishes on `[DONE]` or end of stream. Library `[n]` sources are persisted
+    /// server-side (not streamed) — refetch `conversation(id:)` afterwards for the full source list.
+    public func streamChat(
+        conversationId: String,
+        content: String,
+        itemId: String? = nil
+    ) -> AsyncThrowingStream<ChatStreamPart, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    struct Body: Encodable {
+                        let conversationId: String
+                        let content: String
+                        let itemId: String?
+                    }
+                    let req = try request(
+                        "POST", path: "/api/chat",
+                        body: Body(conversationId: conversationId, content: content, itemId: itemId)
+                    )
+                    let (bytes, response) = try await session.bytes(for: req)
+                    if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+                        throw FluxError.httpError(statusCode: http.statusCode, body: nil)
+                    }
+                    for try await line in bytes.lines {
+                        let trimmed = line.trimmingCharacters(in: .whitespaces)
+                        guard trimmed.hasPrefix("data:") else { continue }
+                        let payload = trimmed.dropFirst("data:".count).trimmingCharacters(in: .whitespaces)
+                        if payload.isEmpty || payload == "[DONE]" { continue }
+                        guard let data = payload.data(using: .utf8),
+                              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                              let type = obj["type"] as? String else { continue }
+                        switch type {
+                        case "text-delta":
+                            if let delta = obj["delta"] as? String { continuation.yield(.textDelta(delta)) }
+                        case "tool-input-available":
+                            if obj["toolName"] as? String == "web_search" {
+                                let query = (obj["input"] as? [String: Any])?["query"] as? String
+                                continuation.yield(.webSearchStatus(query: query))
+                            }
+                        case "source-url":
+                            if let url = obj["url"] as? String {
+                                continuation.yield(.webSource(url: url, title: obj["title"] as? String))
+                            }
+                        default:
+                            break
+                        }
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+}
+
+/// A parsed event from the `/api/chat` UI-message SSE stream.
+public enum ChatStreamPart: Sendable {
+    case textDelta(String)
+    /// Emitted when the model invokes web search; `query` is what it searched for.
+    case webSearchStatus(query: String?)
+    /// A web source surfaced during streaming (library `[n]` sources are not streamed —
+    /// refetch the conversation after the stream for the canonical source list).
+    case webSource(url: String, title: String?)
 }
 
 // MARK: - Private Response Envelopes
