@@ -94,24 +94,20 @@ final class FluxUITests: XCTestCase {
         saveScreenshot("flux-add-podcast.png")
     }
 
-    func testCitationChips() throws {
+    /// Read-only: opens the Ask tab and an existing conversation (no new chat / message),
+    /// so the harness never writes to the live account.
+    func testAskConversation() throws {
         let askTab = app.tabBars.buttons["Ask"]
         XCTAssertTrue(askTab.waitForExistence(timeout: 5))
         askTab.tap()
-        // Compose a new conversation.
-        app.navigationBars.buttons["square.and.pencil"].firstMatch.tap()
-        // The composer is a multi-line TextField — surfaces as a textField (fall back to textView).
-        let field = app.textFields.firstMatch.waitForExistence(timeout: 5)
-            ? app.textFields.firstMatch
-            : app.textViews.firstMatch
-        XCTAssertTrue(field.waitForExistence(timeout: 5))
-        field.tap()
-        field.typeText("What does my library say about design taste?")
-        // Send via the button — Return only inserts a newline in the multi-line composer.
-        app.buttons["arrow.up.circle.fill"].firstMatch.tap()
-        // A citation chip "[1]" should appear once the streamed answer completes.
-        XCTAssertTrue(app.buttons["[1]"].waitForExistence(timeout: 40), "No citation chips appeared")
-        saveScreenshot("flux-citations.png")
+        Thread.sleep(forTimeInterval: 2.0)   // let the conversation list load
+        // Open the first existing conversation if there is one; otherwise just capture the
+        // list/empty state. Either way we create nothing.
+        let firstRow = app.cells.firstMatch
+        if firstRow.waitForExistence(timeout: 5) {
+            firstRow.tap()
+            Thread.sleep(forTimeInterval: 2.0)
+        }
+        saveScreenshot("flux-ask.png")
     }
-
 }
