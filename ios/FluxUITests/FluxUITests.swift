@@ -113,4 +113,5 @@ final class FluxUITests: XCTestCase {
         XCTAssertTrue(app.buttons["[1]"].waitForExistence(timeout: 40), "No citation chips appeared")
         saveScreenshot("flux-citations.png")
     }
+
 }
