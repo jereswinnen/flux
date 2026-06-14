@@ -86,11 +86,7 @@ private struct SearchItemRow: View {
     let artworkUrl: String?
     var body: some View {
         HStack(spacing: 10) {
-            AsyncImage(url: artworkUrl.flatMap(URL.init)) { img in
-                img.resizable().scaledToFill()
-            } placeholder: { Color.secondary.opacity(0.15) }
-            .frame(width: 40, height: 40)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            Artwork(url: artworkUrl, size: 40, cornerRadius: 6)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.body).lineLimit(2)
                 if let source { Text(source).font(.caption).foregroundStyle(.secondary).lineLimit(1) }

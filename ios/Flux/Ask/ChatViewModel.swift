@@ -85,7 +85,10 @@ final class ChatViewModel {
                 if let idx = messages.firstIndex(where: { $0.id == assistantId }) {
                     messages[idx].status = nil
                 }
-                self.error = error.localizedDescription
+                // Stopping the stream cancels the task — that's a user action, not an error.
+                if !(error is CancellationError) {
+                    self.error = error.localizedDescription
+                }
             }
             // Refetch the canonical persisted turn (library [n] + web sources).
             await reconcileAfterStream(assistantId: assistantId)

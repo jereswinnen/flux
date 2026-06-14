@@ -9,20 +9,37 @@ struct ConversationView: View {
     @State private var model: ChatViewModel?
     @State private var draft = ""
 
+    private static let suggestions = [
+        "What themes come up most across my library?",
+        "Summarize what I've saved about design.",
+        "What did I save about building good products?",
+    ]
+
     var body: some View {
         VStack(spacing: 0) {
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 16) {
-                        ForEach(model?.messages ?? []) { msg in
-                            MessageBubble(message: msg).id(msg.id)
+                    if (model?.messages.isEmpty ?? true) && model?.loading != true {
+                        emptyState
+                    } else {
+                        LazyVStack(alignment: .leading, spacing: 16) {
+                            ForEach(model?.messages ?? []) { msg in
+                                MessageBubble(message: msg).id(msg.id)
+                            }
                         }
+                        .padding()
                     }
-                    .padding()
                 }
                 .onChange(of: model?.messages.last?.content) { _, _ in
                     if let last = model?.messages.last { withAnimation { proxy.scrollTo(last.id, anchor: .bottom) } }
                 }
+            }
+            if let error = model?.error {
+                Text(error)
+                    .font(.caption).foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal).padding(.vertical, 6)
+                    .background(.red.opacity(0.1))
             }
             composer
         }
@@ -36,6 +53,28 @@ struct ConversationView: View {
         }
     }
 
+    @ViewBuilder private var emptyState: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "sparkles").font(.largeTitle).foregroundStyle(.tint)
+            Text(scopedItemId == nil ? "Ask about your library" : "Ask about this item")
+                .font(.headline)
+            VStack(spacing: 8) {
+                ForEach(Self.suggestions, id: \.self) { prompt in
+                    Button { model?.send(prompt) } label: {
+                        Text(prompt)
+                            .font(.callout)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(10)
+                            .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(.horizontal)
+        .padding(.top, 60)
+    }
+
     @ViewBuilder private var composer: some View {
         HStack(spacing: 8) {
             TextField("Ask about your library…", text: $draft, axis: .vertical)
@@ -43,12 +82,15 @@ struct ConversationView: View {
                 .lineLimit(1...4)
             if model?.isStreaming == true {
                 Button { model?.stop() } label: { Image(systemName: "stop.circle.fill").font(.title2) }
+                    .accessibilityLabel("Stop")
             } else {
                 Button {
+                    guard let model else { return }
                     let text = draft; draft = ""
-                    model?.send(text)
+                    model.send(text)
                 } label: { Image(systemName: "arrow.up.circle.fill").font(.title2) }
-                .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
+                .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty || model == nil)
+                .accessibilityLabel("Send")
             }
         }
         .padding()

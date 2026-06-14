@@ -31,12 +31,11 @@ struct EntityDetailView: View {
                         ForEach(detail.relatedEntities, id: \.id) { r in
                             NavigationLink(value: EntityRoute(slug: r.slug)) {
                                 HStack(spacing: 10) {
-                                    AsyncImage(url: r.imageUrl.flatMap(URL.init)) { $0.resizable().scaledToFill() }
-                                        placeholder: { Color.secondary.opacity(0.15) }
-                                        .frame(width: 32, height: 32).clipShape(Circle())
+                                    Artwork(url: r.imageUrl, size: 32, cornerRadius: 16)
                                     Text(r.name).font(.callout)
                                     Spacer()
-                                    Text("\(r.sharedItems)").font(.caption).foregroundStyle(.secondary)
+                                    Text("^[\(r.sharedItems) shared item](inflect: true)")
+                                        .font(.caption).foregroundStyle(.secondary)
                                 }
                             }
                             .buttonStyle(.plain)
@@ -61,9 +60,7 @@ struct EntityDetailView: View {
 
     @ViewBuilder private func header(_ e: EntityRecord) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            AsyncImage(url: e.imageUrl.flatMap(URL.init)) { $0.resizable().scaledToFill() }
-                placeholder: { Color.secondary.opacity(0.15) }
-                .frame(width: 64, height: 64).clipShape(RoundedRectangle(cornerRadius: 8))
+            Artwork(url: e.imageUrl, size: 64, cornerRadius: 8)
             VStack(alignment: .leading, spacing: 4) {
                 Text(e.name).font(.title3.bold())
                 Text(e.type.capitalized).font(.caption).foregroundStyle(.secondary)
@@ -79,9 +76,7 @@ struct EntityDetailView: View {
 
     private func mentionRow(_ m: EntityMention) -> some View {
         HStack(spacing: 10) {
-            AsyncImage(url: m.artworkUrl.flatMap(URL.init)) { $0.resizable().scaledToFill() }
-                placeholder: { Color.secondary.opacity(0.15) }
-                .frame(width: 36, height: 36).clipShape(RoundedRectangle(cornerRadius: 6))
+            Artwork(url: m.artworkUrl, size: 36, cornerRadius: 6)
             VStack(alignment: .leading, spacing: 2) {
                 Text(m.title).font(.callout).lineLimit(1)
                 if let ctx = m.context, !ctx.isEmpty {

@@ -22,6 +22,7 @@ struct TranscriptSection: View {
             .buttonStyle(.plain)
 
             if expanded {
+              LazyVStack(alignment: .leading, spacing: 8) {
                 ForEach(Array(transcript.segments.enumerated()), id: \.offset) { _, seg in
                     Button {
                         if item.type == "podcast" { player?.seek(to: seg.start) }
@@ -38,6 +39,7 @@ struct TranscriptSection: View {
                     .buttonStyle(.plain)
                     .disabled(item.type != "podcast")
                 }
+              }
             }
         }
     }

@@ -49,6 +49,7 @@ struct AskView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { Task { await startNew() } } label: { Image(systemName: "square.and.pencil") }
+                        .accessibilityLabel("New conversation")
                 }
             }
             .overlay { if loading { ProgressView() } }

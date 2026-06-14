@@ -4,6 +4,13 @@ import FluxAPI
 struct SettingsView: View {
     @Environment(AppConfig.self) private var config
     @State private var connectionStatus = ConnectionStatus.idle
+    @State private var revealToken = false
+
+    private var appVersion: String {
+        let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        return "\(v) (\(b))"
+    }
 
     var body: some View {
         @Bindable var config = config
@@ -13,25 +20,44 @@ struct SettingsView: View {
                     .keyboardType(.URL)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
-                SecureField("API token", text: $config.token)
+                HStack {
+                    Group {
+                        if revealToken {
+                            TextField("API token", text: $config.token)
+                        } else {
+                            SecureField("API token", text: $config.token)
+                        }
+                    }
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    Button { revealToken.toggle() } label: {
+                        Image(systemName: revealToken ? "eye.slash" : "eye")
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel(revealToken ? "Hide token" : "Show token")
+                }
             }
+
             Section {
                 Button("Test connection") {
                     Task { await testConnection() }
                 }
                 .disabled(connectionStatus == .testing)
-
-                if connectionStatus == .testing {
+            } footer: {
+                switch connectionStatus {
+                case .idle:
+                    EmptyView()
+                case .testing:
                     Text("Testing…")
-                        .foregroundStyle(.secondary)
-                } else if connectionStatus == .success {
-                    Label("Connected", systemImage: "checkmark.circle")
-                        .foregroundStyle(.green)
-                } else if case .failure(let msg) = connectionStatus {
-                    Label(msg, systemImage: "xmark.circle")
-                        .foregroundStyle(.red)
-                        .font(.callout)
+                case .success:
+                    Label("Connected", systemImage: "checkmark.circle").foregroundStyle(.green)
+                case .failure(let msg):
+                    Label(msg, systemImage: "xmark.circle").foregroundStyle(.red)
                 }
+            }
+
+            Section {
+                LabeledContent("Version", value: appVersion)
             }
         }
         .navigationTitle("Settings")
@@ -46,7 +72,8 @@ struct SettingsView: View {
             return
         }
         do {
-            _ = try await client.sync()
+            // Bounded check — ask only for changes since "now" so the payload stays tiny.
+            _ = try await client.sync(since: Date())
             connectionStatus = .success
         } catch {
             connectionStatus = .failure(error.localizedDescription)

@@ -2,34 +2,28 @@ import SwiftUI
 import SwiftData
 
 /// Slim now-playing bar shown above the tab bar whenever audio is loaded.
-/// Tap to expand to a full player sheet. Bound to the shared AudioPlayer.
+/// Reads title/artwork straight off the shared AudioPlayer (no library-wide fetch).
+/// Tap to expand to the full player.
 struct MiniPlayerBar: View {
     @Environment(AudioPlayer.self) private var player: AudioPlayer?
-    @Query private var items: [Item]
     @State private var expanded = false
 
-    private var currentItem: Item? {
-        guard let id = player?.currentItemId else { return nil }
-        return items.first { $0.id == id }
-    }
-
     var body: some View {
-        if let player, let item = currentItem {
+        if let player, let id = player.currentItemId {
             Button { expanded = true } label: {
                 HStack(spacing: 10) {
-                    AsyncImage(url: item.artworkUrl.flatMap(URL.init)) { $0.resizable().scaledToFill() }
-                        placeholder: { Color.secondary.opacity(0.15) }
-                        .frame(width: 32, height: 32)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                    Text(item.title).font(.callout).lineLimit(1)
+                    Artwork(url: player.currentArtworkUrl, size: 32, cornerRadius: 6)
+                    Text(player.currentTitle ?? "Now playing").font(.callout).lineLimit(1)
                     Spacer(minLength: 8)
-                    Button { player.togglePlayPause() } label: {
-                        Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                    }
-                    .buttonStyle(.plain)
+                    Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                        .onTapGesture { player.togglePlayPause() }
+                        .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .padding(.leading, 12)
+                .padding(.trailing, 4)
+                .padding(.vertical, 6)
                 .background(.ultraThinMaterial)
                 .overlay(alignment: .bottom) {
                     GeometryReader { geo in
@@ -40,13 +34,9 @@ struct MiniPlayerBar: View {
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Now playing: \(player.currentTitle ?? "")")
             .sheet(isPresented: $expanded) {
-                NavigationStack {
-                    ScrollView { AudioPlayerBar(item: item).padding() }
-                        .navigationTitle(item.title)
-                        .navigationBarTitleDisplayMode(.inline)
-                }
-                .presentationDetents([.medium])
+                ExpandedPlayerSheet(itemId: id)
             }
         }
     }
@@ -54,5 +44,30 @@ struct MiniPlayerBar: View {
     private var progress: Double {
         guard let player, player.duration > 0 else { return 0 }
         return min(1, player.currentTime / player.duration)
+    }
+}
+
+/// Targeted fetch of the playing item for the expanded full-player sheet.
+private struct ExpandedPlayerSheet: View {
+    @Query private var items: [Item]
+
+    init(itemId: String) {
+        _items = Query(filter: #Predicate<Item> { $0.id == itemId })
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if let item = items.first {
+                    ScrollView { AudioPlayerBar(item: item).padding() }
+                        .navigationTitle(item.title)
+                } else {
+                    ContentUnavailableView("Not playing", systemImage: "speaker.slash")
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
     }
 }

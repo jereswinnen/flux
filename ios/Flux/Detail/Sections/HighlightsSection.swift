@@ -33,6 +33,7 @@ struct HighlightsSection: View {
                             Image(systemName: "trash").font(.caption)
                         }
                         .buttonStyle(.borderless)
+                        .accessibilityLabel("Delete highlight")
                     }
                 }
             }

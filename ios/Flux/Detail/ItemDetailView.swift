@@ -35,6 +35,7 @@ struct ItemDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button { Task { await startAsk() } } label: { Image(systemName: "sparkles") }
+                    .accessibilityLabel("Ask about this")
             }
         }
         .sheet(item: $askRoute) { route in
@@ -62,13 +63,7 @@ struct ItemDetailView: View {
 
     @ViewBuilder private var header: some View {
         HStack(alignment: .top, spacing: 12) {
-            AsyncImage(url: item.artworkUrl.flatMap(URL.init)) { img in
-                img.resizable().scaledToFill()
-            } placeholder: {
-                Color.secondary.opacity(0.15)
-            }
-            .frame(width: 72, height: 72)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+            Artwork(url: item.artworkUrl, size: 72, cornerRadius: 10)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.title).font(.title3.bold())
@@ -102,6 +97,8 @@ struct ItemDetailView: View {
             if let videoId = item.videoId {
                 YouTubeEmbedView(videoId: videoId)
                     .aspectRatio(16.0/9.0, contentMode: .fit)
+            } else {
+                detailPlaceholder
             }
         default:
             EmptyView()

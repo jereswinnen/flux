@@ -59,10 +59,7 @@ struct AddContentView: View {
                     ForEach(model.shows, id: \.collectionId) { show in
                         NavigationLink(value: show) {
                             HStack(spacing: 10) {
-                                AsyncImage(url: show.artworkUrl.flatMap(URL.init)) { $0.resizable().scaledToFill() }
-                                    placeholder: { Color.secondary.opacity(0.15) }
-                                    .frame(width: 40, height: 40)
-                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                                Artwork(url: show.artworkUrl, size: 40, cornerRadius: 6)
                                 VStack(alignment: .leading) {
                                     Text(show.name).font(.callout).lineLimit(1)
                                     Text(show.artistName).font(.caption).foregroundStyle(.secondary).lineLimit(1)

@@ -140,11 +140,10 @@ final class SyncEngine {
             default:
                 break
             }
-            // Reached only when the API call above succeeded (a throw exits the loop,
-            // leaving this and later changes queued for the next sync).
+            // Reached only when the API call above succeeded. Save immediately so a later
+            // failure (which exits the loop) can't cause this already-sent, non-idempotent
+            // change (e.g. createHighlight) to be re-sent — and re-duplicated — next launch.
             context.delete(change)
-        }
-        if !pending.isEmpty {
             try context.save()
         }
     }

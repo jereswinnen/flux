@@ -8,8 +8,13 @@ import FluxAPI
 final class AudioPlayer {
     private let player = AVPlayer()
     private var timeObserver: Any?
+    private var statusObservation: NSKeyValueObservation?
 
     var currentItemId: String?
+    /// Now-playing title/artwork, captured at load() so UI (e.g. the mini-player) needn't
+    /// re-fetch the Item from SwiftData.
+    var currentTitle: String?
+    var currentArtworkUrl: String?
     var isPlaying = false
     var currentTime: Double = 0
     var duration: Double = 0
@@ -30,10 +35,27 @@ final class AudioPlayer {
         }
         errorMessage = nil
         currentItemId = item.id
+        currentTitle = item.title
+        currentArtworkUrl = item.artworkUrl
+        // A fresh item starts paused; replaceCurrentItem resets the AVPlayer rate to 0.
+        isPlaying = false
+        currentTime = 0
         let playerItem = AVPlayerItem(url: url)
+        observeStatus(of: playerItem)
         player.replaceCurrentItem(with: playerItem)
         duration = item.durationSec.map(Double.init) ?? 0
         updateNowPlaying(item: item)
+    }
+
+    private func observeStatus(of playerItem: AVPlayerItem) {
+        statusObservation = playerItem.observe(\.status, options: [.new]) { [weak self] item, _ in
+            guard item.status == .failed else { return }
+            let message = item.error?.localizedDescription ?? "Couldn't play this audio."
+            Task { @MainActor [weak self] in
+                self?.errorMessage = message
+                self?.isPlaying = false
+            }
+        }
     }
 
     func togglePlayPause() { isPlaying ? pause() : play() }
@@ -75,7 +97,7 @@ final class AudioPlayer {
         timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
             guard let self else { return }
             Task { @MainActor in
-                self.currentTime = time.seconds
+                if time.seconds.isFinite { self.currentTime = time.seconds }
                 if let d = self.player.currentItem?.duration.seconds, d.isFinite, d > 0 {
                     self.duration = d
                 }

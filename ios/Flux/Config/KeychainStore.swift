@@ -24,6 +24,8 @@ enum KeychainStore {
         SecItemDelete(base as CFDictionary)
         var add = base
         add[kSecValueData as String] = data
+        // Readable after first unlock so a future background sync can reach the token.
+        add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
         SecItemAdd(add as CFDictionary, nil)
     }
 

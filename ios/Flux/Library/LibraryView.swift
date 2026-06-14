@@ -28,6 +28,7 @@ struct LibraryView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { showingAdd = true } label: { Image(systemName: "plus") }
                         .disabled(!config.isConfigured)
+                        .accessibilityLabel("Add content")
                 }
             }
             .navigationDestination(for: ItemRoute.self) { ItemRouteDestination(route: $0) }
@@ -169,13 +170,7 @@ private struct ItemRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            AsyncImage(url: item.artworkUrl.flatMap(URL.init)) { img in
-                img.resizable().scaledToFill()
-            } placeholder: {
-                Color.secondary.opacity(0.15)
-            }
-            .frame(width: 44, height: 44)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            Artwork(url: item.artworkUrl, size: 44)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)

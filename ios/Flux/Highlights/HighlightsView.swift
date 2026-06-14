@@ -92,11 +92,7 @@ private struct HighlightRow: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(highlight.text).font(.callout).lineLimit(4)
                 HStack(spacing: 6) {
-                    AsyncImage(url: highlight.itemArtworkUrl.flatMap(URL.init)) { img in
-                        img.resizable().scaledToFill()
-                    } placeholder: { Color.secondary.opacity(0.15) }
-                    .frame(width: 18, height: 18)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    Artwork(url: highlight.itemArtworkUrl, size: 18, cornerRadius: 4)
                     Text(highlight.itemTitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 }
             }
