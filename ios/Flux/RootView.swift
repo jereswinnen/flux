@@ -27,10 +27,12 @@ struct RootView: View {
                 NavigationStack { SettingsView() }
             }
         }
+        // The mini-player inset must be applied BEFORE the .environment injections so it
+        // sits inside their scope — otherwise MiniPlayerBar reads a nil AudioPlayer.
+        .safeAreaInset(edge: .bottom) { MiniPlayerBar() }
         .environment(sync)
         .environment(detail)
         .environment(audio)
-        .safeAreaInset(edge: .bottom) { MiniPlayerBar() }
         .task {
             if sync == nil {
                 sync = SyncEngine(context: context, config: config)

@@ -76,4 +76,41 @@ final class FluxUITests: XCTestCase {
         saveScreenshot("flux-search.png")
         XCTAssertTrue(appeared, "Search results for 'design' did not appear")
     }
+
+    func testAddPodcastSearch() throws {
+        openLibrary()
+        let add = app.navigationBars.buttons["plus"].firstMatch
+        XCTAssertTrue(add.waitForExistence(timeout: 5), "Add (+) button not found")
+        add.tap()
+        let podcast = app.segmentedControls.buttons["Podcast"].firstMatch
+        XCTAssertTrue(podcast.waitForExistence(timeout: 5), "Podcast segment not found")
+        podcast.tap()
+        let field = app.textFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 3))
+        field.tap()
+        field.typeText("founders\n")
+        // A known show row should appear once the iTunes search returns.
+        XCTAssertTrue(app.staticTexts["Founders"].waitForExistence(timeout: 15), "Podcast search returned no shows")
+        saveScreenshot("flux-add-podcast.png")
+    }
+
+    func testCitationChips() throws {
+        let askTab = app.tabBars.buttons["Ask"]
+        XCTAssertTrue(askTab.waitForExistence(timeout: 5))
+        askTab.tap()
+        // Compose a new conversation.
+        app.navigationBars.buttons["square.and.pencil"].firstMatch.tap()
+        // The composer is a multi-line TextField — surfaces as a textField (fall back to textView).
+        let field = app.textFields.firstMatch.waitForExistence(timeout: 5)
+            ? app.textFields.firstMatch
+            : app.textViews.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("What does my library say about design taste?")
+        // Send via the button — Return only inserts a newline in the multi-line composer.
+        app.buttons["arrow.up.circle.fill"].firstMatch.tap()
+        // A citation chip "[1]" should appear once the streamed answer completes.
+        XCTAssertTrue(app.buttons["[1]"].waitForExistence(timeout: 40), "No citation chips appeared")
+        saveScreenshot("flux-citations.png")
+    }
 }
