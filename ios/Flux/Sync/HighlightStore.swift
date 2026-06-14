@@ -21,7 +21,8 @@ enum HighlightStore {
         let local = Highlight(
             id: tempId, itemId: item.id, kind: kind.rawValue, text: text, note: note,
             createdAt: now, updatedAt: now, jumpHref: "/items/\(item.id)",
-            itemTitle: item.title, itemSource: item.source, itemArtworkUrl: item.artworkUrl
+            itemTitle: item.title, itemSource: item.source, itemArtworkUrl: item.artworkUrl,
+            itemType: item.type
         )
         context.insert(local)
         let payload = CreateHighlightPayload(

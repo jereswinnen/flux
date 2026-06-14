@@ -16,11 +16,14 @@ final class Highlight {
     var itemTitle: String
     var itemSource: String?
     var itemArtworkUrl: String?
+    // Default enables SwiftData lightweight migration for stores created before P3;
+    // existing rows re-sync and get the real value.
+    var itemType: String = ""
 
     init(
         id: String, itemId: String, kind: String, text: String, note: String?,
         createdAt: Date, updatedAt: Date, jumpHref: String,
-        itemTitle: String, itemSource: String?, itemArtworkUrl: String?
+        itemTitle: String, itemSource: String?, itemArtworkUrl: String?, itemType: String
     ) {
         self.id = id
         self.itemId = itemId
@@ -33,6 +36,7 @@ final class Highlight {
         self.itemTitle = itemTitle
         self.itemSource = itemSource
         self.itemArtworkUrl = itemArtworkUrl
+        self.itemType = itemType
     }
 
     init(from dto: HighlightDTO) {
@@ -47,6 +51,7 @@ final class Highlight {
         itemTitle = dto.item.title
         itemSource = dto.item.source
         itemArtworkUrl = dto.item.artworkUrl
+        itemType = dto.item.type.rawValue
     }
 
     func apply(_ dto: HighlightDTO) {
@@ -60,5 +65,6 @@ final class Highlight {
         itemTitle = dto.item.title
         itemSource = dto.item.source
         itemArtworkUrl = dto.item.artworkUrl
+        itemType = dto.item.type.rawValue
     }
 }

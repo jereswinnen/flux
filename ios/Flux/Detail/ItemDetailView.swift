@@ -4,12 +4,17 @@ import FluxAPI
 
 struct ItemDetailView: View {
     let item: Item
+    let initialSeekSec: Double?
 
     @Environment(DetailLoader.self) private var detailLoader: DetailLoader?
+    @Environment(AudioPlayer.self) private var audio: AudioPlayer?
+    @Environment(AppConfig.self) private var config
     @Query private var caches: [ItemDetailCache]
+    @State private var askRoute: ScopedAskRoute?
 
-    init(item: Item) {
+    init(item: Item, initialSeekSec: Double? = nil) {
         self.item = item
+        self.initialSeekSec = initialSeekSec
         let id = item.id
         _caches = Query(filter: #Predicate<ItemDetailCache> { $0.itemId == id })
     }
@@ -27,7 +32,31 @@ struct ItemDetailView: View {
         }
         .navigationTitle(item.title)
         .navigationBarTitleDisplayMode(.inline)
-        .task { await detailLoader?.load(itemId: item.id) }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { Task { await startAsk() } } label: { Image(systemName: "sparkles") }
+            }
+        }
+        .sheet(item: $askRoute) { route in
+            NavigationStack {
+                ConversationView(conversationId: route.conversationId, scopedItemId: route.itemId)
+                    .navigationDestination(for: ItemRoute.self) { ItemRouteDestination(route: $0) }
+            }
+        }
+        .task {
+            await detailLoader?.load(itemId: item.id)
+            if let seek = initialSeekSec, item.type == "podcast", let audio {
+                audio.load(item: item)
+                audio.seek(to: seek)
+            }
+        }
+    }
+
+    private func startAsk() async {
+        guard let client = config.makeClient() else { return }
+        if let convo = try? await client.createConversation(itemId: item.id) {
+            askRoute = ScopedAskRoute(conversationId: convo.id, itemId: item.id)
+        }
     }
 
     @ViewBuilder private var header: some View {

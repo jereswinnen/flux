@@ -23,6 +23,7 @@ struct LibraryView: View {
             }
             .navigationTitle("Library")
             .toolbar { filterToolbar }
+            .navigationDestination(for: ItemRoute.self) { ItemRouteDestination(route: $0) }
             .refreshable { await sync?.sync() }
             .safeAreaInset(edge: .top) {
                 if let error = sync?.lastError {

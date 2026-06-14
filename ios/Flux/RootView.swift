@@ -14,13 +14,14 @@ struct RootView: View {
             Tab("Library", systemImage: "books.vertical") {
                 LibraryView()
             }
+            Tab("Search", systemImage: "magnifyingglass") {
+                SearchView()
+            }
             Tab("Highlights", systemImage: "highlighter") {
-                Text("Highlights — coming soon")
-                    .foregroundStyle(.secondary)
+                HighlightsView()
             }
             Tab("Ask", systemImage: "sparkles") {
-                Text("Ask — coming soon")
-                    .foregroundStyle(.secondary)
+                AskView()
             }
             Tab("Settings", systemImage: "gear") {
                 NavigationStack { SettingsView() }
