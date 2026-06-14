@@ -164,7 +164,10 @@ public actor FluxClient {
     public func sync(since: Date? = nil) async throws -> SyncResponse {
         var query: [String: String?] = [:]
         if let since {
+            // Match the API's fractional-second precision so a boundary item isn't
+            // re-fetched (or missed) on the cursor edge.
             let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
             query["since"] = formatter.string(from: since)
         }
         return try await perform(try request("GET", path: "/api/sync", query: query))
