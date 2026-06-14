@@ -8,10 +8,13 @@
 
 /* Begin PBXBuildFile section */
 		3F5D9D212FDDF2B80092A5C4 /* FluxAPI in Frameworks */ = {isa = PBXBuildFile; productRef = 3F5D9D202FDDF2B80092A5C4 /* FluxAPI */; };
+		BB000001 /* FluxUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000002 /* FluxUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		000000000000000000000120 /* Flux.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Flux.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB000002 /* FluxUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxUITests.swift; sourceTree = "<group>"; };
+		BB000003 /* FluxUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FluxUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -29,6 +32,11 @@
 				3F5D9D212FDDF2B80092A5C4 /* FluxAPI in Frameworks */,
 			);
 		};
+		BB000008 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			files = (
+			);
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -36,6 +44,7 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000010 /* Flux */,
+				BB000004 /* FluxUITests */,
 				000000000000000000000020 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -44,8 +53,17 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000120 /* Flux.app */,
+				BB000003 /* FluxUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		BB000004 /* FluxUITests */ = {
+			isa = PBXGroup;
+			children = (
+				BB000002 /* FluxUITests.swift */,
+			);
+			path = FluxUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -72,6 +90,22 @@
 			productReference = 000000000000000000000120 /* Flux.app */;
 			productType = "com.apple.product-type.application";
 		};
+		BB000005 /* FluxUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BB000006 /* Build configuration list for PBXNativeTarget "FluxUITests" */;
+			buildPhases = (
+				BB000007 /* Sources */,
+				BB000008 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FluxUITests;
+			productName = FluxUITests;
+			productReference = BB000003 /* FluxUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -84,6 +118,10 @@
 				TargetAttributes = {
 					000000000000000100000000 = {
 						CreatedOnToolsVersion = 26.3;
+					};
+					BB000005 = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = 000000000000000100000000;
 					};
 				};
 			};
@@ -105,6 +143,7 @@
 			projectRoot = "";
 			targets = (
 				000000000000000100000000 /* Flux */,
+				BB000005 /* FluxUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -121,6 +160,12 @@
 		000000000000000120000000 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			files = (
+			);
+		};
+		BB000007 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			files = (
+				BB000001 /* FluxUITests.swift in Sources */,
 			);
 		};
 /* End PBXSourcesBuildPhase section */
@@ -338,6 +383,58 @@
 			};
 			name = Release;
 		};
+		BB000009 /* Debug configuration for PBXNativeTarget "FluxUITests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "devplaceholder.TFLFB05Q.FluxUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Flux;
+				USES_XCTRUNNER = YES;
+			};
+			name = Debug;
+		};
+		BB00000A /* Release configuration for PBXNativeTarget "FluxUITests" */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "devplaceholder.TFLFB05Q.FluxUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Flux;
+				USES_XCTRUNNER = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -354,6 +451,14 @@
 			buildConfigurations = (
 				000000000000000111000000 /* Debug configuration for PBXNativeTarget "Flux" */,
 				000000000000000112000000 /* Release configuration for PBXNativeTarget "Flux" */,
+			);
+			defaultConfigurationName = Release;
+		};
+		BB000006 /* Build configuration list for PBXNativeTarget "FluxUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB000009 /* Debug configuration for PBXNativeTarget "FluxUITests" */,
+				BB00000A /* Release configuration for PBXNativeTarget "FluxUITests" */,
 			);
 			defaultConfigurationName = Release;
 		};
