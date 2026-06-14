@@ -22,6 +22,12 @@ struct HTMLTextView: UIViewRepresentable {
         tv.backgroundColor = .clear
         tv.textContainerInset = .zero
         tv.textContainer.lineFragmentPadding = 0
+        // Let SwiftUI dictate the width: don't resist horizontal compression, and have the
+        // text container wrap to the view's width so the HTML body lays out within the screen
+        // and grows only in height. Without this a non-scrolling UITextView overflows sideways.
+        tv.textContainer.widthTracksTextView = true
+        tv.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        tv.setContentHuggingPriority(.required, for: .vertical)
         tv.delegate = context.coordinator
         context.coordinator.textView = tv
 
@@ -37,6 +43,16 @@ struct HTMLTextView: UIViewRepresentable {
         let mutable = NSMutableAttributedString(attributedString: attributed)
         context.coordinator.applyHighlights(into: mutable)
         tv.attributedText = mutable
+    }
+
+    /// A non-scrolling UITextView doesn't report a content-driven height to SwiftUI on its own,
+    /// so without this it lays out at zero/wrong height and overlaps sibling views. Compute the
+    /// fitting height for the width SwiftUI proposes.
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
+        let width = proposal.width ?? uiView.bounds.width
+        guard width > 0 else { return nil }
+        let fitted = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
+        return CGSize(width: width, height: ceil(fitted.height))
     }
 
     // MARK: - Coordinator
