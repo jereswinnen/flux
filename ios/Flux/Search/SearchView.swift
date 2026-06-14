@@ -38,6 +38,7 @@ struct SearchView: View {
             .searchable(text: $query, prompt: "Search your library")
             .onChange(of: query) { _, q in scheduleSearch(q) }
             .navigationDestination(for: ItemRoute.self) { ItemRouteDestination(route: $0) }
+            .navigationDestination(for: EntityRoute.self) { EntityDetailView(slug: $0.slug) }
         }
     }
 

@@ -7,6 +7,7 @@ struct LibraryView: View {
     @Environment(SyncEngine.self) private var sync: SyncEngine?
     @State private var typeFilter: String? = nil   // nil = all types
     @State private var unreadOnly = true
+    @State private var showingAdd = false
 
     var body: some View {
         NavigationStack {
@@ -22,8 +23,18 @@ struct LibraryView: View {
                 }
             }
             .navigationTitle("Library")
-            .toolbar { filterToolbar }
+            .toolbar {
+                filterToolbar
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { showingAdd = true } label: { Image(systemName: "plus") }
+                        .disabled(!config.isConfigured)
+                }
+            }
             .navigationDestination(for: ItemRoute.self) { ItemRouteDestination(route: $0) }
+            .navigationDestination(for: EntityRoute.self) { EntityDetailView(slug: $0.slug) }
+            .sheet(isPresented: $showingAdd) {
+                AddContentView(onAdded: { Task { await sync?.sync() } })
+            }
             .refreshable { await sync?.sync() }
             .safeAreaInset(edge: .top) {
                 if let error = sync?.lastError {

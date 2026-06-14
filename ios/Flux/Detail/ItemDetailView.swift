@@ -41,6 +41,7 @@ struct ItemDetailView: View {
             NavigationStack {
                 ConversationView(conversationId: route.conversationId, scopedItemId: route.itemId)
                     .navigationDestination(for: ItemRoute.self) { ItemRouteDestination(route: $0) }
+                    .navigationDestination(for: EntityRoute.self) { EntityDetailView(slug: $0.slug) }
             }
         }
         .task {

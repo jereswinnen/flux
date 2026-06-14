@@ -7,6 +7,8 @@ struct AskView: View {
     @State private var loading = false
     @State private var error: String?
     @State private var path: [String] = []   // conversation ids
+    @State private var renaming: ConversationRow?
+    @State private var renameText = ""
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -25,11 +27,25 @@ struct AskView: View {
                                 Text(convo.updatedAt, style: .relative).font(.caption).foregroundStyle(.secondary)
                             }
                         }
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) { Task { await delete(convo) } } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                            Button { renaming = convo; renameText = convo.title } label: {
+                                Label("Rename", systemImage: "pencil")
+                            }
+                            .tint(.blue)
+                        }
                     }
                     .listStyle(.plain)
                 }
             }
             .navigationTitle("Ask")
+            .alert("Rename conversation", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } }), presenting: renaming) { convo in
+                TextField("Title", text: $renameText)
+                Button("Save") { Task { await rename(convo, to: renameText) } }
+                Button("Cancel", role: .cancel) {}
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { Task { await startNew() } } label: { Image(systemName: "square.and.pencil") }
@@ -42,6 +58,7 @@ struct AskView: View {
                 ConversationView(conversationId: id, scopedItemId: nil)
             }
             .navigationDestination(for: ItemRoute.self) { ItemRouteDestination(route: $0) }
+            .navigationDestination(for: EntityRoute.self) { EntityDetailView(slug: $0.slug) }
         }
     }
 
@@ -51,6 +68,20 @@ struct AskView: View {
         defer { loading = false }
         do { conversations = try await client.conversations(); error = nil }
         catch { self.error = error.localizedDescription }
+    }
+
+    private func delete(_ convo: ConversationRow) async {
+        guard let client = config.makeClient() else { return }
+        try? await client.deleteConversation(id: convo.id)
+        conversations.removeAll { $0.id == convo.id }
+    }
+
+    private func rename(_ convo: ConversationRow, to title: String) async {
+        let t = title.trimmingCharacters(in: .whitespaces)
+        renaming = nil
+        guard !t.isEmpty, let client = config.makeClient() else { return }
+        try? await client.renameConversation(id: convo.id, title: t)
+        await load()
     }
 
     private func startNew() async {

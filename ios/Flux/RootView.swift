@@ -30,6 +30,7 @@ struct RootView: View {
         .environment(sync)
         .environment(detail)
         .environment(audio)
+        .safeAreaInset(edge: .bottom) { MiniPlayerBar() }
         .task {
             if sync == nil {
                 sync = SyncEngine(context: context, config: config)

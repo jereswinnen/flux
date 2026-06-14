@@ -76,6 +76,7 @@ private struct MessageBubble: View {
                     ProgressView()
                 } else {
                     Text(attributed(message.content))
+                    citationChips
                 }
                 SourcesView(sources: message.sources)
             }
@@ -86,5 +87,49 @@ private struct MessageBubble: View {
     private func attributed(_ text: String) -> AttributedString {
         (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)))
             ?? AttributedString(text)
+    }
+
+    /// `[n]` markers cited in the answer, as tappable chips → the matching source (+ seek).
+    /// Web sources (empty itemId) render as a flat chip; library sources navigate.
+    @ViewBuilder private var citationChips: some View {
+        let cited = citedIndices(message.content).filter { $0 >= 1 && $0 <= message.sources.count }
+        if !cited.isEmpty {
+            HStack(spacing: 6) {
+                ForEach(cited, id: \.self) { n in
+                    let src = message.sources[n - 1]
+                    if src.itemId.isEmpty {
+                        chipLabel(n)
+                    } else {
+                        NavigationLink(value: ItemRoute(itemId: src.itemId, seekSec: src.startSec)) {
+                            chipLabel(n)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    private func chipLabel(_ n: Int) -> some View {
+        Text("[\(n)]")
+            .font(.caption2.monospacedDigit())
+            .padding(.horizontal, 6).padding(.vertical, 2)
+            .background(.tint.opacity(0.15), in: Capsule())
+    }
+
+    private func citedIndices(_ content: String) -> [Int] {
+        var result: [Int] = []
+        var i = content.startIndex
+        while i < content.endIndex {
+            if content[i] == "[", let close = content[i...].firstIndex(of: "]") {
+                if let n = Int(content[content.index(after: i)..<close]), !result.contains(n) {
+                    result.append(n)
+                }
+                i = content.index(after: close)
+            } else {
+                i = content.index(after: i)
+            }
+        }
+        return result.sorted()
     }
 }

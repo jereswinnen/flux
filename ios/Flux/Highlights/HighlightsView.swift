@@ -25,6 +25,7 @@ struct HighlightsView: View {
                     }
                 }
                 .navigationDestination(for: ItemRoute.self) { ItemRouteDestination(route: $0) }
+                .navigationDestination(for: EntityRoute.self) { EntityDetailView(slug: $0.slug) }
         }
     }
 

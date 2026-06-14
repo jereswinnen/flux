@@ -15,6 +15,11 @@ struct ScopedAskRoute: Hashable, Identifiable {
     var id: String { conversationId }
 }
 
+/// Navigation value to open an entity detail by slug.
+struct EntityRoute: Hashable {
+    let slug: String
+}
+
 /// Resolves an `ItemRoute` to the local `Item` and renders its detail, or a
 /// "not in your library" note if it isn't synced locally.
 struct ItemRouteDestination: View {
