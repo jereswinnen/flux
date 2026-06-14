@@ -1,16 +1,16 @@
 import SwiftUI
 import UIKit
 
-/// Renders sanitized HTML as a selectable, non-editable UITextView sized to its content.
-/// Conversion (WebKit-backed, main-thread) is memoized in the coordinator.
-/// `highlights` get a background fill; tapping one calls `onTapHighlight`.
+/// Displays a pre-built attributed string in a selectable, non-editable UITextView sized to
+/// its content. Highlights are anchored by character range (with a first-text-match fallback);
+/// selecting text offers a custom "Highlight" action that reports the exact selected range.
 struct HTMLTextView: UIViewRepresentable {
-    let html: String
-    /// Substrings to mark as highlights (matched first-occurrence) + their highlight id.
-    var highlights: [(id: String, text: String)] = []
+    let attributed: NSAttributedString
+    /// Highlights to mark: id + text + optional stored char offsets (charStart/charEnd).
+    var highlights: [(id: String, text: String, charStart: Int?, charEnd: Int?)] = []
     var onTapHighlight: ((String) -> Void)? = nil
-    /// Called with the user's selected substring when they tap the "Highlight" menu item.
-    var onCreateHighlight: ((String) -> Void)? = nil
+    /// Reports the selected substring and its exact range when the user taps "Highlight".
+    var onCreateHighlight: ((_ text: String, _ range: NSRange) -> Void)? = nil
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -22,9 +22,6 @@ struct HTMLTextView: UIViewRepresentable {
         tv.backgroundColor = .clear
         tv.textContainerInset = .zero
         tv.textContainer.lineFragmentPadding = 0
-        // Let SwiftUI dictate the width: don't resist horizontal compression, and have the
-        // text container wrap to the view's width so the HTML body lays out within the screen
-        // and grows only in height. Without this a non-scrolling UITextView overflows sideways.
         tv.textContainer.widthTracksTextView = true
         tv.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         tv.setContentHuggingPriority(.required, for: .vertical)
@@ -39,15 +36,11 @@ struct HTMLTextView: UIViewRepresentable {
 
     func updateUIView(_ tv: UITextView, context: Context) {
         context.coordinator.parent = self
-        let attributed = context.coordinator.attributedString(for: html)
         let mutable = NSMutableAttributedString(attributedString: attributed)
         context.coordinator.applyHighlights(into: mutable)
         tv.attributedText = mutable
     }
 
-    /// A non-scrolling UITextView doesn't report a content-driven height to SwiftUI on its own,
-    /// so without this it lays out at zero/wrong height and overlaps sibling views. Compute the
-    /// fitting height for the width SwiftUI proposes.
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
         let width = proposal.width ?? uiView.bounds.width
         guard width > 0 else { return nil }
@@ -60,52 +53,27 @@ struct HTMLTextView: UIViewRepresentable {
     final class Coordinator: NSObject, UITextViewDelegate {
         var parent: HTMLTextView
         weak var textView: UITextView?
-        private var cachedHTML: String?
-        private var cached: NSAttributedString?
 
         init(_ parent: HTMLTextView) { self.parent = parent }
-
-        /// Convert + style once per unique html string.
-        func attributedString(for html: String) -> NSAttributedString {
-            if cachedHTML == html, let cached { return cached }
-            let data = Data(html.utf8)
-            let base: NSAttributedString
-            if let parsed = try? NSAttributedString(
-                data: data,
-                options: [
-                    .documentType: NSAttributedString.DocumentType.html,
-                    .characterEncoding: String.Encoding.utf8.rawValue
-                ],
-                documentAttributes: nil
-            ) {
-                base = parsed
-            } else {
-                base = NSAttributedString(string: html)
-            }
-            let styled = NSMutableAttributedString(attributedString: base)
-            let full = NSRange(location: 0, length: styled.length)
-            let body = UIFont.preferredFont(forTextStyle: .body)
-            let serif = UIFont(descriptor: body.fontDescriptor.withDesign(.serif) ?? body.fontDescriptor, size: body.pointSize)
-            let para = NSMutableParagraphStyle()
-            para.lineSpacing = 4
-            para.paragraphSpacing = 12
-            styled.addAttribute(.font, value: serif, range: full)
-            styled.addAttribute(.foregroundColor, value: UIColor.label, range: full)
-            styled.addAttribute(.paragraphStyle, value: para, range: full)
-            cachedHTML = html
-            cached = styled
-            return styled
-        }
 
         func applyHighlights(into text: NSMutableAttributedString) {
             let ns = text.string as NSString
             for hl in parent.highlights {
-                let range = ns.range(of: hl.text)
-                if range.location != NSNotFound {
-                    text.addAttribute(.backgroundColor, value: UIColor.systemYellow.withAlphaComponent(0.35), range: range)
-                    text.addAttribute(.init("hlid"), value: hl.id, range: range)
-                }
+                guard let range = resolveRange(for: hl, in: ns) else { continue }
+                text.addAttribute(.backgroundColor, value: UIColor.systemYellow.withAlphaComponent(0.35), range: range)
+                text.addAttribute(.init("hlid"), value: hl.id, range: range)
             }
+        }
+
+        /// Prefer the stored char offsets (exact, disambiguates repeated phrases); fall back
+        /// to the first text match if the offsets are absent or no longer line up.
+        private func resolveRange(for hl: (id: String, text: String, charStart: Int?, charEnd: Int?), in ns: NSString) -> NSRange? {
+            if let s = hl.charStart, let e = hl.charEnd, s >= 0, e > s, e <= ns.length {
+                let r = NSRange(location: s, length: e - s)
+                if ns.substring(with: r) == hl.text { return r }
+            }
+            let match = ns.range(of: hl.text)
+            return match.location == NSNotFound ? nil : match
         }
 
         @objc func handleTap(_ gesture: UITapGestureRecognizer) {
@@ -120,14 +88,13 @@ struct HTMLTextView: UIViewRepresentable {
             }
         }
 
-        // Custom "Highlight" edit-menu action
         func textView(_ textView: UITextView, editMenuForTextIn range: NSRange, suggestedActions: [UIMenuElement]) -> UIMenu? {
             guard range.length > 0, let onCreate = parent.onCreateHighlight else {
                 return UIMenu(children: suggestedActions)
             }
             let selected = (textView.text as NSString).substring(with: range)
             let highlight = UIAction(title: "Highlight", image: UIImage(systemName: "highlighter")) { _ in
-                onCreate(selected)
+                onCreate(selected, range)
             }
             return UIMenu(children: [highlight] + suggestedActions)
         }

@@ -19,11 +19,16 @@ final class Highlight {
     // Default enables SwiftData lightweight migration for stores created before P3;
     // existing rows re-sync and get the real value.
     var itemType: String = ""
+    // Article-highlight anchor: character offsets into the rendered reader text. Nil for
+    // other kinds / unanchored highlights (then display falls back to text-match).
+    var charStart: Int?
+    var charEnd: Int?
 
     init(
         id: String, itemId: String, kind: String, text: String, note: String?,
         createdAt: Date, updatedAt: Date, jumpHref: String,
-        itemTitle: String, itemSource: String?, itemArtworkUrl: String?, itemType: String
+        itemTitle: String, itemSource: String?, itemArtworkUrl: String?, itemType: String,
+        charStart: Int? = nil, charEnd: Int? = nil
     ) {
         self.id = id
         self.itemId = itemId
@@ -37,6 +42,8 @@ final class Highlight {
         self.itemSource = itemSource
         self.itemArtworkUrl = itemArtworkUrl
         self.itemType = itemType
+        self.charStart = charStart
+        self.charEnd = charEnd
     }
 
     init(from dto: HighlightDTO) {
@@ -52,6 +59,8 @@ final class Highlight {
         itemSource = dto.item.source
         itemArtworkUrl = dto.item.artworkUrl
         itemType = dto.item.type.rawValue
+        charStart = dto.locator?.charStart
+        charEnd = dto.locator?.charEnd
     }
 
     func apply(_ dto: HighlightDTO) {
@@ -66,5 +75,7 @@ final class Highlight {
         itemSource = dto.item.source
         itemArtworkUrl = dto.item.artworkUrl
         itemType = dto.item.type.rawValue
+        charStart = dto.locator?.charStart
+        charEnd = dto.locator?.charEnd
     }
 }
