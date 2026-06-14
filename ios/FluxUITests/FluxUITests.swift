@@ -53,4 +53,27 @@ final class FluxUITests: XCTestCase {
         XCTAssertTrue(openItem(containing: "Jony Ive"), "Podcast not found in Library")
         saveScreenshot("flux-player.png")
     }
+
+    func testHighlightsFeed() throws {
+        let tab = app.tabBars.buttons["Highlights"]
+        XCTAssertTrue(tab.waitForExistence(timeout: 5))
+        tab.tap()
+        Thread.sleep(forTimeInterval: 2.0)
+        saveScreenshot("flux-highlights.png")
+    }
+
+    func testSearch() throws {
+        let tab = app.tabBars.buttons["Search"]
+        XCTAssertTrue(tab.waitForExistence(timeout: 5))
+        tab.tap()
+        let field = app.searchFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("design")
+        // Wait for live results to render (debounce + network), then screenshot.
+        let result = app.staticTexts["Brian Lovin - How to level up with AI as a designer"]
+        let appeared = result.waitForExistence(timeout: 15)
+        saveScreenshot("flux-search.png")
+        XCTAssertTrue(appeared, "Search results for 'design' did not appear")
+    }
 }

@@ -302,8 +302,9 @@ public struct SearchMoment: Codable {
     public let startSec: Int
     /// End of the chunk window (seconds).
     public let endSec: Int
-    /// Hybrid RRF score (higher = more relevant).
-    public let similarity: Double
+    // Note: the API also returns a `similarity` RRF score, but as a Postgres numeric
+    // *string* (e.g. "0.0304…"), not a JSON number. Clients don't need it and moments
+    // arrive pre-sorted by it, so it's intentionally omitted — Codable ignores the extra key.
 }
 
 // MARK: - Raw Highlight (POST /api/highlights response)
