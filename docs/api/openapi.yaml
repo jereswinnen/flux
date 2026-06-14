@@ -1080,6 +1080,80 @@ paths:
         "401":
           description: Unauthorized.
 
+  /api/entities/{slug}:
+    get:
+      summary: Entity detail
+      operationId: getEntity
+      description: >
+        An enriched entity (person/company/book/…) with the library items that mention it
+        and the entities it is most often co-mentioned with.
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The entity, its mentions, and related entities.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [entity, mentions, relatedEntities]
+                properties:
+                  entity:
+                    type: object
+                    required: [id, name, slug, type]
+                    properties:
+                      id: { type: string }
+                      name: { type: string }
+                      slug: { type: string }
+                      type: { type: string }
+                      description: { type: string, nullable: true }
+                      summary: { type: string, nullable: true }
+                      imageUrl: { type: string, nullable: true }
+                      wikipediaUrl: { type: string, nullable: true }
+                      externalIds:
+                        type: object
+                        nullable: true
+                        properties:
+                          itunesId: { type: integer, nullable: true }
+                          isbn: { type: string, nullable: true }
+                          googleBooksId: { type: string, nullable: true }
+                      metadata:
+                        type: object
+                        nullable: true
+                        properties:
+                          author: { type: string, nullable: true }
+                          publishedYear: { type: integer, nullable: true }
+                  mentions:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, title]
+                      properties:
+                        id: { type: string, description: item id }
+                        title: { type: string }
+                        podcastName: { type: string, nullable: true }
+                        artworkUrl: { type: string, nullable: true }
+                        context: { type: string, nullable: true }
+                        approxTimestampSec: { type: integer, nullable: true }
+                  relatedEntities:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name, slug, type, sharedItems]
+                      properties:
+                        id: { type: string }
+                        name: { type: string }
+                        slug: { type: string }
+                        type: { type: string }
+                        imageUrl: { type: string, nullable: true }
+                        sharedItems: { type: integer }
+        "404":
+          description: No entity with that slug.
+
   /api/conversations:
     get:
       summary: List conversations
