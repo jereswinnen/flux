@@ -1,6 +1,6 @@
 import type { ItemType } from "@/lib/db/schema"
 import type { HighlightRow } from "@/lib/db/highlights"
-import { highlightJumpHref, type HighlightKind } from "@/lib/highlights/locator"
+import { highlightJumpHref, type HighlightKind, type HighlightLocator } from "@/lib/highlights/locator"
 
 export interface HighlightDTO {
   id: string
@@ -11,6 +11,8 @@ export interface HighlightDTO {
   updatedAt: string
   item: { id: string; type: ItemType; title: string; source: string | null; artworkUrl: string | null }
   jumpHref: string
+  // Position metadata (e.g. charStart/charEnd for article highlights); null when unanchored.
+  locator: HighlightLocator | null
 }
 
 export function highlightToDTO(row: HighlightRow): HighlightDTO {
@@ -23,5 +25,6 @@ export function highlightToDTO(row: HighlightRow): HighlightDTO {
     updatedAt: row.updatedAt.toISOString(),
     item: row.item,
     jumpHref: highlightJumpHref(row.item.id, row.kind as HighlightKind, row.locator),
+    locator: row.locator ?? null,
   }
 }

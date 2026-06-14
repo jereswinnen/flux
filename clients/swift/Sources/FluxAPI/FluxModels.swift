@@ -96,6 +96,9 @@ public struct HighlightDTO: Codable {
     public let item: HighlightItemRef
     /// Relative URL for deep-linking in the web app (e.g. `/items/{id}?t=120`).
     public let jumpHref: String
+    /// Position metadata; for `article` highlights this carries `charStart`/`charEnd`
+    /// (offsets into the rendered text) used to anchor the mark exactly. Nil when unanchored.
+    public let locator: HighlightLocator?
 }
 
 // MARK: - SourceDTO
