@@ -6,7 +6,9 @@ struct AskView: View {
     @State private var conversations: [ConversationRow] = []
     @State private var loading = false
     @State private var error: String?
-    @State private var path: [String] = []   // conversation ids
+    // Type-erased so the stack can also push ItemRoute / EntityRoute from inside a
+    // conversation (a homogeneous [String] path silently drops other value types).
+    @State private var path = NavigationPath()
     @State private var renaming: ConversationRow?
     @State private var renameText = ""
 
